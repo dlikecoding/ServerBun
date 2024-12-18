@@ -13,7 +13,7 @@ app.use('*', logger())
 //     return c.json({"msg": "Mainpage"});
 // })
 
-app.route('/api/home', home);
+const apiRoutes = app.basePath("api").route('/home', home);
 // app.route('/api/album', album);
 // app.route('/api/upload', album);
 
@@ -29,3 +29,4 @@ app.get('*', serveStatic({root: './frontend/dist'}))
 app.get('*', serveStatic({path: './frontend/dist/index.html'}))
 
 export default app
+export type ApiRoutes = typeof apiRoutes
