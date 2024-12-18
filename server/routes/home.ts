@@ -11,9 +11,17 @@ const postSchema = z.object({
     homepage: z.string()
 })
 
-home.get('/', zValidator('json', postSchema), (c) => {
+// Make sure all of id is numbers
+home.get('/:id{[0-9]+}', (c) => {
     return c.json({ "homepage": 'YOU ARE HOME' })
 })
 
+home.get('/', (c) => {
+    return c.json({ "homepage": 'YOU ARE HOME' })
+})
+
+home.post('/', zValidator('json', postSchema), (c) => {
+    return c.json({ "homepage": 'YOU ARE HOME' })
+})
 
 export default home;
