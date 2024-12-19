@@ -1,10 +1,9 @@
-import { Hono } from "hono";
+import { Hono } from 'hono'
 
-const album = new Hono();
+const album = new Hono()
 
 album.get('/', (c) => {
-    return c.json({ "albumpage": 'YOU ARE album' })
+  return c.json({ albumpage: 'YOU ARE album' })
 })
 
-
-export { album };
+export { album }

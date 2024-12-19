@@ -9,11 +9,11 @@ function App() {
   const [test, settest] = createSignal(0)
   createEffect(() => {
     async function getData() {
-      const res = await fetch("/api/home")
-      const serverData = await res.json();
+      const res = await fetch('/api/home')
+      const serverData = await res.json()
       settest(serverData.homepage)
     }
-    getData();
+    getData()
   }, [])
   return (
     <>
