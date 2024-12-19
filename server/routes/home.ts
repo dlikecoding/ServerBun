@@ -1,7 +1,7 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
 // To create a schema to validate post req
-import { z } from 'zod';
+import { z } from "zod";
 
 const home = new Hono();
 
@@ -11,16 +11,16 @@ const postSchema = z.object({
 });
 
 // Make sure all of id is numbers
-home.get('/:id{[0-9]+}', (c) => {
-  return c.json({ homepage: 'YOU ARE HOME' });
+home.get("/:id{[0-9]+}", (c) => {
+  return c.json({ homepage: "YOU ARE HOME" });
 });
 
-home.get('/', (c) => {
-  return c.json({ homepage: 'YOU ARE HOME' });
+home.get("/", (c) => {
+  return c.json({ homepage: "YOU ARE HOME" });
 });
 
-home.post('/', zValidator('json', postSchema), (c) => {
-  return c.json({ homepage: 'YOU ARE HOME' });
+home.post("/", zValidator("json", postSchema), (c) => {
+  return c.json({ homepage: "YOU ARE HOME" });
 });
 
 export default home;

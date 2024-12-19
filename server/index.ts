@@ -1,5 +1,5 @@
-import app from './app';
-import { $ } from 'bun';
+import app from "./app";
+import { $ } from "bun";
 
 async function testProcess(
   account: Number = 2,
