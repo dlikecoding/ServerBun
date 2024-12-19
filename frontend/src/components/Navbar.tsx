@@ -1,4 +1,4 @@
-import { A } from '@solidjs/router'
+import { A } from '@solidjs/router';
 
 const Navbar = () => {
   return (
@@ -16,7 +16,7 @@ const Navbar = () => {
         </li>
       </ul>
     </nav>
-  )
-}
+  );
+};
 
-export default Navbar
+export default Navbar;

@@ -1,5 +1,5 @@
-import app from './app'
-import { $ } from 'bun'
+import app from './app';
+import { $ } from 'bun';
 
 async function testProcess(
   account: Number = 2,
@@ -9,21 +9,21 @@ async function testProcess(
     await $`exiftool ${Bun.env.COMMAND} ${sourcePath} | awk -v account=${account} '{print account "," $0}' | \
   sed '1d'`
       .nothrow()
-      .quiet()
+      .quiet();
 
   if (exitCode !== 0) {
-    console.log(`Non-zero exit code ${exitCode}`)
+    console.log(`Non-zero exit code ${exitCode}`);
   }
-  console.log(exitCode)
+  console.log(exitCode);
 }
 
 // await testProcess()
 
-console.log(Bun.env.DB_INSERT)
+console.log(Bun.env.DB_INSERT);
 
 const server = Bun.serve({
   port: Bun.env.PORT || 3000,
   fetch: app.fetch,
-})
+});
 
-console.log(`Listening on http://localhost:${server.port} ...`)
+console.log(`Listening on http://localhost:${server.port} ...`);

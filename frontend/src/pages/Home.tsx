@@ -6,7 +6,7 @@ const Home = () => {
         This is a fast, reactive website built with SolidJS and TypeScript.
       </p>
     </div>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;

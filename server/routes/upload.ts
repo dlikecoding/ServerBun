@@ -1,9 +1,9 @@
-import { Hono } from 'hono'
+import { Hono } from 'hono';
 
-const upload = new Hono()
+const upload = new Hono();
 
 upload.get('/', (c) => {
-  return c.json({ uploadpage: 'YOU ARE upload' })
-})
+  return c.json({ uploadpage: 'YOU ARE upload' });
+});
 
-export { upload }
+export { upload };

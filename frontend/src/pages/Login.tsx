@@ -1,13 +1,13 @@
-import { createSignal } from 'solid-js'
+import { createSignal } from 'solid-js';
 
 const Login = () => {
-  const [email, setEmail] = createSignal('')
-  const [password, setPassword] = createSignal('')
+  const [email, setEmail] = createSignal('');
+  const [password, setPassword] = createSignal('');
 
   const handleLogin = (e: Event) => {
-    e.preventDefault()
-    console.log('Logging in with', { email: email(), password: password() })
-  }
+    e.preventDefault();
+    console.log('Logging in with', { email: email(), password: password() });
+  };
 
   return (
     <div class="p-8">
@@ -42,7 +42,7 @@ const Login = () => {
         </button>
       </form>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;
