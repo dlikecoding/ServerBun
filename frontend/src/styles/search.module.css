@@ -1,0 +1,25 @@
+body {
+  overflow: hidden;
+}
+
+.main-container {
+  color: #fff;
+  padding-bottom: 70px;
+}
+
+.main-container > div {
+  margin-bottom: 30px;
+}
+
+a {
+  color: #fff;
+  text-decoration: none;
+}
+
+input.search {
+  /* border: 1px solid #555; */
+  /* display: block; */
+  /* margin: 10px 0; */
+  padding: 19px 14px 9px 40px;
+  background: url('/client/assets/svgs/search-icon.svg') no-repeat 13px center;
+}

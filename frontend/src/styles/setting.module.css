@@ -1,0 +1,220 @@
+.main-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* margin-bottom: 150px;70px */
+}
+h1 {
+  width: 100%;
+  text-align: left;
+  margin-left: 20px;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  width: 100%;
+  margin-bottom: 50px;
+  padding: 40px 0;
+}
+
+fieldset {
+  width: 90%;
+  max-width: 500px;
+  box-shadow: none;
+  margin-bottom: 50px;
+}
+
+fieldset ul > li {
+  list-style-type: none;
+  padding: 10px 0;
+}
+
+/* For all buttons -------------------- */
+.buttons {
+  position: relative;
+  color: rgb(247, 247, 247);
+  border: none;
+  background: rgba(29, 29, 29, 0.9);
+  border-radius: 4em;
+  font-size: 15px;
+  padding: 20px 40px;
+  cursor: pointer;
+  user-select: none;
+  cursor: pointer;
+  transition-duration: 0.2s;
+  -webkit-transition-duration: 0.2s; /* Safari */
+}
+
+.buttons:after {
+  content: '';
+  display: block;
+  position: absolute;
+  border-radius: 4em;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: all 0.5s;
+  box-shadow: 0 0 7px 17px white;
+}
+
+.buttons:active:after {
+  box-shadow: 0 0 0 0 white;
+  position: absolute;
+  border-radius: 4em;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  transition: 0s;
+}
+
+.buttons:active {
+  top: 1px;
+}
+
+.buttons:hover {
+  background: #001eff;
+}
+
+input[type='checkbox'] {
+  background-color: #001eff;
+  margin-right: 10px;
+  width: 14px;
+  height: 14px;
+  border-radius: 20px;
+}
+
+input[type='radio'] {
+  background-color: #001eff;
+  margin-right: 20px;
+  width: 14px;
+  height: 14px;
+  border-radius: 20px;
+}
+
+/* ------------------ Bar Chart section  ------------------*/
+.barChart {
+  display: flex;
+  width: 100%;
+  height: 400px;
+  border-radius: 20px;
+  /* background-color: rgba(48, 48, 48, 0.353); */
+  padding: 0 20px;
+  position: relative;
+  /* margin-bottom: 30px; */
+}
+
+#barChart {
+  position: absolute;
+  height: 100%;
+}
+
+/* ------------------ Server Storage section  ------------------*/
+/* .doughnutChart {
+  display: flex;
+  width: 100%;
+  height: 400px;
+  justify-content: center;
+  position: relative;
+}
+
+#doughnutChart {
+  position: absolute;
+  max-height: 400px;
+  height: auto;
+} */
+
+.storage-bar {
+  display: flex;
+  justify-content: center;
+  width: 90%;
+  margin: 30px 20px 0 20px;
+}
+
+#round {
+  text-align: left;
+  display: inline-block;
+  padding: 14px;
+  width: 100%;
+  background: rgb(28, 28, 30);
+  border-radius: 9px;
+}
+
+#round > div {
+  margin: 7px 0;
+}
+
+#round > div > span:first-child {
+  margin-bottom: 6px;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+#round > div > span:last-child {
+  font-weight: 250;
+  color: #c4c4c4;
+  float: right;
+}
+
+#round > .spaces {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 20px;
+}
+
+#round > .legend-storage {
+  font-size: 12px;
+  margin-top: 20px;
+}
+
+.coloricon {
+  border-radius: 10px;
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+}
+
+.photos {
+  background-color: rgb(236, 85, 69);
+}
+.lives {
+  background-color: rgb(249, 214, 74);
+}
+.videos {
+  background-color: #4f34eb;
+}
+/* .mails { background-color: rgb(134,227,225);} */
+/* .messages { background-color: rgb(104,205,103);} */
+.others {
+  background-color: rgb(56, 56, 59);
+}
+.free-storages {
+  background-color: rgb(9, 9, 9);
+}
+
+.storage {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.main-container > div:last-child {
+  text-align: right;
+  text-decoration: none;
+  margin-bottom: 20px;
+  width: 80%;
+}
+.main-container > div:last-child > a {
+  text-decoration: none;
+  color: black;
+}
