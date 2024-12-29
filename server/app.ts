@@ -30,6 +30,34 @@ app.use(secureHeaders());
 
 app.use('*', logger());
 
+const logRequestDetails = async (ctx: any) => {
+  const { req } = ctx;
+
+  const method = req.method;
+  const url = req.url;
+  const headers = req.header;
+  const queryParams = req.query; // Query parameters
+  const body = req.method !== 'GET' ? await req.body() : undefined;
+
+  // Collect relevant information
+  const requestDetails = {
+    method,
+    url,
+    headers: JSON.stringify(headers),
+    queryParams,
+    body: body ? JSON.stringify(body) : 'N/A', // Only log body for non-GET requests
+  };
+
+  // Log the collected information (you could replace this with a more sophisticated logger)
+  console.log('Request received:', requestDetails);
+};
+
+// Middleware to log incoming requests
+app.use('*', async (ctx, next) => {
+  await logRequestDetails(ctx); // Log the details before proceeding with the request
+  return next();
+});
+
 // // Encrypt password
 // const password = 'hello@12039aisdoquwe283';
 // const argonHash = await Bun.password.hash(password);
@@ -45,13 +73,13 @@ app.use('*', logger());
 // const isMatch = await Bun.password.verify(password, argonHash); // => true
 // console.log(isMatch);
 
-// app.use(
-//   basicAuth({
-//     verifyUser: (username, password, c) => {
-//       return username === 'user' && password === 'hono';
-//     },
-//   })
-// );
+app.use(
+  basicAuth({
+    verifyUser: (username, password, c) => {
+      return username === 'user' && password === 'hono';
+    },
+  })
+);
 
 // Serve static files
 app.use(

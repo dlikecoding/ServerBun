@@ -1,16 +1,16 @@
 import { Hono } from 'hono';
-import { pool } from '../db';
+import { fetchAllMedia } from '../db/module/media';
 
 const streamApi = new Hono();
 
 // https://hono.dev/docs/helpers/streaming
 streamApi.get('/', async (c) => {
-  const sql = 'SELECT * FROM Media ORDER BY media_id ASC LIMIT ?, ?';
-  const values = [0, 99999];
+  const limit = 9999;
+  const offset = 0;
 
   try {
     // pool.getConnection;
-    const queryStream = pool.query(sql, values).stream();
+    const queryStream = fetchAllMedia(offset, limit);
     const stream = new ReadableStream({
       start(controller) {
         queryStream.on('data', (row: any) => {

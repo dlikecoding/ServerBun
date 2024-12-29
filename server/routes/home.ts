@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 // To create a schema to validate post req
 import { z } from 'zod';
-
+import { getConnInfo } from 'hono/bun';
 const home = new Hono();
 
 // Using z to validate if input in valid
@@ -16,6 +16,9 @@ home.get('/:id{[0-9]+}', (c) => {
 });
 
 home.get('/', (c) => {
+  // const info = getConnInfo(c);
+  // console.log(c.req.header());
+  // console.log(info);
   return c.json({ homepage: 'YOU ARE HOME' });
 });
 
