@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { Hono } from 'hono';
 
 const album = new Hono();
 
-album.get("/", (c) => {
-  return c.json({ albumpage: "YOU ARE album" });
+album.get('/', (c) => {
+  return c.json({ albumpage: 'YOU ARE album' });
 });
 
-export { album };
+export default album;

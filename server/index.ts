@@ -1,29 +1,24 @@
-import app from "./app";
-import { $ } from "bun";
+import app from './app';
+import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
+import { accountExists, getUserById } from './db/module/account';
+import { createUserGuest } from './db/module/guest';
 
-async function testProcess(
-  account: Number = 2,
-  sourcePath: String = `${Bun.env.SOURCE_IMPORT}`
-) {
-  const { stdout, stderr, exitCode } =
-    await $`exiftool ${Bun.env.COMMAND} ${sourcePath} | awk -v account=${account} '{print account "," $0}' | \
-  sed '1d'`
-      .nothrow()
-      .quiet();
-
-  if (exitCode !== 0) {
-    console.log(`Non-zero exit code ${exitCode}`);
-  }
-  console.log(exitCode);
-}
-
-// await testProcess()
-
-console.log(Bun.env.DB_INSERT);
+export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024;
 
 const server = Bun.serve({
   port: Bun.env.PORT || 3000,
   fetch: app.fetch,
+  maxRequestBodySize: MAX_UPLOAD_FILE_SIZE,
 });
+
+// await getUserById(2);
+// await accountExists('jane.smith@example.com');
+
+// await createUserGuest('guasdaaesaasdaaat@Hwllo.com', 'Guest ASHD User');
+
+// await backupToDB();
+// await createDBMS();
+// await restoreToDB();
+// await insertMediaToDB();
 
 console.log(`Listening on http://localhost:${server.port} ...`);
