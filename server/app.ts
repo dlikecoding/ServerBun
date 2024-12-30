@@ -30,33 +30,33 @@ app.use(secureHeaders());
 
 app.use('*', logger());
 
-const logRequestDetails = async (ctx: any) => {
-  const { req } = ctx;
+// const logRequestDetails = async (ctx: any) => {
+//   const { req } = ctx;
 
-  const method = req.method;
-  const url = req.url;
-  const headers = req.header;
-  const queryParams = req.query; // Query parameters
-  const body = req.method !== 'GET' ? await req.body() : undefined;
+//   const method = req.method;
+//   const url = req.url;
+//   const headers = req.header;
+//   const queryParams = req.query; // Query parameters
+//   const body = req.method !== 'GET' ? await req.body() : undefined;
 
-  // Collect relevant information
-  const requestDetails = {
-    method,
-    url,
-    headers: JSON.stringify(headers),
-    queryParams,
-    body: body ? JSON.stringify(body) : 'N/A', // Only log body for non-GET requests
-  };
+//   // Collect relevant information
+//   const requestDetails = {
+//     method,
+//     url,
+//     headers: JSON.stringify(headers),
+//     queryParams,
+//     body: body ? JSON.stringify(body) : 'N/A', // Only log body for non-GET requests
+//   };
 
-  // Log the collected information (you could replace this with a more sophisticated logger)
-  console.log('Request received:', requestDetails);
-};
+//   // Log the collected information (you could replace this with a more sophisticated logger)
+//   console.log('Request received:', requestDetails);
+// };
 
 // Middleware to log incoming requests
-app.use('*', async (ctx, next) => {
-  await logRequestDetails(ctx); // Log the details before proceeding with the request
-  return next();
-});
+// app.use('*', async (ctx, next) => {
+//   await logRequestDetails(ctx); // Log the details before proceeding with the request
+//   return next();
+// });
 
 // // Encrypt password
 // const password = 'hello@12039aisdoquwe283';
@@ -73,21 +73,13 @@ app.use('*', async (ctx, next) => {
 // const isMatch = await Bun.password.verify(password, argonHash); // => true
 // console.log(isMatch);
 
-app.use(
-  basicAuth({
-    verifyUser: (username, password, c) => {
-      return username === 'user' && password === 'hono';
-    },
-  })
-);
-
-// Serve static files
-app.use(
-  `${Bun.env.SOURCE_IMPORT}/*`,
-  serveStatic({
-    root: './cloud',
-  })
-);
+// app.use(
+//   basicAuth({
+//     verifyUser: (username, password, c) => {
+//       return username === 'user' && password === 'hono';
+//     },
+//   })
+// );
 
 // app.get("/", c => {
 //     return c.json({"msg": "Mainpage"});
@@ -111,15 +103,9 @@ app.route('/api/users', users);
 //   }
 // });
 
-app.get(
-  '*',
-  serveStatic({
-    root: './frontend/dist',
-    path: './frontend/dist/index.html',
-  })
-);
-// app.get('*', serveStatic({ root: './frontend/dist' }));
-// app.get('*', serveStatic({ path: './frontend/dist/index.html' }));
+// Serve static files
+app.use('*', serveStatic({ root: `${Bun.env['PHOTO_PATH']}` }));
+app.get('*', serveStatic({ root: './dist' }));
 
 export default app;
 export type ApiRoutes = typeof apiRoutes;
