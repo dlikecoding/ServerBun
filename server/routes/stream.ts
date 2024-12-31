@@ -9,7 +9,6 @@ streamApi.get('/', async (c) => {
   const offset = 0;
 
   try {
-    // pool.getConnection;
     const queryStream = fetchAllMedia(offset, limit);
     const stream = new ReadableStream({
       start(controller) {

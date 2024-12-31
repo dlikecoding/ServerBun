@@ -110,21 +110,24 @@ COLLATE = utf8mb4_0900_ai_ci;
 CREATE TABLE IF NOT EXISTS `Photos`.`Media` (
   `media_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `FileType` ENUM('Photo', 'Video', 'Live', 'Unknown') NOT NULL,
-  `FileName` VARCHAR(255) NULL DEFAULT NULL,
+  `FileName` TEXT NULL DEFAULT NULL,
   `CreateDate` DATETIME NULL DEFAULT NULL,
   `FileSize` BIGINT UNSIGNED NULL DEFAULT NULL,
   `HashCode` VARCHAR(256) NULL DEFAULT NULL,
-  `URL` TEXT NULL DEFAULT NULL,
-  `Privacy` TINYINT(1) UNSIGNED NULL DEFAULT 1,
   `Hidden` TINYINT(1) UNSIGNED NULL DEFAULT 0,
   `Favorite` TINYINT(1) UNSIGNED NULL DEFAULT 0,
   `DeletedStatus` TINYINT(1) UNSIGNED NULL DEFAULT 0,
   `DeletionDate` TIMESTAMP NULL DEFAULT NULL,
-  `Restricted` TINYINT(1) UNSIGNED NULL DEFAULT 0,
   `CameraType` INT UNSIGNED NULL,
-  `TimeUpload` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `UploadAt` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `FileExt` VARCHAR(10) NULL DEFAULT NULL,
   `Software` VARCHAR(256) NULL DEFAULT NULL,
+  `SourceFile` TEXT NULL DEFAULT NULL,
+  `MIMEType` VARCHAR(50) NULL DEFAULT NULL,
+  `ThumbPath` TEXT NULL DEFAULT NULL,
+  `isThumbCreated` TINYINT(1) NULL DEFAULT 0,
+  `ThumbWidth` SMALLINT NULL DEFAULT NULL,
+  `ThumbHeight` SMALLINT NULL DEFAULT NULL,
   PRIMARY KEY (`media_id`),
   INDEX `FK_MEDIA_CAMERATYPE_ID_idx` (`CameraType` ASC) VISIBLE,
   INDEX `Media_CreateDate_idx` (`CreateDate` ASC, `FileType` ASC) VISIBLE,
@@ -289,7 +292,7 @@ COLLATE = utf8mb4_0900_ai_ci;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`ImportMedias` (
   `import_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `FileName` VARCHAR(255) NULL DEFAULT NULL,
+  `FileName` TEXT NULL DEFAULT NULL,
   `FileType` VARCHAR(50) NULL DEFAULT NULL,
   `MIMEType` VARCHAR(50) NULL DEFAULT NULL,
   `Software` VARCHAR(255) NULL DEFAULT NULL,
@@ -311,7 +314,7 @@ CREATE TABLE IF NOT EXISTS `Photos`.`ImportMedias` (
   `GPSLongitude` DOUBLE NULL DEFAULT NULL,
   `ImageWidth` SMALLINT UNSIGNED NULL DEFAULT NULL,
   `ImageHeight` SMALLINT UNSIGNED NULL DEFAULT NULL,
-  `SourceFile` VARCHAR(1024) NULL DEFAULT NULL,
+  `SourceFile` TEXT NULL DEFAULT NULL,
   `Megapixels` DECIMAL(5,2) NULL DEFAULT NULL,
   `account` SMALLINT UNSIGNED NOT NULL,
   PRIMARY KEY (`import_id`),
@@ -407,32 +410,13 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `Photos`.`SourceFile`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `Photos`.`SourceFile` (
-  `media` INT UNSIGNED NOT NULL,
-  `MIMEType` VARCHAR(50) NULL DEFAULT NULL,
-  `SourceFile` VARCHAR(1024) NULL DEFAULT NULL,
-  PRIMARY KEY (`media`),
-  CONSTRAINT `PKFK_SOURCEFILE_MEDIA_ID`
-    FOREIGN KEY (`media`)
-    REFERENCES `Photos`.`Media` (`media_id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE)
-ENGINE = InnoDB
-DEFAULT CHARACTER SET = utf8mb4
-COLLATE = utf8mb4_0900_ai_ci;
-
-
--- -----------------------------------------------------
 -- Table `Photos`.`Thumbnail`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`Thumbnail` (
   `media` INT UNSIGNED NOT NULL,
   `ThumbWidth` SMALLINT NULL DEFAULT NULL,
   `ThumbHeight` SMALLINT NULL DEFAULT NULL,
-  `SourceThumb` VARCHAR(1024) NULL DEFAULT NULL,
-  `UrlThumb` VARCHAR(1024) NULL DEFAULT NULL,
+  `ThumbPath` TEXT NULL DEFAULT NULL,
   PRIMARY KEY (`media`),
   CONSTRAINT `PKFK_THUMBNAIL_MEDIA_ID`
     FOREIGN KEY (`media`)

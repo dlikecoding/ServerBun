@@ -1,7 +1,8 @@
 declare module 'bun' {
   interface Env {
     PORT: string;
-    SOURCE_IMPORT: string;
+    MAIN_PATH: string;
+
     COMMAND: string;
     DB_INSERT: string;
     DB_HOST: string;

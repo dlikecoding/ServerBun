@@ -28,7 +28,7 @@ app.use(secureHeaders());
 // https://hono.dev/docs/middleware/builtin/compress
 // app.use(compress()); // Request must send with "Accept-Encoding" in Header
 
-app.use('*', logger());
+// app.use('*', logger());
 
 // const logRequestDetails = async (ctx: any) => {
 //   const { req } = ctx;
@@ -104,7 +104,8 @@ app.route('/api/users', users);
 // });
 
 // Serve static files
-app.use('*', serveStatic({ root: `${Bun.env['PHOTO_PATH']}` }));
+
+app.use('*', serveStatic({ root: Bun.env.MAIN_PATH }));
 app.get('*', serveStatic({ root: './dist' }));
 
 export default app;

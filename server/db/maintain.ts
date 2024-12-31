@@ -16,7 +16,7 @@ export async function insertMediaToDB(account: Number = 1, sourcePath: string) {
     -CreationDate -DateTimeOriginal -FileModifyDate -MediaCreateDate -MediaModifyDate -Duration# \
     -GPSLatitude# -GPSLongitude# -ImageWidth -ImageHeight -Megapixels ${sourcePath} | \
     awk -v account=${account} '{print account "," $0}' | \
-    sed '1d'| sed 's|${Bun.env['SOURCE_PATH']}||g' | \
+    sed '1d'| sed 's|${Bun.env['MAIN_PATH']}||g' | \
     mysql --local-infile=1 -u $DB_USER -p$DB_PASS $DB_NAME -e $DB_INSERT`;
 
     console.log(`INSERT successfully to the DB!`);
@@ -31,12 +31,12 @@ export async function backupToDB() {
   if (exitCode !== 0) {
     return console.log(`Non-zero exit code ${stderr}`);
   }
-  console.log(stdout);
+  console.log(`BACKUP successfully to the DB!`);
 }
 export async function restoreToDB() {
   const { stdout, stderr, exitCode } = await $`mysql -u $DB_USER -p$DB_PASS $DB_NAME < $DB_BACKUP`;
   if (exitCode !== 0) {
     return console.log(`Non-zero exit code ${stderr}`);
   }
-  console.log(stdout);
+  console.log(`RESTORE successfully to the DB!`);
 }

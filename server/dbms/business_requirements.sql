@@ -95,28 +95,30 @@ BEGIN
     DECLARE cameraTypeId INT; -- Camera ID if have any
     DECLARE durationDisplay VARCHAR(20); -- Display duration time for videos
     DECLARE mediaType VARCHAR(7); -- Media Type for ENUM (Photo/Video/Live/Unknown)
-	DECLARE generateMediaID VARCHAR(15); -- Create a random string for an URL
+    DECLARE lastInsertMediaID VARCHAR(15); -- Create a random string for an URL
     
+    DECLARE currentDate TIMESTAMP;
+    SET currentDate = CURRENT_TIMESTAMP;
 
     -- Extract MIME type prefix (e.g., 'image' from 'image/png')
     SET mimeTypePrefix = SUBSTRING_INDEX(NEW.MIMEType, '/', 1);  -- 'image' from 'image/png'
 
     -- Determine the smallest valid date among multiple fields. Use CASE statements to handle invalid date values
     SET smallestDate = LEAST(
-        IF((NEW.CreateDate = '' OR NEW.CreateDate = '0000:00:00 00:00:00'), '9999-12-31 23:59:59', NEW.CreateDate),
-        IF((NEW.DateCreated = '' OR NEW.DateCreated = '0000:00:00 00:00:00'), '9999-12-31 23:59:59', NEW.DateCreated),
-        IF((NEW.CreationDate = '' OR NEW.CreationDate = '0000:00:00 00:00:00'), '9999-12-31 23:59:59', NEW.CreationDate),
-        IF((NEW.DateTimeOriginal = '' OR NEW.DateTimeOriginal = '0000:00:00 00:00:00'), '9999-12-31 23:59:59', NEW.DateTimeOriginal),
-        IF((NEW.FileModifyDate = '' OR NEW.FileModifyDate = '0000:00:00 00:00:00'), '9999-12-31 23:59:59', NEW.FileModifyDate),
-        IF((NEW.MediaCreateDate = '' OR NEW.MediaCreateDate = '0000:00:00 00:00:00'), '9999-12-31 23:59:59', NEW.MediaCreateDate),
-        IF((NEW.MediaModifyDate = '' OR NEW.MediaModifyDate = '0000:00:00 00:00:00'), '9999-12-31 23:59:59', NEW.MediaModifyDate)
+        IF((NEW.CreateDate = '' OR NEW.CreateDate = '0000:00:00 00:00:00'), currentDate, NEW.CreateDate),
+        IF((NEW.DateCreated = '' OR NEW.DateCreated = '0000:00:00 00:00:00'), currentDate, NEW.DateCreated),
+        IF((NEW.CreationDate = '' OR NEW.CreationDate = '0000:00:00 00:00:00'), currentDate, NEW.CreationDate),
+        IF((NEW.DateTimeOriginal = '' OR NEW.DateTimeOriginal = '0000:00:00 00:00:00'), currentDate, NEW.DateTimeOriginal),
+        IF((NEW.FileModifyDate = '' OR NEW.FileModifyDate = '0000:00:00 00:00:00'), currentDate, NEW.FileModifyDate),
+        IF((NEW.MediaCreateDate = '' OR NEW.MediaCreateDate = '0000:00:00 00:00:00'), currentDate, NEW.MediaCreateDate),
+        IF((NEW.MediaModifyDate = '' OR NEW.MediaModifyDate = '0000:00:00 00:00:00'), currentDate, NEW.MediaModifyDate)
     );
     
     -- Handle camera type association:
     -- Check if Make, Model, and LensModel are not NULL or empty
-    IF NEW.Make IS NOT NULL AND NEW.Make != '' 
-       AND NEW.Model IS NOT NULL AND NEW.Model != '' 
-       AND NEW.LensModel IS NOT NULL AND NEW.LensModel != '' THEN
+    IF NEW.Make IS NOT NULL AND NEW.Make <> '' 
+       AND NEW.Model IS NOT NULL AND NEW.Model <> '' 
+       AND NEW.LensModel IS NOT NULL AND NEW.LensModel <> '' THEN
         
         -- Check if the record already exists and get the cameraTypeId
         SELECT camera_id INTO cameraTypeId FROM CameraType
@@ -136,39 +138,46 @@ BEGIN
 
     SET mediaType = IF ( (mimeTypePrefix = 'image'), 'Photo', 
                     IF ( (mimeTypePrefix = 'video'), 
-                    IF ( (NEW.Duration > 6), 'Video', 'Live' ), 'Unknown') );
+                    IF ( (NEW.Duration > 5), 'Video', 'Live' ), 'Unknown') );
     
-    -- Generate unique media URL string
-    SET generateMediaID = CONCAT(
+    -- Generate unique thumbnail name
+    SET lastInsertMediaID = CONCAT(
         CAST(NEW.import_id AS CHAR),
         SUBSTRING(REPLACE(UUID(), '-', ''), 1, 15 - LENGTH(CAST(NEW.import_id AS CHAR)))
     );
 
     -- Insert into Media table
-    INSERT INTO Media (FileName, FileType, FileExt, Software, FileSize, CameraType, CreateDate, URL) 
-    VALUES (NEW.FileName, mediaType, NEW.FileType, NEW.Software, NEW.FileSize, cameraTypeId,
-    STR_TO_DATE(smallestDate, '%Y-%m-%d %H:%i:%s'), generateMediaID);
+    INSERT INTO Media (FileName, FileType, FileExt, Software, FileSize, CameraType, CreateDate, SourceFile, MIMEType, ThumbPath) 
+        VALUES (NEW.FileName, mediaType, NEW.FileType, NEW.Software, NEW.FileSize, cameraTypeId,
+        STR_TO_DATE(smallestDate, '%Y-%m-%d %H:%i:%s'), NEW.SourceFile, NEW.MIMEType,
+        CONCAT('/Thumbnails/', YEAR(smallestDate), '/', DATE_FORMAT(smallestDate, '%M'), '/', lastInsertMediaID, '.webp')
+    );
 
     -- Reuse this variable as media_id for the last Media inserted
-    SET generateMediaID = LAST_INSERT_ID();
-
+    SET lastInsertMediaID = LAST_INSERT_ID();
 
     -- ///////////// NOTE ///////////////////
     -- The account number needs to be added when the user is created, so we can identify which user uploaded these media.
     -- It is necessary to insert into the UploadBy table (account, media_id).
     INSERT INTO UploadBy (account, media)
-    VALUES (NEW.account, generateMediaID);
+    VALUES (NEW.account, lastInsertMediaID);
 
-    -- Insert into SourceFile table
-    INSERT INTO SourceFile (media, SourceFile, MIMEType) 
-    VALUES (generateMediaID, NEW.SourceFile, NEW.MIMEType);
+    -- -- Insert into SourceFile table
+    -- INSERT INTO SourceFile (media, SourceFile, MIMEType) 
+    -- VALUES (lastInsertMediaID, NEW.SourceFile, NEW.MIMEType);
+
+    -- -- Create a thumbnail path and add it to Thumbnail table
+    -- INSERT INTO Thumbnail (media, ThumbPath, isImage) 
+    -- VALUES (lastInsertMediaID, 
+    --   CONCAT('/Thumbnails/', YEAR(smallestDate), '/', DATE_FORMAT(smallestDate, '%M'), '/', NEW.FileName),
+    --   IF ( (mimeTypePrefix = 'image'), 1, 0)
+    -- );
 
      -- Handle specific types of media
     IF mediaType = 'Photo' THEN
-        
         -- Insert into Photo table
         INSERT INTO Photo (media, Orientation, ImageWidth, ImageHeight, Megapixels)
-        VALUES (generateMediaID, NEW.Orientation, NEW.ImageWidth, NEW.ImageHeight, ROUND(NEW.Megapixels, 1) );
+        VALUES (lastInsertMediaID, NEW.Orientation, NEW.ImageWidth, NEW.ImageHeight, ROUND(NEW.Megapixels, 1) );
 
     -- Check if the file type is a 'video'
     ELSEIF mediaType = 'Video' THEN
@@ -187,12 +196,12 @@ BEGIN
 
         -- Insert into Video table
         INSERT INTO Video ( media, Title, Duration, DisplayDuration) 
-        VALUES (generateMediaID, NEW.Title, NEW.Duration, durationDisplay);
+        VALUES (lastInsertMediaID, NEW.Title, NEW.Duration, durationDisplay);
 
     ELSEIF mediaType = 'Live' THEN
         -- Insert into Live table
         INSERT INTO Live ( media, Title, Duration) 
-        VALUES (generateMediaID, NEW.Title, NEW.Duration);
+        VALUES (lastInsertMediaID, NEW.Title, NEW.Duration);
     
     -- Ignore unknown or others formats from now
     END If;
@@ -203,9 +212,9 @@ BEGIN
 
         -- Insert data into another table (e.g., Location) if GPSLatitude and GPSLongitude are valid
         INSERT INTO Location (media, GPSLatitude, GPSLongitude) 
-        VALUES (generateMediaID, NEW.GPSLatitude, NEW.GPSLongitude );
-
+        VALUES (lastInsertMediaID, NEW.GPSLatitude, NEW.GPSLongitude );
     END IF;
+
 END$$
 
 
@@ -292,7 +301,6 @@ SELECT
     END AS fSize,
     im.FileSize,
     im.FileExt,
-    im.URL,
     ac.ClassName,
     c.Make,
     c.Model,

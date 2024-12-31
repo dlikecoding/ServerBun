@@ -1,4 +1,3 @@
-// import { createPool } from 'mysql2/promise';
 import mysql, { type PoolOptions } from 'mysql2';
 
 const access: PoolOptions = {

@@ -2,6 +2,7 @@ import app from './app';
 import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
 import { accountExists, getUserById } from './db/module/account';
 import { createUserGuest } from './db/module/guest';
+import { createThumbnails } from './service/createThumb';
 
 export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024;
 
@@ -21,5 +22,7 @@ const server = Bun.serve({
 
 // await backupToDB();
 // await restoreToDB();
+
+// await createThumbnails();
 
 console.log(`Listening on http://localhost:${server.port} ...`);
