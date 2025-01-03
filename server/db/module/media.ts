@@ -2,11 +2,12 @@ import { pool, poolPromise } from '..';
 
 // SQL Queries
 const Sql = {
-  LOAD_MEDIA_THUMB: `SELECT media_id, SourceFile, ThumbPath, FileType FROM Media WHERE isThumbCreated = ?`,
+  LOAD_MEDIA_THUMB: `SELECT media_id, SourceFile, ThumbPath, FileType, isThumbCreated FROM Media WHERE isThumbCreated = ?`,
   UPDATE_THUMB: `UPDATE Media SET isThumbCreated = 1 WHERE media_id = ?`,
+  LOAD_MEDIA_HASH: `SELECT media_id, SourceFile, ThumbPath, FileType FROM Media WHERE HashCode = ?`,
   UPDATE_HASH: `UPDATE Media SET HashCode = ? WHERE media_id = ?`,
   DELETE: `DELETE FROM Media WHERE media_id = ?`,
-  FETCH_ALL: `SELECT * FROM Media ORDER BY media_id ASC LIMIT ?, ?`,
+  FETCH_ALL: `SELECT * FROM PhotoView ORDER BY media_id ASC LIMIT ?, ?`,
   FIND_BY_ID: `SELECT * FROM Media WHERE media_id = ?`,
   MARK_HIDDEN: `UPDATE Media SET Hidden = 1 WHERE media_id = ?`,
   MARK_FAVORITE: `UPDATE Media SET Favorite = 1 WHERE media_id = ?`,
@@ -21,8 +22,7 @@ const mediaWoThumb = async (isNotCreated: number = 0) => {
 };
 
 const deleteImportMedia = async () => {
-  const [rows] = await poolPromise.execute(Sql.DELETE_IMPORT_TB);
-  return rows as any;
+  await poolPromise.execute(Sql.DELETE_IMPORT_TB);
 };
 
 const updateThumb = async (media_id: number) => {

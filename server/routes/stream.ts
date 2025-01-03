@@ -17,7 +17,7 @@ streamApi.get('/', async (c) => {
         });
 
         queryStream.on('end', () => {
-          console.log('Query streaming completed.');
+          // console.log('Query streaming completed.');
           controller.close();
         });
 

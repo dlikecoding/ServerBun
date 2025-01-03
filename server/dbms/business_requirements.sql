@@ -232,50 +232,32 @@ END$$
 
 
 /*
-    Business Requirement #2
+    Business Requirement #2: Create View for Medias
     ----------------------------------------------------
-    Purpose: Facilitate Comprehensive and Efficient Media Searches
-
-    Description: The system must enable users to perform flexible searches across media types 
-                 (e.g., images, videos, live photos) using a unified view of consolidated metadata. 
-                 It should support filtering by file attributes, creation date, device details, 
-                 and geolocation. The implementation must ensure optimal performance and scalability 
-                 for large datasets and complex queries.
-
-    Key Challenges:
-        1. Consolidating metadata from multiple related tables into a single, user-friendly view.
-        2. Ensuring search queries remain performant with increasing data volume.
-        3. Supporting flexible filtering for user-defined combinations of parameters.
-        4. Maintaining scalability and reliability for a growing dataset and search complexity.
-
-    Assumptions:
-        - Users may provide any combination of filters; NULL inputs indicate no filtering on that attribute.
-        - Device details (e.g., Make, Model) and geolocation data (e.g., City, GPS coordinates) are reliably populated.
-        - Spatial queries and text searches (e.g., city names) are frequent user requirements.
-
-    Implementation Plan:
-        1. Create MediaSearchView to consolidate metadata from Media, Photo, Video, Live, 
-           CameraType, Location, Tags ... tables into a single view.
-        2. Optimize performance for frequently searched columns:
-            - CreateDate: for date-based filtering.
-            - Make and Model: for device-specific searches.
-            - City and spatial indexes on GPSLatitude/GPSLongitude: for location-based queries.
-            - And more ....
-        3. Develop a dynamic stored procedure (SearchMedia) that:
-            - Accepts user-provided parameters for filtering by year, month, media type, device details, and location.
-            - Dynamically constructs and executes the query based on provided filters.
-            - Includes pagination using LIMIT and OFFSET for large dataset
-        4. Test with realistic scenarios, such as:
-            - Searching for all videos - CALL SearchMedia(NULL, NULL, 'Video', NULL, NULL, NULL, NULL, NULL, NULL);
-            - Filtering by year and month - CALL SearchMedia(2023, 10, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-            - Locating media captured in a specific city - CALL SearchMedia(NULL, NULL, NULL, NULL, NULL, 'Tokyo', NULL, NULL, NULL);
 */
 
+DROP VIEW IF EXISTS PhotoView$$
+CREATE VIEW PhotoView AS
+
+-- Assign a ranked class name to each media item based on classification.
+-- TODO: This needs to be improved to find multiple tags in the same file
+SELECT
+    im.media_id,
+    im.FileType,
+    im.FileName,
+    im.CreateDate,
+    im.ThumbPath,
+    im.SourceFile,
+    im.Favorite as isFavorite,
+    v.DisplayDuration as duration,
+    v.Title
+FROM Media im
+LEFT JOIN Video v ON im.media_id = v.media$$
+
+-- =========================ALL VIEW ====================================
 
 -- Drop the view if it exists to ensure fresh creation
 DROP VIEW IF EXISTS MediaSearchView$$
-
--- Create the view with relevat details for media search
 CREATE VIEW MediaSearchView AS
 
 -- Assign a ranked class name to each media item based on classification.
@@ -334,7 +316,6 @@ LEFT JOIN AiClasses ac ON im.media_id = ac.media AND ac.RowNum = 1$$
 
 
 -- Create a dynamic stored procedure for flexible media searches
-DELIMITER $$
 
 DROP PROCEDURE IF EXISTS SearchMedia;
 CREATE PROCEDURE SearchMedia(
@@ -875,10 +856,3 @@ END$$
 -- CALL GetErrorLogs('backend', '123e4567-e89b-12d3-a456-426614174000', NULL, NULL, 'ErrorType', 'ASC', 1, 10);
 
 
--- ===============================================================================
-/*
-    Business Requirement #6
-    ----------------------------------------------------
-    Purpose: Suggestion ...
-
-*/

@@ -104,7 +104,6 @@ app.route('/api/users', users);
 // });
 
 // Serve static files
-
 app.use('*', serveStatic({ root: Bun.env.MAIN_PATH }));
 app.get('*', serveStatic({ root: './dist' }));
 
