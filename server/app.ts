@@ -9,11 +9,12 @@ import { csrf } from 'hono/csrf';
 /////////////////////////////
 import { cors } from 'hono/cors';
 // ===============================
-import home from './routes/home';
-import album from './routes/album';
+import home from './routes/medias';
+
 import users from './routes/users';
 
 import streamApi from './routes/stream';
+import medias from './routes/medias';
 
 const app = new Hono();
 
@@ -87,8 +88,8 @@ app.use(secureHeaders());
 
 const apiRoutes = app.basePath('api').route('/home', home);
 app.route('/api/stream', streamApi);
-app.route('/api/album', album);
 app.route('/api/users', users);
+app.route('/api/medias', medias);
 
 // app.post
 // app.put

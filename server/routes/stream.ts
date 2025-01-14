@@ -1,27 +1,35 @@
 import { Hono } from 'hono';
-import { fetchAllMedia } from '../db/module/media';
+import { streamMedias } from '../db/module/media';
+import { pool } from '../db';
 
+const PAGE_SIZE = 9999; // up to 1000
 const streamApi = new Hono();
 
-// https://hono.dev/docs/helpers/streaming
 streamApi.get('/', async (c) => {
-  const limit = 9999;
-  const offset = 0;
+  const { year, month, pageNumber } = c.req.query();
+  const verifyPageNumber = !pageNumber ? 0 : parseInt(pageNumber);
+
+  const offset = verifyPageNumber * PAGE_SIZE;
+  const limit = PAGE_SIZE;
+
+  pool.getConnection;
+
+  const yearInt = parseInt(year);
+  const queryStream = isNaN(yearInt) ? streamMedias(0, 0, offset, limit) : streamMedias(parseInt(month), yearInt, offset, limit);
 
   try {
-    const queryStream = fetchAllMedia(offset, limit);
     const stream = new ReadableStream({
       start(controller) {
-        queryStream.on('data', (row: any) => {
+        queryStream!.on('data', (row: any) => {
+          if (row.affectedRows === 0) return; //ignore ResultSetHeader in mysql
           controller.enqueue(JSON.stringify(row).concat('\n'));
         });
 
-        queryStream.on('end', () => {
-          // console.log('Query streaming completed.');
+        queryStream!.on('end', () => {
           controller.close();
         });
 
-        queryStream.on('error', (err: any) => {
+        queryStream!.on('error', (err: any) => {
           // Need to handle error to return status 500
           console.error('Stream error');
           controller.error(err);
@@ -33,7 +41,7 @@ streamApi.get('/', async (c) => {
   } catch (error) {
     console.error('Error streaming query results:', error);
   } finally {
-    // pool.releaseConnection;
+    pool.releaseConnection;
   }
 });
 

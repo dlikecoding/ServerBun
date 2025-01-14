@@ -856,3 +856,66 @@ END$$
 -- CALL GetErrorLogs('backend', '123e4567-e89b-12d3-a456-426614174000', NULL, NULL, 'ErrorType', 'ASC', 1, 10);
 
 
+
+-- ==============================================================================
+-- Find each media for every year in database
+
+DROP PROCEDURE IF EXISTS GetMediaEachYear$$
+CREATE PROCEDURE GetMediaEachYear ()
+BEGIN
+    WITH ranked_media AS (
+        SELECT 
+            media_id, FileType, ThumbPath, 
+            YEAR(CreateDate) AS createAtYear,
+            ROW_NUMBER() OVER (PARTITION BY YEAR(CreateDate) ORDER BY CreateDate) AS rn
+        FROM PhotoView
+    )
+    SELECT media_id, ThumbPath, FileType, createAtYear
+    FROM ranked_media
+    WHERE rn = 1
+    ORDER BY createAtYear DESC;
+END $$
+
+
+-- ==============================================================================
+-- Find each media for each year in every month in database
+DROP PROCEDURE IF EXISTS GetMediaByYear$$
+CREATE PROCEDURE GetMediaByYear (IN inputYear INT)
+BEGIN
+    WITH ranked_media AS (
+        SELECT 
+            media_id, FileType, ThumbPath, 
+            CreateDate,
+            YEAR(CreateDate) AS createAtYear,
+            MONTH(CreateDate) AS createAtMonth,
+            ROW_NUMBER() OVER (
+                PARTITION BY YEAR(CreateDate), MONTH(CreateDate)
+                ORDER BY CreateDate
+            ) AS rn
+        FROM PhotoView
+        WHERE inputYear = 0 OR YEAR(CreateDate) = inputYear
+    )
+    SELECT media_id, ThumbPath, FileType, createAtYear, createAtMonth, CONCAT(DATE_FORMAT(CreateDate, '%M'), ", ", createAtYear) as timeFormat
+    FROM ranked_media
+    WHERE rn = 1
+    ORDER BY createAtYear DESC, createAtMonth DESC;
+END $$
+
+
+-- ==============================================================================
+-- Find medias for All display in database
+
+DROP PROCEDURE IF EXISTS StreamMediaYearMonth;
+CREATE PROCEDURE StreamMediaYearMonth(
+    IN inputMonth INT,
+    IN inputYear INT,
+    IN offsetInput INT,
+    IN limitInput INT
+)
+BEGIN
+    SELECT * FROM PhotoView
+    WHERE (inputYear = 0 OR YEAR(CreateDate) = inputYear)
+        AND (inputMonth = 0 OR MONTH(CreateDate) = inputMonth)
+    ORDER BY CreateDate DESC
+    LIMIT offsetInput, limitInput;
+END$$
