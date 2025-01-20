@@ -249,6 +249,7 @@ SELECT
     im.ThumbPath,
     im.SourceFile,
     im.Favorite as isFavorite,
+    CONCAT(DATE_FORMAT(im.CreateDate, '%b'), " ", DAY(im.CreateDate), ", ", YEAR(im.CreateDate)) AS timeFormat,
     v.DisplayDuration as duration,
     v.Title
 FROM Media im
@@ -870,7 +871,7 @@ BEGIN
             ROW_NUMBER() OVER (PARTITION BY YEAR(CreateDate) ORDER BY CreateDate) AS rn
         FROM PhotoView
     )
-    SELECT media_id, ThumbPath, FileType, createAtYear
+    SELECT media_id, ThumbPath, FileType, createAtYear as timeFormat
     FROM ranked_media
     WHERE rn = 1
     ORDER BY createAtYear DESC;

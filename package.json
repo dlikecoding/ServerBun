@@ -1,5 +1,5 @@
 {
-  "name": "bunserver",
+  "name": "photos",
   "module": "index.ts",
   "type": "module",
   "scripts": {
