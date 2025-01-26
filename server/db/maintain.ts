@@ -1,9 +1,11 @@
 import { $ } from 'bun';
 
 export async function createDBMS() {
-  await $`mysql -u $DB_USER -p$DB_PASS < $DB_CREATE`;
-  await $`mysql -u $DB_USER -p$DB_PASS < $DB_TRIGGERS`;
-  if (Bun.env.NODE_ENV === 'development') await $`mysql -u $DB_USER -p$DB_PASS < $TEST_DB_INSERT_ACCOUNT`;
+  try {
+    await $`mysql -u $DB_USER -p$DB_PASS < $DB_CREATE`;
+    await $`mysql -u $DB_USER -p$DB_PASS < $DB_TRIGGERS`;
+    await $`mysql -u $DB_USER -p$DB_PASS < $TEST_DB_INSERT_ACCOUNT`;
+  } catch (error) {}
 }
 
 export async function insertMediaToDB(account: Number = 1, sourcePath: string) {

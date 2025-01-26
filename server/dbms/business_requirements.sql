@@ -117,19 +117,20 @@ BEGIN
     -- Handle camera type association:
     -- Check if Make, Model, and LensModel are not NULL or empty
     IF NEW.Make IS NOT NULL AND NEW.Make <> '' 
-       AND NEW.Model IS NOT NULL AND NEW.Model <> '' 
-       AND NEW.LensModel IS NOT NULL AND NEW.LensModel <> '' THEN
+       AND NEW.Model IS NOT NULL AND NEW.Model <> '' THEN
+    --    AND NEW.LensModel IS NOT NULL AND NEW.LensModel <> '' THEN
         
         -- Check if the record already exists and get the cameraTypeId
         SELECT camera_id INTO cameraTypeId FROM CameraType
-        WHERE Make = NEW.Make AND Model = NEW.Model AND LensModel = NEW.LensModel
+        WHERE Make = NEW.Make AND Model = NEW.Model 
+        -- AND LensModel = NEW.LensModel
         LIMIT 1;
 
         -- If the record already exists, prevent the insert and raise an error
         IF cameraTypeId IS NULL THEN
             -- Insert data into another table (e.g., CameraType) if Make, Model, and LensModel are valid
-            INSERT INTO CameraType ( Make, Model, LensModel) 
-            VALUES ( NEW.Make, NEW.Model, NEW.LensModel );
+            INSERT INTO CameraType ( Make, Model) 
+            VALUES ( NEW.Make, NEW.Model);
 
             -- Get the last inserted ID
             SET cameraTypeId = LAST_INSERT_ID();
@@ -245,10 +246,14 @@ SELECT
     im.media_id,
     im.FileType,
     im.FileName,
+    im.FileSize,
     im.CreateDate,
     im.ThumbPath,
     im.SourceFile,
     im.Favorite as isFavorite,
+    im.Hidden as isHidden,
+    im.DeletedStatus as isDeleted,
+    im.CameraType,
     CONCAT(DATE_FORMAT(im.CreateDate, '%b'), " ", DAY(im.CreateDate), ", ", YEAR(im.CreateDate)) AS timeFormat,
     v.DisplayDuration as duration,
     v.Title
@@ -896,7 +901,7 @@ BEGIN
         FROM PhotoView
         WHERE inputYear = 0 OR YEAR(CreateDate) = inputYear
     )
-    SELECT media_id, ThumbPath, FileType, createAtYear, createAtMonth, CONCAT(DATE_FORMAT(CreateDate, '%M'), ", ", createAtYear) as timeFormat
+    SELECT media_id, ThumbPath, FileType, createAtYear, createAtMonth, CONCAT(DATE_FORMAT(CreateDate, '%M'), " ", createAtYear) as timeFormat
     FROM ranked_media
     WHERE rn = 1
     ORDER BY createAtYear DESC, createAtMonth DESC;
@@ -906,17 +911,56 @@ END $$
 -- ==============================================================================
 -- Find medias for All display in database
 
-DROP PROCEDURE IF EXISTS StreamMediaYearMonth;
-CREATE PROCEDURE StreamMediaYearMonth(
+DROP PROCEDURE IF EXISTS StreamSearchMedias;
+CREATE PROCEDURE StreamSearchMedias(
     IN inputMonth INT,
     IN inputYear INT,
-    IN offsetInput INT,
-    IN limitInput INT
+    IN offsetIdx INT,
+    IN limitInput INT,
+    IN findMake INT,
+    IN findMediaType VARCHAR(10),
+    IN sortColumn VARCHAR(10),
+    IN sortOrder VARCHAR(5)
 )
 BEGIN
-    SELECT * FROM PhotoView
-    WHERE (inputYear = 0 OR YEAR(CreateDate) = inputYear)
-        AND (inputMonth = 0 OR MONTH(CreateDate) = inputMonth)
-    ORDER BY CreateDate DESC
-    LIMIT offsetInput, limitInput;
+    DECLARE whereClause TEXT; -- Base condition to simplify appending filters
+
+    -- Validate sorting inputs
+    SET sortColumn = CASE 
+        WHEN sortColumn IN ('CreateDate', 'FileSize') THEN sortColumn 
+        ELSE 'CreateDate' 
+    END;
+
+    SET sortOrder = CASE 
+        WHEN sortOrder = 1 THEN 'ASC' 
+        ELSE 'DESC' 
+    END;
+
+    -- Build WHERE Clause
+    SET whereClause = CONCAT(
+        '1=1 ',
+        CASE WHEN inputYear IS NOT NULL AND inputYear > 0 THEN CONCAT(' AND YEAR(CreateDate) = ', inputYear) ELSE '' END,
+        CASE WHEN inputMonth IS NOT NULL AND inputMonth > 0 THEN CONCAT(' AND MONTH(CreateDate) = ', inputMonth) ELSE '' END,
+        CASE WHEN findMake IS NOT NULL THEN CONCAT(' AND CameraType = ', findMake) ELSE '' END,
+        CASE WHEN findMediaType IS NOT NULL THEN CONCAT(' AND FileType LIKE ''%', findMediaType, '%''') ELSE '' END,
+        ' AND isHidden = 0 AND isDeleted = 0'
+    );
+
+
+    -- Construct final query: FileType, FileName, FileSize, Cameratype,
+    SET @query = CONCAT(
+        'SELECT *',
+        'FROM PhotoView ',
+        'WHERE ', whereClause, ' ',
+        'ORDER BY ', sortColumn, ' ', sortOrder, ' ',
+        'LIMIT ', offsetIdx, ', ', limitInput
+    );
+
+    -- Debugging: Log query (optional)
+    -- INSERT INTO QueryLog(queryText) VALUES (@query);
+
+    -- Prepare and Execute query
+    PREPARE stmt FROM @query;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
 END$$

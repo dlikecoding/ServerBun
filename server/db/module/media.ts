@@ -15,9 +15,9 @@ const Sql = {
   SEARCH_MEDIA: `SELECT * FROM Media WHERE FileType = ?`,
   FETCH_MEDIA_EACH_YEAR: `CALL GetMediaEachYear()`,
   FETCH_MEDIA_EACH_MONTH: `CALL GetMediaByYear(?)`,
-
-  STREAM_MEDIA_YEAR_MONTH: `CALL StreamMediaYearMonth(?, ?, ?, ?)`,
+  STREAM_MEDIA: `CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?)`,
   FETCH_ALL: `SELECT * FROM PhotoView ORDER BY media_id ASC`,
+  FETCH_CAMERATYPE: `SELECT * FROM CameraType`,
 };
 
 export const mediaWoThumb = async (isNotCreated: number = 0) => {
@@ -29,25 +29,8 @@ export const deleteImportMedia = async () => {
   await poolPromise.execute(Sql.DELETE_IMPORT_TB);
 };
 
-export const updateThumb = async (media_id: number) => {
-  await poolPromise.execute(Sql.UPDATE_THUMB, [media_id]);
-  return { media_id };
-};
-
-export const updateHash = async (media_id: number, HashCode: string | null) => {
-  await poolPromise.execute(Sql.UPDATE_HASH, [media_id, HashCode]);
-  return { media_id, HashCode };
-};
-
-export const deleteMedia = async (media_id: number) => {
-  await poolPromise.execute(Sql.DELETE, [media_id]);
-  return { message: `Media with ID ${media_id} deleted` };
-};
-export const fetchMedias = () => {
-  return pool.query(Sql.STREAM_MEDIA_YEAR_MONTH, [0, 0, 0, 999]).stream();
-};
-export const streamMedias = (month: number, year: number, offset: number, limit: number) => {
-  return pool.query(Sql.STREAM_MEDIA_YEAR_MONTH, [month, year, offset, limit]).stream();
+export const streamMedias = (month: number, year: number, offset: number, limit: number, device?: number | null, type?: string | null, sortKey?: string, sortOrder?: number | null) => {
+  return pool.query(Sql.STREAM_MEDIA, [month, year, offset, limit, device, type, sortKey, sortOrder]).stream();
 };
 
 export const findMediaById = async (media_id: number) => {
@@ -72,6 +55,27 @@ export const fetchMediaOfEachMonth = async (yearNum?: number) => {
     throw new Error('Media not found');
   }
   return (rows as any)[0];
+};
+
+export const fetchCameraType = async () => {
+  const [rows] = await poolPromise.execute(Sql.FETCH_CAMERATYPE);
+  return rows;
+};
+
+////////////////////////////////////////////////////////
+export const updateThumb = async (media_id: number) => {
+  await poolPromise.execute(Sql.UPDATE_THUMB, [media_id]);
+  return { media_id };
+};
+
+export const updateHash = async (media_id: number, HashCode: string | null) => {
+  await poolPromise.execute(Sql.UPDATE_HASH, [media_id, HashCode]);
+  return { media_id, HashCode };
+};
+
+export const deleteMedia = async (media_id: number) => {
+  await poolPromise.execute(Sql.DELETE, [media_id]);
+  return { message: `Media with ID ${media_id} deleted` };
 };
 
 export const markHidden = async (media_id: number) => {

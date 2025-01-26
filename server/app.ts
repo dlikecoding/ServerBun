@@ -106,7 +106,7 @@ app.route('/api/medias', medias);
 
 // Serve static files
 app.use('*', serveStatic({ root: Bun.env.MAIN_PATH }));
-app.get('*', serveStatic({ root: './dist' }));
+app.use('*', serveStatic({ root: './dist' }));
 
 export default app;
 export type ApiRoutes = typeof apiRoutes;

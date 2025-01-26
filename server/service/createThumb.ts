@@ -3,7 +3,7 @@ import path from 'path';
 import { deleteImportMedia, mediaWoThumb, updateThumb } from '../db/module/media';
 import { createFolder, isExist } from './fileModify';
 
-const SIZE_THUMBNAIL: string = '640x640\\>';
+const SIZE_THUMBNAIL: string = '500x500\\>';
 
 const createThumbImg = async (input: string, output: string): Promise<void> => {
   try {
@@ -32,7 +32,7 @@ const createThumbVideo = async (input: string, output: string, duration: number 
 };
 
 const createThumbnails = async () => {
-  const loadedmedias = await mediaWoThumb(1);
+  const loadedmedias = await mediaWoThumb();
 
   for (const media of loadedmedias) {
     const input = path.join(Bun.env.MAIN_PATH, media.SourceFile);

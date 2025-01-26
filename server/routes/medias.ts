@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 // To create a schema to validate post req
 import { z } from 'zod';
 // import { getConnInfo } from 'hono/bun';
-import { fetchMediaEachYear, fetchMediaOfEachMonth } from '../db/module/media';
+import { fetchCameraType, fetchMediaEachYear, fetchMediaOfEachMonth } from '../db/module/media';
 const medias = new Hono();
 
 // Using z to validate if input in valid
@@ -50,6 +50,10 @@ medias.get('/', async (c) => {
     console.error('Error fetching media:', error);
     return c.json({ error: 'Failed to fetch media' }, 500);
   }
+});
+
+medias.get('/devices', async (c) => {
+  return c.json(await fetchCameraType());
 });
 
 export default medias;

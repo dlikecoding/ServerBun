@@ -2,17 +2,17 @@ import { Hono } from 'hono';
 import { streamMedias } from '../db/module/media';
 import { pool } from '../db';
 
-const PAGE_SIZE = 6; // up to 1000
 const streamApi = new Hono();
 
 interface Media {
   media_id: number;
-  FileType: 'Video' | 'Audio' | 'Image'; // Adjust if there are other file types
+  FileType: 'Video' | 'Live' | 'Photo';
   FileName: string;
-  CreateDate: Date; // Use `Date` type for timestamps
+  FileSize: number;
+  CreateDate: Date;
   ThumbPath: string;
   SourceFile: string;
-  isFavorite: number; // Could also be a boolean if needed
+  isFavorite: number;
   timeFormat: string;
   duration: string;
   Title: string;
@@ -20,19 +20,25 @@ interface Media {
 }
 
 streamApi.get('/', async (c) => {
-  const { year, month, pageNumber } = c.req.query();
-  // console.log(year, month, pageNumber);
+  const PAGE_SIZE = 250; // up to 1000
+  console.log('SERVER CALLED');
+  const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder } = c.req.query();
+
   const verifyPageNumber = !pageNumber ? 0 : parseInt(pageNumber);
 
   const offset = verifyPageNumber * PAGE_SIZE;
   const limit = PAGE_SIZE;
 
-  pool.getConnection;
-
   const yearInt = parseInt(year);
-  const queryStream = isNaN(yearInt) ? streamMedias(0, 0, offset, limit) : streamMedias(parseInt(month), yearInt, offset, limit);
+  const filterDeviceInt = parseInt(filterDevice);
+  const sortOrderInt = parseInt(sortOrder);
+
+  const queryStream = isNaN(yearInt)
+    ? streamMedias(0, 0, offset, limit)
+    : streamMedias(parseInt(month), yearInt, offset, limit, isNaN(filterDeviceInt) ? undefined : filterDeviceInt, filterType, sortKey, isNaN(sortOrderInt) ? undefined : sortOrderInt);
 
   try {
+    pool.getConnection;
     const stream = new ReadableStream({
       start(controller) {
         queryStream!.on('data', (row: Media) => {
@@ -52,7 +58,7 @@ streamApi.get('/', async (c) => {
       },
     });
 
-    return c.body(stream, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600, imutable' } });
+    return c.body(stream, { headers: { 'Content-Type': 'application/json' } }); //, 'Cache-Control': 'public, max-age=3600, imutable'
   } catch (error) {
     console.error('Error streaming query results:', error);
   } finally {

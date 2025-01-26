@@ -4,7 +4,7 @@ import { accountExists, getUserById } from './db/module/account';
 import { createUserGuest } from './db/module/guest';
 import { createThumbnails } from './service/createThumb';
 
-export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024;
+export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; //2GB
 
 const server = Bun.serve({
   port: Bun.env.PORT || 3000,
