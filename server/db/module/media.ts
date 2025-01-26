@@ -1,4 +1,5 @@
 import { pool, poolPromise } from '..';
+import type { StreamMediasParams } from '../../routes/stream';
 
 // SQL Queries
 const Sql = {
@@ -29,8 +30,12 @@ export const deleteImportMedia = async () => {
   await poolPromise.execute(Sql.DELETE_IMPORT_TB);
 };
 
-export const streamMedias = (month: number, year: number, offset: number, limit: number, device?: number | null, type?: string | null, sortKey?: string, sortOrder?: number | null) => {
-  return pool.query(Sql.STREAM_MEDIA, [month, year, offset, limit, device, type, sortKey, sortOrder]).stream();
+export const streamMedias = ({ year, month, offset, limit, device = undefined, type = undefined, sortKey = undefined, sortOrder = undefined }: StreamMediasParams) => {
+  // Prepare SQL query with parameters
+  console.log({ year, month, offset, limit, device, type, sortKey, sortOrder });
+  const params = [month, year, offset, limit, device, type, sortKey, sortOrder];
+
+  return pool.query(Sql.STREAM_MEDIA, params).stream();
 };
 
 export const findMediaById = async (media_id: number) => {

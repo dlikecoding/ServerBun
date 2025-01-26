@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { streamMedias } from '../db/module/media';
 import { pool } from '../db';
 
+const PAGE_SIZE = 250; // Max size per page
+
 const streamApi = new Hono();
 
 interface Media {
@@ -19,23 +21,42 @@ interface Media {
   affectedRows?: any;
 }
 
+// Define type for query parameters
+export type StreamMediasParams = {
+  month: number;
+  year: number;
+  offset: number;
+  limit: number;
+  device?: number;
+  type?: string;
+  sortKey?: string;
+  sortOrder?: number;
+};
+
 streamApi.get('/', async (c) => {
-  const PAGE_SIZE = 250; // up to 1000
-  console.log('SERVER CALLED');
   const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder } = c.req.query();
 
-  const verifyPageNumber = !pageNumber ? 0 : parseInt(pageNumber);
-
-  const offset = verifyPageNumber * PAGE_SIZE;
+  // Validate and convert parameters
+  const parsedPageNumber = Math.max(0, parseInt(pageNumber, 10));
+  const offset = parsedPageNumber * PAGE_SIZE;
   const limit = PAGE_SIZE;
 
-  const yearInt = parseInt(year);
-  const filterDeviceInt = parseInt(filterDevice);
-  const sortOrderInt = parseInt(sortOrder);
+  const yearInt = parseInt(year || '0', 10);
+  const monthInt = parseInt(month || '0', 10);
+  const deviceInt = filterDevice ? parseInt(filterDevice, 10) : undefined;
+  const sortOrderInt = sortOrder ? parseInt(sortOrder, 10) : undefined;
 
-  const queryStream = isNaN(yearInt)
-    ? streamMedias(0, 0, offset, limit)
-    : streamMedias(parseInt(month), yearInt, offset, limit, isNaN(filterDeviceInt) ? undefined : filterDeviceInt, filterType, sortKey, isNaN(sortOrderInt) ? undefined : sortOrderInt);
+  // if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
+  //   throw new Error("Invalid 'month' parameter. It must be between 1 and 12.");
+  // }
+
+  // Prepare query parameters
+  const queryStreamParams: StreamMediasParams = isNaN(yearInt)
+    ? { month: monthInt, year: yearInt, offset, limit }
+    : { month: monthInt, year: yearInt, offset, limit, device: deviceInt, type: filterType, sortKey: sortKey, sortOrder: sortOrderInt };
+
+  // Call the function with structured parameters
+  const queryStream = streamMedias(queryStreamParams);
 
   try {
     pool.getConnection;
