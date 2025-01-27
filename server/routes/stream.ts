@@ -59,7 +59,7 @@ streamApi.get('/', async (c) => {
   const queryStream = streamMedias(queryStreamParams);
 
   try {
-    pool.getConnection;
+    // pool.getConnection;
     const stream = new ReadableStream({
       start(controller) {
         queryStream!.on('data', (row: Media) => {
@@ -82,8 +82,8 @@ streamApi.get('/', async (c) => {
     return c.body(stream, { headers: { 'Content-Type': 'application/json' } }); //, 'Cache-Control': 'public, max-age=3600, imutable'
   } catch (error) {
     console.error('Error streaming query results:', error);
-  } finally {
-    pool.releaseConnection;
+    // } finally {
+    //   pool.releaseConnection;
   }
 });
 

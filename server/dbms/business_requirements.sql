@@ -248,6 +248,7 @@ SELECT
     im.FileName,
     im.FileSize,
     im.CreateDate,
+    im.UploadAt,
     im.ThumbPath,
     im.SourceFile,
     im.Favorite as isFavorite,
@@ -927,7 +928,7 @@ BEGIN
 
     -- Validate sorting inputs
     SET sortColumn = CASE 
-        WHEN sortColumn IN ('CreateDate', 'FileSize') THEN sortColumn 
+        WHEN sortColumn IN ('CreateDate', 'FileSize', 'UploadAt') THEN sortColumn 
         ELSE 'CreateDate' 
     END;
 

@@ -32,9 +32,7 @@ export const deleteImportMedia = async () => {
 
 export const streamMedias = ({ year, month, offset, limit, device = undefined, type = undefined, sortKey = undefined, sortOrder = undefined }: StreamMediasParams) => {
   // Prepare SQL query with parameters
-  console.log({ year, month, offset, limit, device, type, sortKey, sortOrder });
   const params = [month, year, offset, limit, device, type, sortKey, sortOrder];
-
   return pool.query(Sql.STREAM_MEDIA, params).stream();
 };
 
