@@ -55,36 +55,55 @@ streamApi.get('/', async (c) => {
     ? { month: monthInt, year: yearInt, offset, limit }
     : { month: monthInt, year: yearInt, offset, limit, device: deviceInt, type: filterType, sortKey: sortKey, sortOrder: sortOrderInt };
 
-  // Call the function with structured parameters
-  const queryStream = streamMedias(queryStreamParams);
+  pool.getConnection(async (err, connection) => {
+    if (err) {
+      console.error('Error getting connection:', err);
+      // Return a proper error response
+      return c.status(500);
+    }
+    const { year, month, offset, limit, device = undefined, type = undefined, sortKey = undefined, sortOrder = undefined } = queryStreamParams;
+    try {
+      // Start streaming the query results
+      const queryStream = connection.query(`CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?)`, [month, year, offset, limit, device, type, sortKey, sortOrder]).stream();
 
-  try {
-    // pool.getConnection;
-    const stream = new ReadableStream({
-      start(controller) {
-        queryStream!.on('data', (row: Media) => {
-          if (row.affectedRows === 0) return; //ignore ResultSetHeader in mysql
-          controller.enqueue(JSON.stringify(row).concat('\n'));
-        });
+      // Create a readable stream
+      const stream = new ReadableStream({
+        start(controller) {
+          queryStream.on('data', (row: Media) => {
+            if (row.affectedRows === 0) return; // Ignore ResultSetHeader in MySQL
+            controller.enqueue(JSON.stringify(row).concat('\n'));
+          });
 
-        queryStream!.on('end', () => {
-          controller.close();
-        });
+          queryStream.on('end', () => {
+            controller.close();
+            connection.release();
+          });
 
-        queryStream!.on('error', (err: any) => {
-          // Need to handle error to return status 500
-          console.error('Stream error');
-          controller.error(err);
-        });
-      },
-    });
+          queryStream.on('error', (err: any) => {
+            console.error('Stream error:', err);
+            controller.error(err);
+          });
 
-    return c.body(stream, { headers: { 'Content-Type': 'application/json' } }); //, 'Cache-Control': 'public, max-age=3600, imutable'
-  } catch (error) {
-    console.error('Error streaming query results:', error);
-    // } finally {
-    //   pool.releaseConnection;
-  }
+          queryStream.on('close', () => {
+            console.log('Stream closed');
+          });
+        },
+      });
+
+      // Return the stream as the response
+      return c.body(stream, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=3600, immutable',
+        },
+      });
+    } catch (error) {
+      console.error('Unhandled error:', error);
+      // Ensure connection is released even in case of error
+      connection.release();
+      return c.status(500);
+    }
+  });
 });
 
 export default streamApi;

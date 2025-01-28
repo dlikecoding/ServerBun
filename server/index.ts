@@ -7,6 +7,10 @@ import { createThumbnails } from './service/createThumb';
 export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; //2GB
 
 const server = Bun.serve({
+  //////////////////////////
+  development: true,
+  //////////////////////////
+
   port: Bun.env.PORT || 3000,
   fetch: app.fetch,
   maxRequestBodySize: MAX_UPLOAD_FILE_SIZE,
