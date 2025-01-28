@@ -1,4 +1,5 @@
-import { pool, poolPromise } from '..';
+import type { FieldPacket, QueryResult, ResultSetHeader } from 'mysql2/promise';
+import { poolPromise } from '..';
 import type { StreamMediasParams } from '../../routes/stream';
 
 // SQL Queries
@@ -10,7 +11,7 @@ const Sql = {
   DELETE: `DELETE FROM Media WHERE media_id = ?`,
   FIND_BY_ID: `SELECT * FROM Media WHERE media_id = ?`,
   MARK_HIDDEN: `UPDATE Media SET Hidden = 1 WHERE media_id = ?`,
-  MARK_FAVORITE: `UPDATE Media SET Favorite = 1 WHERE media_id = ?`,
+  MARK_FAVORITES: `UPDATE Media SET Favorite = ? WHERE media_id IN (?)`,
   MARK_DELETED: `UPDATE Media SET DeletedStatus = 1, DeletionDate = CURRENT_TIMESTAMP WHERE media_id = ?`,
   DELETE_IMPORT_TB: `DELETE FROM ImportMedias`,
   SEARCH_MEDIA: `SELECT * FROM Media WHERE FileType = ?`,
@@ -30,11 +31,19 @@ export const deleteImportMedia = async () => {
   await poolPromise.execute(Sql.DELETE_IMPORT_TB);
 };
 
-export const streamMedias = ({ year, month, offset, limit, device = undefined, type = undefined, sortKey = undefined, sortOrder = undefined }: StreamMediasParams) => {
+// export const streamMedias = ({ year, month, offset, limit, device = undefined, type = undefined, sortKey = undefined, sortOrder = undefined }: StreamMediasParams) => {
+//   // Prepare SQL query with parameters
+//   const params = [month, year, offset, limit, device, type, sortKey, sortOrder];
+//   return pool.query(Sql.STREAM_MEDIA, params).stream();
+// };
+///////////////////////////////////////////////
+export const fetchMedias = async ({ year, month, offset, limit, device = null, type = null, sortKey = null, sortOrder = null }: StreamMediasParams) => {
   // Prepare SQL query with parameters
   const params = [month, year, offset, limit, device, type, sortKey, sortOrder];
-  return pool.query(Sql.STREAM_MEDIA, params).stream();
+  const [rows] = await poolPromise.execute(Sql.STREAM_MEDIA, params);
+  return (rows as any)[0];
 };
+/////////////////////////////////////////////////
 
 export const findMediaById = async (media_id: number) => {
   const [rows] = await poolPromise.execute(Sql.FIND_BY_ID, [media_id]);
@@ -86,9 +95,23 @@ export const markHidden = async (media_id: number) => {
   return { media_id };
 };
 
-export const markFavorite = async (media_id: number) => {
-  await poolPromise.execute(Sql.MARK_FAVORITE, [media_id]);
-  return { media_id };
+export const markFavorite = async (mediaIds: number[], updateKey: string, updateValue: boolean) => {
+  const connection = await poolPromise.getConnection();
+  try {
+    await connection.beginTransaction();
+    const result: [ResultSetHeader, FieldPacket[]] = await connection.query(`UPDATE Media SET ${updateKey} = ? WHERE media_id IN (?)`, [updateValue, mediaIds]);
+    await connection.commit();
+
+    return result[0].affectedRows === mediaIds.length;
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 };
 
 export const markDeleted = async (media_id: number) => {

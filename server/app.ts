@@ -15,6 +15,7 @@ import users from './routes/users';
 
 import streamApi from './routes/stream';
 import medias from './routes/medias';
+import media from './routes/media';
 
 const app = new Hono();
 
@@ -86,11 +87,11 @@ app.use(secureHeaders());
 //     return c.json({"msg": "Mainpage"});
 // })
 
-const apiRoutes = app.basePath('api').route('/home', home);
-app.route('/api/stream', streamApi);
-app.route('/api/users', users);
-app.route('/api/medias', medias);
-
+const apiRoutes = app.basePath('api').route('/v1/home', home);
+app.route('/api/v1/stream', streamApi);
+app.route('/api/v1/users', users);
+app.route('/api/v1/medias', medias);
+app.route('/api/v1/media', media);
 // app.post
 // app.put
 // app.delete

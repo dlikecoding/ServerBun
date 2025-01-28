@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
-import { streamMedias } from '../db/module/media';
-import { pool } from '../db';
+import { fetchMedias } from '../db/module/media';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 
 const PAGE_SIZE = 250; // Max size per page
 
@@ -27,83 +28,69 @@ export type StreamMediasParams = {
   year: number;
   offset: number;
   limit: number;
-  device?: number;
-  type?: string;
-  sortKey?: string;
-  sortOrder?: number;
+  device?: number | null;
+  type?: string | null;
+  sortKey?: string | null;
+  sortOrder?: number | null;
 };
 
+// Define schema
+const querySchema = z.object({
+  year: z
+    .string()
+    .regex(/^\d{0,4}$/, 'Invalid year format') // Matches 0 or 4 digits
+    .optional(),
+  month: z
+    .string()
+    .regex(/^(0|[1-9]|1[0-2])$/, 'Invalid month format')
+    .optional(),
+  pageNumber: z.string().regex(/^\d+$/, 'Page number must be a number').optional(),
+  filterDevice: z.string().regex(/^\d+$/, 'Device must be a number').optional(),
+  filterType: z.string().optional(),
+  sortKey: z.string().optional(),
+  sortOrder: z
+    .string()
+    .regex(/^-?\d+$/, 'Sort order must be a number')
+    .optional(),
+});
+
 streamApi.get('/', async (c) => {
-  const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder } = c.req.query();
+  try {
+    // Validate query parameters using Zod schema
+    const query = querySchema.parse(c.req.query());
+    const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder } = query;
 
-  // Validate and convert parameters
-  const parsedPageNumber = Math.max(0, parseInt(pageNumber, 10));
-  const offset = parsedPageNumber * PAGE_SIZE;
-  const limit = PAGE_SIZE;
+    // Convert parameters to appropriate types
+    const parsedPageNumber = Math.max(0, parseInt(pageNumber || '0', 10));
+    const offset = parsedPageNumber * PAGE_SIZE;
+    const limit = PAGE_SIZE;
 
-  const yearInt = parseInt(year || '0', 10);
-  const monthInt = parseInt(month || '0', 10);
-  const deviceInt = filterDevice ? parseInt(filterDevice, 10) : undefined;
-  const sortOrderInt = sortOrder ? parseInt(sortOrder, 10) : undefined;
+    const queryStreamParams: StreamMediasParams = {
+      year: year ? parseInt(year, 10) : 0,
+      month: month ? parseInt(month, 10) : 0,
+      offset,
+      limit,
+      device: filterDevice ? parseInt(filterDevice, 10) : null,
+      type: filterType || null,
+      sortKey: sortKey || null,
+      sortOrder: sortOrder ? parseInt(sortOrder, 10) : null,
+      // ...(filterDevice && { device: parseInt(filterDevice, 10) }),
+      // ...(filterType && { type: filterType }),
+      // ...(sortKey && { sortKey }),
+      // ...(sortOrder && { sortOrder: parseInt(sortOrder, 10) }),
+    };
 
-  // if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-  //   throw new Error("Invalid 'month' parameter. It must be between 1 and 12.");
-  // }
+    // Fetch media using validated parameters
+    const fetchMedia: Media[] = await fetchMedias(queryStreamParams);
 
-  // Prepare query parameters
-  const queryStreamParams: StreamMediasParams = isNaN(yearInt)
-    ? { month: monthInt, year: yearInt, offset, limit }
-    : { month: monthInt, year: yearInt, offset, limit, device: deviceInt, type: filterType, sortKey: sortKey, sortOrder: sortOrderInt };
-
-  pool.getConnection(async (err, connection) => {
-    if (err) {
-      console.error('Error getting connection:', err);
-      // Return a proper error response
-      return c.status(500);
+    return c.json(fetchMedia); //{ data: fetchMedia, meta: { page: parsedPageNumber, pageSize: PAGE_SIZE } }
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return c.json({ error: 'Invalid input', details: err.errors }, 400);
     }
-    const { year, month, offset, limit, device = undefined, type = undefined, sortKey = undefined, sortOrder = undefined } = queryStreamParams;
-    try {
-      // Start streaming the query results
-      const queryStream = connection.query(`CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?)`, [month, year, offset, limit, device, type, sortKey, sortOrder]).stream();
-
-      // Create a readable stream
-      const stream = new ReadableStream({
-        start(controller) {
-          queryStream.on('data', (row: Media) => {
-            if (row.affectedRows === 0) return; // Ignore ResultSetHeader in MySQL
-            controller.enqueue(JSON.stringify(row).concat('\n'));
-          });
-
-          queryStream.on('end', () => {
-            controller.close();
-            connection.release();
-          });
-
-          queryStream.on('error', (err: any) => {
-            console.error('Stream error:', err);
-            controller.error(err);
-          });
-
-          queryStream.on('close', () => {
-            console.log('Stream closed');
-          });
-        },
-      });
-
-      // Return the stream as the response
-      return c.body(stream, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=3600, immutable',
-        },
-      });
-    } catch (error) {
-      console.error('Unhandled error:', error);
-      // Ensure connection is released even in case of error
-      connection.release();
-      return c.status(500);
-    }
-  });
+    console.error('Unexpected error:', err);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
 });
 
 export default streamApi;

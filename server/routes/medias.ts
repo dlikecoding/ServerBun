@@ -1,9 +1,8 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-// To create a schema to validate post req
-import { z } from 'zod';
+import { z } from 'zod'; // To create a schema to validate post req
 // import { getConnInfo } from 'hono/bun';
-import { fetchCameraType, fetchMediaEachYear, fetchMediaOfEachMonth } from '../db/module/media';
+import { fetchCameraType, fetchMediaEachYear, fetchMediaOfEachMonth, markFavorite } from '../db/module/media';
 const medias = new Hono();
 
 // Using z to validate if input in valid
@@ -54,6 +53,22 @@ medias.get('/', async (c) => {
 
 medias.get('/devices', async (c) => {
   return c.json(await fetchCameraType());
+});
+
+// Validate input from update data to database.
+const updateSchema = z.object({
+  mediaIds: z.array(z.string()),
+  updateKey: z.string(),
+  updateValue: z.boolean(),
+});
+
+medias.put('/', zValidator('json', updateSchema), async (c) => {
+  const { mediaIds, updateKey, updateValue } = await c.req.json();
+  // If updateKey is not in Favorite, DeletedStatus, Hidden ... return error
+  //
+  const result = await markFavorite(mediaIds, updateKey, updateValue);
+  if (result) return c.json({ message: 'Success' }, 204);
+  return c.json({ message: 'Failure' }, 500);
 });
 
 export default medias;
