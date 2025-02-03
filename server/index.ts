@@ -3,6 +3,7 @@ import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maint
 import { accountExists, getUserById } from './db/module/account';
 import { createUserGuest } from './db/module/guest';
 import { createThumbnails } from './service/createThumb';
+import { createHashs } from './service/generateSHA';
 
 export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; //2GB
 
@@ -21,6 +22,7 @@ const server = Bun.serve({
 
 // await createUserGuest('guasdaaesaasdaaat@Hwllo.com', 'Guest ASHD User');
 
+/////////////////////////////////////////////////
 // await createDBMS();
 // await insertMediaToDB(1, Bun.env['PHOTO_PATH']!);
 
@@ -28,6 +30,8 @@ const server = Bun.serve({
 
 // await createThumbnails();
 
+// await createHashs();
+///////////////////////////////////////////////////
 // await restoreToDB();
 
 /** Process when frist start page:

@@ -1,28 +1,12 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod'; // To create a schema to validate post req
-// import { getConnInfo } from 'hono/bun';
-import { fetchCameraType, fetchMediaEachYear, fetchMediaOfEachMonth, updateMedias } from '../db/module/media';
-const medias = new Hono();
+import { fetchCameraType, fetchMediaCount, fetchMediaEachYear, fetchMediaOfEachMonth, updateMedias } from '../db/module/media';
 
-// Using z to validate if input in valid
-const postSchema = z.object({
-  homepage: z.string(),
-});
+const medias = new Hono();
 
 // Make sure all of id is numbers
 medias.get('/:id{[0-9]+}', (c) => {
-  return c.json({ homepage: 'YOU ARE HOME' });
-});
-
-// medias.get('/', (c) => {
-//   // const info = getConnInfo(c);
-//   // console.log(c.req.header());
-//   // console.log(info);
-//   return c.json({ homepage: 'YOU ARE HOME' });
-// });
-
-medias.post('/', zValidator('json', postSchema), (c) => {
   return c.json({ homepage: 'YOU ARE HOME' });
 });
 
@@ -45,6 +29,15 @@ medias.get('/', async (c) => {
     }
 
     return c.json(fetchAllMedia);
+  } catch (error) {
+    console.error('Error fetching media:', error);
+    return c.json({ error: 'Failed to fetch media' }, 500);
+  }
+});
+
+medias.get('/statistic', async (c) => {
+  try {
+    return c.json(await fetchMediaCount(), 200);
   } catch (error) {
     console.error('Error fetching media:', error);
     return c.json({ error: 'Failed to fetch media' }, 500);

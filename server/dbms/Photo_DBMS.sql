@@ -232,10 +232,10 @@ BEGIN
         HAVING countDup > 1
     )
     SELECT 
-        SUM(Favorite) AS TotalFavorites,
-        SUM(DeletedStatus) AS TotalDeletedStatus,
-        SUM(Hidden) AS TotalHidden,
-        (SELECT COALESCE(SUM(countDup), 0) FROM countData) AS Duplicates
+        SUM(Favorite) AS 'Favorite',
+        (SELECT COALESCE(SUM(countDup), 0) FROM countData) AS 'Duplicate',
+        SUM(Hidden) AS 'Hidden',
+        SUM(DeletedStatus) AS 'Recently Deleted'
     FROM Media;
 END $$
 

@@ -1,4 +1,4 @@
-import mysql, { type PoolOptions } from 'mysql2';
+import mysql, { type PoolOptions } from 'mysql2/promise';
 
 const access: PoolOptions = {
   host: Bun.env.DB_HOST,
@@ -14,7 +14,7 @@ const access: PoolOptions = {
   keepAliveInitialDelay: 0,
 };
 
-export const pool = mysql.createPool(access);
-export const poolPromise = pool.promise();
+export const poolPromise = mysql.createPool(access);
 
-export const connectionPromise = await poolPromise.getConnection();
+// export const poolPromise = pool.promise();
+// export const connectionPromise = await poolPromise.getConnection();

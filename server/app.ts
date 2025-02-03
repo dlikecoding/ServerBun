@@ -6,6 +6,7 @@ import { compress } from 'hono/compress';
 import { basicAuth } from 'hono/basic-auth';
 import { csrf } from 'hono/csrf';
 
+// import { getConnInfo } from 'hono/bun';
 /////////////////////////////
 import { cors } from 'hono/cors';
 // ===============================
@@ -86,6 +87,13 @@ app.use(secureHeaders());
 // app.get("/", c => {
 //     return c.json({"msg": "Mainpage"});
 // })
+
+// medias.get('/', (c) => {
+//   // const info = getConnInfo(c);
+//   // console.log(c.req.header());
+//   // console.log(info);
+//   return c.json({ homepage: 'YOU ARE HOME' });
+// });
 
 const apiRoutes = app.basePath('api').route('/v1/home', home);
 app.route('/api/v1/stream', streamApi);
