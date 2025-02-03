@@ -1,12 +1,14 @@
 import { $ } from 'bun';
 
-export async function createDBMS() {
+export const createDBMS = async () => {
   try {
     await $`mysql -u $DB_USER -p$DB_PASS < $DB_CREATE`;
     await $`mysql -u $DB_USER -p$DB_PASS < $DB_TRIGGERS`;
     await $`mysql -u $DB_USER -p$DB_PASS < $TEST_DB_INSERT_ACCOUNT`;
-  } catch (error) {}
-}
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 export async function insertMediaToDB(account: Number = 1, sourcePath: string) {
   try {

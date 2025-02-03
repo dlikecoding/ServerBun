@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod'; // To create a schema to validate post req
 // import { getConnInfo } from 'hono/bun';
-import { fetchCameraType, fetchMediaEachYear, fetchMediaOfEachMonth, markFavorite } from '../db/module/media';
+import { fetchCameraType, fetchMediaEachYear, fetchMediaOfEachMonth, updateMedias } from '../db/module/media';
 const medias = new Hono();
 
 // Using z to validate if input in valid
@@ -52,23 +52,34 @@ medias.get('/', async (c) => {
 });
 
 medias.get('/devices', async (c) => {
-  return c.json(await fetchCameraType());
+  try {
+    return c.json(await fetchCameraType(), 200);
+  } catch (error) {
+    console.error('Error fetching media:', error);
+    return c.json({ error: 'Failed to fetch media' }, 500);
+  }
 });
 
-// Validate input from update data to database.
 const updateSchema = z.object({
-  mediaIds: z.array(z.string()),
-  updateKey: z.string(),
+  mediaIds: z.array(z.number()),
+  updateKey: z.enum(['Favorite', 'DeletedStatus', 'Hidden']), // If updateKey is not in Favorite, DeletedStatus, Hidden ... return error
   updateValue: z.boolean(),
 });
 
-medias.put('/', zValidator('json', updateSchema), async (c) => {
-  const { mediaIds, updateKey, updateValue } = await c.req.json();
-  // If updateKey is not in Favorite, DeletedStatus, Hidden ... return error
-  //
-  const result = await markFavorite(mediaIds, updateKey, updateValue);
-  if (result) return c.json({ message: 'Success' }, 204);
-  return c.json({ message: 'Failure' }, 500);
-});
+medias.put(
+  '/',
+  zValidator('json', updateSchema, (result, c) => {
+    if (!result.success) {
+      return c.text('Invalid!', 400);
+    }
+  }),
+  async (c) => {
+    const { mediaIds, updateKey, updateValue } = c.req.valid('json');
+    const result = await updateMedias(mediaIds, updateKey, updateValue);
+
+    if (result) return c.json({ message: 'Success' }, 204);
+    return c.json({ message: 'Failure' }, 500);
+  }
+);
 
 export default medias;

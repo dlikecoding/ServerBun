@@ -1,16 +1,16 @@
 import * as fs from 'fs/promises';
 import path from 'path';
 
-async function isFile(fPath: string) {
+const isFile = async (fPath: string) => {
   const stats = await fs.stat(fPath);
   return stats.isFile();
-}
+};
 
-async function isExist(path: string) {
+const isExist = async (path: string) => {
   return await fs.exists(path);
-}
+};
 
-async function deleteFileOrDE(fPath: string) {
+const deleteFileOrDE = async (fPath: string) => {
   try {
     (await isFile(fPath)) ? await fs.unlink(fPath) : await fs.rm(fPath, { recursive: true });
     return console.log(`DELETED ${fPath} -> Deleted successfully.`);
@@ -20,7 +20,7 @@ async function deleteFileOrDE(fPath: string) {
     //     `Error deleting ${folderPath}: ${error.message}`
     // );
   }
-}
+};
 
 const createFolder = async (dePath: string, isRecursive: boolean = true) => {
   try {
@@ -62,7 +62,7 @@ const isDirEmpty = async (dePath: string) => {
   }
 };
 
-async function removeEmptyDirectories(dir: string): Promise<void> {
+const removeEmptyDirectories = async (dir: string): Promise<void> => {
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
 
@@ -84,7 +84,7 @@ async function removeEmptyDirectories(dir: string): Promise<void> {
     //     `Error: ${dir}, ${error.message}`
     // );
   }
-}
+};
 
 const convertFileSize = (bytes: number): string => {
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];

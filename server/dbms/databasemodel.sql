@@ -125,13 +125,12 @@ CREATE TABLE IF NOT EXISTS `Photos`.`Media` (
   `SourceFile` TEXT NULL DEFAULT NULL,
   `MIMEType` VARCHAR(50) NULL DEFAULT NULL,
   `ThumbPath` TEXT NULL DEFAULT NULL,
-  `isThumbCreated` TINYINT(1) NULL DEFAULT 0,
   `ThumbWidth` SMALLINT NULL DEFAULT NULL,
   `ThumbHeight` SMALLINT NULL DEFAULT NULL,
   PRIMARY KEY (`media_id`),
-  INDEX `FK_MEDIA_CAMERATYPE_ID_idx` (`CameraType` ASC) VISIBLE,
   INDEX `Media_CreateDate_idx` (`CreateDate` ASC, `FileType` ASC) VISIBLE,
-  CONSTRAINT `FK_MEDIA_SOURCEFILE_ID`
+  INDEX `FK_MEDIA_SOURCEFILE_ID_idx` (`CameraType` ASC) VISIBLE,
+  CONSTRAINT `FK_MEDIA_CAMERATYPE_ID`
     FOREIGN KEY (`CameraType`)
     REFERENCES `Photos`.`CameraType` (`camera_id`))
 ENGINE = InnoDB
@@ -373,7 +372,6 @@ COLLATE = utf8mb4_0900_ai_ci;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`Photo` (
   `media` INT UNSIGNED NOT NULL,
-  `ai_created` TINYINT(1) NULL DEFAULT '0',
   `Orientation` VARCHAR(45) NULL DEFAULT NULL,
   `ImageWidth` SMALLINT NULL DEFAULT NULL,
   `ImageHeight` SMALLINT NULL DEFAULT NULL,
@@ -402,25 +400,6 @@ CREATE TABLE IF NOT EXISTS `Photos`.`Segment` (
   CONSTRAINT `PKFK_SEGMENT_AiRECOG_ID`
     FOREIGN KEY (`ai_recognition`)
     REFERENCES `Photos`.`AiRecognition` (`ai_recognition_id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE)
-ENGINE = InnoDB
-DEFAULT CHARACTER SET = utf8mb4
-COLLATE = utf8mb4_0900_ai_ci;
-
-
--- -----------------------------------------------------
--- Table `Photos`.`Thumbnail`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `Photos`.`Thumbnail` (
-  `media` INT UNSIGNED NOT NULL,
-  `ThumbWidth` SMALLINT NULL DEFAULT NULL,
-  `ThumbHeight` SMALLINT NULL DEFAULT NULL,
-  `ThumbPath` TEXT NULL DEFAULT NULL,
-  PRIMARY KEY (`media`),
-  CONSTRAINT `PKFK_THUMBNAIL_MEDIA_ID`
-    FOREIGN KEY (`media`)
-    REFERENCES `Photos`.`Media` (`media_id`)
     ON DELETE CASCADE
     ON UPDATE CASCADE)
 ENGINE = InnoDB

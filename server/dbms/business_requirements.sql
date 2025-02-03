@@ -93,12 +93,12 @@ BEGIN
     DECLARE mimeTypePrefix VARCHAR(10);
     DECLARE smallestDate DATETIME; -- To store the smallest date if have any
     DECLARE cameraTypeId INT; -- Camera ID if have any
-    DECLARE durationDisplay VARCHAR(20); -- Display duration time for videos
-    DECLARE mediaType VARCHAR(7); -- Media Type for ENUM (Photo/Video/Live/Unknown)
-    DECLARE lastInsertMediaID VARCHAR(15); -- Create a random string for an URL
+    DECLARE durationDisplay VARCHAR(10); -- Display duration time for videos
+    DECLARE mediaType ENUM('Photo', 'Video', 'Live', 'Unknown');
+    DECLARE lastInsertMediaID INT;
+    DECLARE thumbnailName VARCHAR(15); -- Create a random string for thumbnailFile
     
-    DECLARE currentDate TIMESTAMP;
-    SET currentDate = CURRENT_TIMESTAMP;
+    DECLARE currentDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
     -- Extract MIME type prefix (e.g., 'image' from 'image/png')
     SET mimeTypePrefix = SUBSTRING_INDEX(NEW.MIMEType, '/', 1);  -- 'image' from 'image/png'
@@ -116,33 +116,25 @@ BEGIN
     
     -- Handle camera type association:
     -- Check if Make, Model, and LensModel are not NULL or empty
-    IF NEW.Make IS NOT NULL AND NEW.Make <> '' 
-       AND NEW.Model IS NOT NULL AND NEW.Model <> '' THEN
-    --    AND NEW.LensModel IS NOT NULL AND NEW.LensModel <> '' THEN
-        
-        -- Check if the record already exists and get the cameraTypeId
+    IF NEW.Make IS NOT NULL AND NEW.Make <> '' AND NEW.Model IS NOT NULL AND NEW.Model <> '' THEN
         SELECT camera_id INTO cameraTypeId FROM CameraType
-        WHERE Make = NEW.Make AND Model = NEW.Model 
+        WHERE Make = NEW.Make AND Model = NEW.Model
         -- AND LensModel = NEW.LensModel
         LIMIT 1;
-
-        -- If the record already exists, prevent the insert and raise an error
+ 
         IF cameraTypeId IS NULL THEN
-            -- Insert data into another table (e.g., CameraType) if Make, Model, and LensModel are valid
-            INSERT INTO CameraType ( Make, Model) 
-            VALUES ( NEW.Make, NEW.Model);
-
-            -- Get the last inserted ID
+            INSERT INTO CameraType (Make, Model) VALUES (NEW.Make, NEW.Model);
             SET cameraTypeId = LAST_INSERT_ID();
         END IF;
     END IF;
+
 
     SET mediaType = IF ( (mimeTypePrefix = 'image'), 'Photo', 
                     IF ( (mimeTypePrefix = 'video'), 
                     IF ( (NEW.Duration > 5), 'Video', 'Live' ), 'Unknown') );
     
     -- Generate unique thumbnail name
-    SET lastInsertMediaID = CONCAT(
+    SET thumbnailName = CONCAT(
         CAST(NEW.import_id AS CHAR),
         SUBSTRING(REPLACE(UUID(), '-', ''), 1, 15 - LENGTH(CAST(NEW.import_id AS CHAR)))
     );
@@ -151,7 +143,7 @@ BEGIN
     INSERT INTO Media (FileName, FileType, FileExt, Software, FileSize, CameraType, CreateDate, SourceFile, MIMEType, ThumbPath) 
         VALUES (NEW.FileName, mediaType, NEW.FileType, NEW.Software, NEW.FileSize, cameraTypeId,
         STR_TO_DATE(smallestDate, '%Y-%m-%d %H:%i:%s'), NEW.SourceFile, NEW.MIMEType,
-        CONCAT('/Thumbnails/', YEAR(smallestDate), '/', DATE_FORMAT(smallestDate, '%M'), '/', lastInsertMediaID, '.webp')
+        CONCAT('/Thumbnails/', YEAR(smallestDate), '/', DATE_FORMAT(smallestDate, '%M'), '/', thumbnailName, '.webp')
     );
 
     -- Reuse this variable as media_id for the last Media inserted
@@ -160,12 +152,7 @@ BEGIN
     -- ///////////// NOTE ///////////////////
     -- The account number needs to be added when the user is created, so we can identify which user uploaded these media.
     -- It is necessary to insert into the UploadBy table (account, media_id).
-    INSERT INTO UploadBy (account, media)
-    VALUES (NEW.account, lastInsertMediaID);
-
-    -- -- Insert into SourceFile table
-    -- INSERT INTO SourceFile (media, SourceFile, MIMEType) 
-    -- VALUES (lastInsertMediaID, NEW.SourceFile, NEW.MIMEType);
+    INSERT INTO UploadBy (account, media) VALUES (NEW.account, lastInsertMediaID);
 
     -- -- Create a thumbnail path and add it to Thumbnail table
     -- INSERT INTO Thumbnail (media, ThumbPath, isImage) 
@@ -174,38 +161,25 @@ BEGIN
     --   IF ( (mimeTypePrefix = 'image'), 1, 0)
     -- );
 
-     -- Handle specific types of media
-    IF mediaType = 'Photo' THEN
-        -- Insert into Photo table
-        INSERT INTO Photo (media, Orientation, ImageWidth, ImageHeight, Megapixels)
-        VALUES (lastInsertMediaID, NEW.Orientation, NEW.ImageWidth, NEW.ImageHeight, ROUND(NEW.Megapixels, 1) );
-
-    -- Check if the file type is a 'video'
-    ELSEIF mediaType = 'Video' THEN
-        SET durationDisplay = CASE
-            WHEN FLOOR(NEW.Duration / 3600) > 0 THEN CONCAT(
-                FLOOR(NEW.Duration / 3600), ':', 
-                LPAD(FLOOR(NEW.Duration / 60) % 60, 2, '0'), ':', 
-                LPAD(ROUND(NEW.Duration % 60), 2, '0')
-            )
-            WHEN FLOOR(NEW.Duration / 60) > 0 THEN CONCAT(
-                FLOOR(NEW.Duration / 60), ':', 
-                LPAD(ROUND(NEW.Duration % 60), 2, '0')
-            )
-            ELSE CONCAT('0:', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
-        END;
-
-        -- Insert into Video table
-        INSERT INTO Video ( media, Title, Duration, DisplayDuration) 
-        VALUES (lastInsertMediaID, NEW.Title, NEW.Duration, durationDisplay);
-
-    ELSEIF mediaType = 'Live' THEN
-        -- Insert into Live table
-        INSERT INTO Live ( media, Title, Duration) 
-        VALUES (lastInsertMediaID, NEW.Title, NEW.Duration);
-    
-    -- Ignore unknown or others formats from now
-    END If;
+    -- Insert into Photo, Video, or Live table based on media type
+    CASE 
+        WHEN mediaType = 'Photo' THEN
+            INSERT INTO Photo (media, Orientation, ImageWidth, ImageHeight, Megapixels)
+            VALUES (lastInsertMediaID, NEW.Orientation, NEW.ImageWidth, NEW.ImageHeight, ROUND(NEW.Megapixels, 1));
+            
+        WHEN mediaType = 'Video' THEN
+            SET durationDisplay = CASE
+                WHEN FLOOR(NEW.Duration / 3600) > 0 THEN CONCAT(FLOOR(NEW.Duration / 3600), ':', LPAD(FLOOR(NEW.Duration / 60) % 60, 2, '0'), ':', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
+                WHEN FLOOR(NEW.Duration / 60) > 0 THEN CONCAT(FLOOR(NEW.Duration / 60), ':', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
+                ELSE CONCAT('0:', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
+            END;
+            INSERT INTO Video (media, Title, Duration, DisplayDuration) 
+            VALUES (lastInsertMediaID, NEW.Title, NEW.Duration, durationDisplay);
+            
+        WHEN mediaType = 'Live' THEN
+            INSERT INTO Live (media, Title, Duration) 
+            VALUES (lastInsertMediaID, NEW.Title, NEW.Duration);
+    END CASE;
 
     -- Handle GPS data
     IF NEW.GPSLatitude IS NOT NULL AND NEW.GPSLatitude != '' 

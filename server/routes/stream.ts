@@ -32,6 +32,9 @@ export type StreamMediasParams = {
   type?: string | null;
   sortKey?: string | null;
   sortOrder?: number | null;
+  deleted?: number | null;
+  hidden?: number | null;
+  favorite?: number | null;
 };
 
 // Define schema
@@ -54,43 +57,42 @@ const querySchema = z.object({
     .optional(),
 });
 
-streamApi.get('/', async (c) => {
-  try {
-    // Validate query parameters using Zod schema
-    const query = querySchema.parse(c.req.query());
-    const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder } = query;
-
-    // Convert parameters to appropriate types
-    const parsedPageNumber = Math.max(0, parseInt(pageNumber || '0', 10));
-    const offset = parsedPageNumber * PAGE_SIZE;
-    const limit = PAGE_SIZE;
-
-    const queryStreamParams: StreamMediasParams = {
-      year: year ? parseInt(year, 10) : 0,
-      month: month ? parseInt(month, 10) : 0,
-      offset,
-      limit,
-      device: filterDevice ? parseInt(filterDevice, 10) : null,
-      type: filterType || null,
-      sortKey: sortKey || null,
-      sortOrder: sortOrder ? parseInt(sortOrder, 10) : null,
-      // ...(filterDevice && { device: parseInt(filterDevice, 10) }),
-      // ...(filterType && { type: filterType }),
-      // ...(sortKey && { sortKey }),
-      // ...(sortOrder && { sortOrder: parseInt(sortOrder, 10) }),
-    };
-
-    // Fetch media using validated parameters
-    const fetchMedia: Media[] = await fetchMedias(queryStreamParams);
-
-    return c.json(fetchMedia); //{ data: fetchMedia, meta: { page: parsedPageNumber, pageSize: PAGE_SIZE } }
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return c.json({ error: 'Invalid input', details: err.errors }, 400);
+streamApi.get(
+  '/',
+  zValidator('query', querySchema, (result, c) => {
+    if (!result.success) {
+      return c.json({ error: 'Invalid input' }, 400);
     }
-    console.error('Unexpected error:', err);
-    return c.json({ error: 'Internal Server Error' }, 500);
+  }),
+  async (c) => {
+    try {
+      const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder } = c.req.valid('query');
+
+      // Convert parameters to appropriate types
+      const parsedPageNumber = Math.max(0, parseInt(pageNumber || '0', 10));
+      const offset = parsedPageNumber * PAGE_SIZE;
+      const limit = PAGE_SIZE;
+
+      const queryStreamParams: StreamMediasParams = {
+        year: year ? parseInt(year, 10) : 0,
+        month: month ? parseInt(month, 10) : 0,
+        offset,
+        limit,
+        device: filterDevice ? parseInt(filterDevice, 10) : null,
+        type: filterType || null,
+        sortKey: sortKey || null,
+        sortOrder: sortOrder ? parseInt(sortOrder, 10) : null,
+      };
+
+      // Fetch media using validated parameters
+      const fetchMedia: Media[] = await fetchMedias(queryStreamParams);
+
+      return c.json(fetchMedia); //{ data: fetchMedia, meta: { page: parsedPageNumber, pageSize: PAGE_SIZE } }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      return c.json({ error: 'Internal Server Error' }, 500);
+    }
   }
-});
+);
 
 export default streamApi;
