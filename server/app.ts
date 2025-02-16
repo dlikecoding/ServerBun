@@ -17,6 +17,7 @@ import users from './routes/users';
 import streamApi from './routes/stream';
 import medias from './routes/medias';
 import media from './routes/media';
+import album from './routes/album';
 
 const app = new Hono();
 
@@ -100,6 +101,7 @@ app.route('/api/v1/stream', streamApi);
 app.route('/api/v1/users', users);
 app.route('/api/v1/medias', medias);
 app.route('/api/v1/media', media);
+app.route('/api/v1/album', album);
 // app.post
 // app.put
 // app.delete

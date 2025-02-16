@@ -8,9 +8,10 @@ const createHash = async (input: string): Promise<any> => {
     const hasher = new Bun.CryptoHasher('sha256');
     const stream = fs.createReadStream(input);
 
-    for await (const chunk of stream) {
-      hasher.update(new Uint8Array(chunk));
-    }
+    await stream.forEach(async (chunk) => {
+      hasher.update(new Uint16Array(chunk));
+    });
+
     return hasher.digest('hex');
   } catch (error) {
     console.error(`Error processing ${input}: ${error}`);

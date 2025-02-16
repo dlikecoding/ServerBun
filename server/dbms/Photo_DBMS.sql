@@ -15,6 +15,10 @@ BEGIN
     -- Set DeletionDate to NOW() if DeletedStatus changes to 1, otherwise set to NULL
     IF OLD.DeletedStatus <> NEW.DeletedStatus THEN
         SET NEW.DeletionDate = IF(NEW.DeletedStatus = 1, NOW(), NULL);
+        
+        IF NEW.Favorite = 1 THEN
+            SET NEW.Favorite = 0;
+        END IF;
     END IF;
 
 END$$
@@ -272,6 +276,7 @@ BEGIN
             CreateDate,
             YEAR(CreateDate) AS createAtYear,
             MONTH(CreateDate) AS createAtMonth,
+            DAY(CreateDate) AS createAtDate,
             ROW_NUMBER() OVER (
                 PARTITION BY YEAR(CreateDate), MONTH(CreateDate)
                 ORDER BY CreateDate
@@ -279,7 +284,7 @@ BEGIN
         FROM PhotoView
         WHERE inputYear = 0 OR YEAR(CreateDate) = inputYear
     )
-    SELECT media_id, ThumbPath, FileType, createAtYear, createAtMonth, CONCAT(DATE_FORMAT(CreateDate, '%M'), " ", createAtYear) as timeFormat
+    SELECT media_id, ThumbPath, FileType, createAtYear, createAtMonth, createAtDate, CONCAT(DATE_FORMAT(CreateDate, '%M'), " ", createAtYear) as timeFormat
     FROM ranked_media
     WHERE rn = 1
     ORDER BY createAtYear DESC, createAtMonth DESC;
@@ -298,11 +303,12 @@ CREATE PROCEDURE StreamSearchMedias(
     IN findMake INT,
     IN findMediaType VARCHAR(10),
     IN sortColumn VARCHAR(10),
-    IN sortOrder VARCHAR(5),
+    IN sortOrder VARCHAR(4),
     
-    IN findDeleted TINYINT(1),
+    IN findFavorite TINYINT(1),
     IN findHidden TINYINT(1),
-    IN findFavorite TINYINT(1)
+    IN findDeleted TINYINT(1)
+    
 )
 BEGIN
     DECLARE whereClause TEXT; -- Base condition to simplify appending filters
@@ -325,16 +331,15 @@ BEGIN
         CASE WHEN inputMonth IS NOT NULL AND inputMonth > 0 THEN CONCAT(' AND MONTH(CreateDate) = ', inputMonth) ELSE '' END,
         CASE WHEN findMake IS NOT NULL THEN CONCAT(' AND CameraType = ', findMake) ELSE '' END,
         CASE WHEN findMediaType IS NOT NULL THEN CONCAT(' AND FileType = ''', findMediaType, '''') ELSE '' END,
+        CASE WHEN findFavorite IS NOT NULL THEN ' AND isFavorite = 1' ELSE '' END,
         
-        CASE WHEN findDeleted IS NOT NULL THEN CONCAT(' AND isHidden = 1') ELSE ' AND isHidden = 0 ' END,
-        CASE WHEN findHidden IS NOT NULL THEN CONCAT(' AND isDeleted = 1') ELSE  ' AND isDeleted = 0 ' END,
-        CASE WHEN findHidden IS NOT NULL THEN CONCAT(' AND isFavorite = 1') ELSE  ' AND isFavorite = 0 ' END
+        CASE WHEN findHidden IS NOT NULL THEN CONCAT(' AND isHidden = 1') ELSE  ' AND isHidden = 0 ' END,
+        CASE WHEN findDeleted IS NOT NULL THEN CONCAT(' AND isDeleted = 1') ELSE ' AND isDeleted = 0 ' END  
     );
-
 
     -- Construct final query: FileType, FileName, FileSize, Cameratype,
     SET @query = CONCAT(
-        'SELECT *',
+        'SELECT media_id, FileType, FileName, FileSize, isFavorite, CreateDate, UploadAt, ThumbPath, SourceFile, CameraType, timeFormat, duration, Title ',
         'FROM PhotoView ',
         'WHERE ', whereClause, ' ',
         'ORDER BY ', sortColumn, ' ', sortOrder, ' ',
@@ -349,3 +354,29 @@ BEGIN
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
 END$$
+
+
+DROP PROCEDURE IF EXISTS GetAlbumsAndCount$$
+CREATE PROCEDURE GetAlbumsAndCount()
+BEGIN
+    SELECT 
+    ab.album_id, 
+    ab.title, 
+    md.media_id, 
+    md.ThumbPath,
+    (SELECT COUNT(*) 
+         FROM AlbumMedia am_count 
+         WHERE am_count.album = ab.album_id) AS media_count
+    FROM Album ab
+    LEFT JOIN AlbumMedia AS am ON am.album = ab.album_id
+    LEFT JOIN Media as md ON md.media_id = am.media
+    WHERE md.media_id = (
+        SELECT m2.media_id FROM AlbumMedia am2 
+        JOIN Media m2 ON m2.media_id = am2.media 
+        WHERE am2.album = ab.album_id
+        LIMIT 1
+    );
+END $$
+
+DELIMITER ;
+

@@ -22,7 +22,7 @@ const server = Bun.serve({
 
 // await createUserGuest('guasdaaesaasdaaat@Hwllo.com', 'Guest ASHD User');
 
-/////////////////////////////////////////////////
+///// Test implementation ////////////////////////////////////////////
 // await createDBMS();
 // await insertMediaToDB(1, Bun.env['PHOTO_PATH']!);
 
@@ -43,13 +43,13 @@ const server = Bun.serve({
  *  - Import media to server
  *  => If system already had admin:
  *    - Allow regular users send request an account with there login method
- *    - Then, Admin can create a new account for that user based on the given information
+ *    - Then, Admin can activate a new account for this user based on the given information
  *    -
  *
  * Import media:
  *  - Import to data to database
  *  - Create thumbnail (from import data)
- *  - Create Hash for each media and check for duplicate (In DB) AFTER inserted
+ *  - Create Hash for each media to check for duplicate (OPTIONAL AFTER inserted)
  *  - Delete data in ImportMedia tb
  * */
 

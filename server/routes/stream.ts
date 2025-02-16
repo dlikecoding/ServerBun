@@ -35,13 +35,14 @@ export type StreamMediasParams = {
   deleted?: number | null;
   hidden?: number | null;
   favorite?: number | null;
+  duplicate?: number | null;
 };
 
 // Define schema
 const querySchema = z.object({
   year: z
     .string()
-    .regex(/^\d{0,4}$/, 'Invalid year format') // Matches 0 or 4 digits
+    .regex(/^(\d{4}|0)$/, 'Invalid year format') // Matches 0 or 4 digits
     .optional(),
   month: z
     .string()
@@ -53,7 +54,23 @@ const querySchema = z.object({
   sortKey: z.string().optional(),
   sortOrder: z
     .string()
-    .regex(/^-?\d+$/, 'Sort order must be a number')
+    .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
+    .optional(),
+  favorite: z
+    .string()
+    .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
+    .optional(),
+  hidden: z
+    .string()
+    .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
+    .optional(),
+  deleted: z
+    .string()
+    .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
+    .optional(),
+  duplicate: z
+    .string()
+    .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
     .optional(),
 });
 
@@ -66,7 +83,7 @@ streamApi.get(
   }),
   async (c) => {
     try {
-      const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder } = c.req.valid('query');
+      const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder, favorite, hidden, deleted, duplicate } = c.req.valid('query');
 
       // Convert parameters to appropriate types
       const parsedPageNumber = Math.max(0, parseInt(pageNumber || '0', 10));
@@ -82,6 +99,9 @@ streamApi.get(
         type: filterType || null,
         sortKey: sortKey || null,
         sortOrder: sortOrder ? parseInt(sortOrder, 10) : null,
+        favorite: favorite ? parseInt(favorite, 10) : null,
+        deleted: deleted ? parseInt(deleted, 10) : null,
+        hidden: hidden ? parseInt(hidden, 10) : null,
       };
 
       // Fetch media using validated parameters

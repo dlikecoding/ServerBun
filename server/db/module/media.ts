@@ -1,27 +1,32 @@
-import type { FieldPacket, ResultSetHeader } from 'mysql2/promise';
+import type { FieldPacket, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { poolPromise } from '..';
 import type { StreamMediasParams } from '../../routes/stream';
+import path from 'path';
+import { $ } from 'bun';
 
 // SQL Queries
 const Sql = {
-  LOAD_IMPORTED_MEDIA: `SELECT md.media_id, md.SourceFile, md.ThumbPath, md.FileType FROM ImportMedias im LEFT JOIN Media md ON im.import_id = md.media_id`,
-  UPDATE_THUMB: `UPDATE Media SET ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?`,
-  UPDATE_HASH: `UPDATE Media SET HashCode = (?) WHERE media_id = ?`,
-  DELETE: `DELETE FROM Media WHERE media_id = ?`,
-  DELETE_IMPORT_TB: `DELETE FROM ImportMedias`,
-  FETCH_ALL: `SELECT * FROM PhotoView ORDER BY media_id ASC`,
-  FETCH_CAMERATYPE: `SELECT * FROM CameraType`,
-  FETCH_MEDIA_EACH_YEAR: `CALL GetMediaEachYear()`,
-  FETCH_MEDIA_EACH_MONTH: `CALL GetMediaByYear(?)`,
-  FETCH_MEDIA_STATISTICS: `CALL GetMediaStatistics()`,
-  STREAM_MEDIA: `CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  LOAD_IMPORTED_MEDIA: 'SELECT md.media_id, md.SourceFile, md.ThumbPath, md.FileType FROM ImportMedias im LEFT JOIN Media md ON im.import_id = md.media_id',
+  UPDATE_THUMB: 'UPDATE Media SET ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
+  UPDATE_HASH: 'UPDATE Media SET HashCode = (?) WHERE media_id = ?',
+  // DELETE: "DELETE FROM Media WHERE media_id = ?",
+  DELETE_IMPORT_TB: 'DELETE FROM ImportMedias',
+  FETCH_ALL: 'SELECT * FROM PhotoView ORDER BY media_id ASC',
+  FETCH_CAMERATYPE: 'SELECT * FROM CameraType',
+  FETCH_MEDIA_EACH_YEAR: 'CALL GetMediaEachYear()',
+  FETCH_MEDIA_EACH_MONTH: 'CALL GetMediaByYear(?)',
+  FETCH_MEDIA_STATISTICS: 'CALL GetMediaStatistics()',
+  STREAM_MEDIA: 'CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 
-  // SEARCH_MEDIA: `SELECT * FROM Media WHERE FileType = ?`,
-  // FIND_BY_ID: `SELECT * FROM Media WHERE media_id = ?`,
-  // MARK_HIDDEN: `UPDATE Media SET Hidden = 1 WHERE media_id = ?`,
-  // MARK_FAVORITES: `UPDATE Media SET Favorite = ? WHERE media_id IN (?)`,
-  // MARK_DELETED: `UPDATE Media SET DeletedStatus = 1 WHERE media_id = ?`,
-  // LOAD_MEDIA_HASH: `SELECT media_id, SourceFile, ThumbPath, FileType FROM Media WHERE HashCode = ?`,
+  GET_ALBUMS: 'CALL GetAlbumsAndCount()',
+  ADD_TO_ALBUMS: 'INSERT IGNORE INTO AlbumMedia (album, media) SELECT (?), media_id FROM Media WHERE media_id IN (?)',
+  CREATE_ALBUM: 'INSERT INTO Album (account, title) VALUES (?, ?)',
+
+  FIND_MEDIA_TO_DEL: 'SELECT media_id, SourceFile, ThumbPath FROM Media WHERE media_id IN (?)',
+  DELETE_MEDIAS: 'DELETE FROM Media WHERE media_id IN (?)',
+  // MARK_FAVORITES: "UPDATE Media SET Favorite = ? WHERE media_id IN (?)",
+  // MARK_DELETED: "UPDATE Media SET DeletedStatus = 1 WHERE media_id = ?",
+  // LOAD_MEDIA_HASH: "SELECT media_id, SourceFile, ThumbPath, FileType FROM Media WHERE HashCode = ?`,
   // CREATE_DB: `CREATE DATABASE IF NOT EXISTS Photos`,
 };
 
@@ -59,17 +64,17 @@ export const updateMedias = async (mediaIds: number[], updateKey: string, update
   }
 };
 
-export const deleteMedia = async (media_id: number) => {
-  await poolPromise.execute(Sql.DELETE, [media_id]);
-  return { message: `Media with ID ${media_id} deleted` };
-};
+// export const deleteMedia = async (media_id: number) => {
+//   await poolPromise.execute(Sql.DELETE, [media_id]);
+//   return { message: `Media with ID ${media_id} deleted` };
+// };
 
 export const deleteImportMedia = async () => {
   await poolPromise.execute(Sql.DELETE_IMPORT_TB);
 };
 
-export const fetchMedias = async ({ year, month, offset, limit, device = null, type = null, sortKey = null, sortOrder = null, deleted = null, hidden = null, favorite = null }: StreamMediasParams) => {
-  const params = [month, year, offset, limit, device, type, sortKey, sortOrder, deleted, hidden, favorite];
+export const fetchMedias = async ({ year, month, offset, limit, device = null, type = null, sortKey = null, sortOrder = null, favorite = null, hidden = null, deleted = null }: StreamMediasParams) => {
+  const params = [month, year, offset, limit, device, type, sortKey, sortOrder, favorite, hidden, deleted];
   const [rows] = await poolPromise.execute(Sql.STREAM_MEDIA, params);
   return (rows as any)[0];
 };
@@ -104,10 +109,52 @@ export const fetchCameraType = async () => {
   return rows;
 };
 
-// export const markDeleted = async (media_id: number) => {
-//   await poolPromise.execute(Sql.MARK_DELETED, [media_id]);
-//   return { media_id };
-// };
+export const fetchAlbums = async () => {
+  const [rows] = await poolPromise.execute(Sql.GET_ALBUMS);
+  return (rows as any)[0];
+};
+
+export const createAlbum = async (albumTitle: string, accountId: number = 1) => {
+  const [result]: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.CREATE_ALBUM, [accountId, albumTitle]);
+  return result.insertId;
+};
+
+export const fetchAddToAlbum = async (mediaIds: number[], albumId: number) => {
+  const [result]: [ResultSetHeader, FieldPacket[]] = await poolPromise.query(Sql.ADD_TO_ALBUMS, [albumId, mediaIds]);
+  return result.affectedRows === mediaIds.length;
+};
+
+export const deleteMedias = async (mediaIds: number[]) => {
+  const connection = await poolPromise.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const foundPaths: [RowDataPacket[], FieldPacket[]] = await connection.query(Sql.FIND_MEDIA_TO_DEL, [mediaIds]);
+
+    foundPaths[0].forEach(async (each: any, _index) => {
+      const thumbPath = path.join(Bun.env.MAIN_PATH, each.ThumbPath);
+      const sourcePath = path.join(Bun.env.MAIN_PATH, each.SourceFile);
+
+      const { stderr, exitCode } = await $`rm ${thumbPath} ${sourcePath}`;
+      if (exitCode !== 0) return console.warn(stderr); // Save result in error table
+    });
+
+    const result: [ResultSetHeader, FieldPacket[]] = await connection.query(Sql.DELETE_MEDIAS, [mediaIds]);
+
+    await connection.commit();
+
+    return result[0].affectedRows === mediaIds.length;
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+};
 
 // Export All Functions
 // export { updateHash, deleteMedia, deleteImportMedia, streamMedias, findMediaById, markHidden, markFavorite, markDeleted, mediaWoThumb, updateThumb, fetchMediaEachYear };
