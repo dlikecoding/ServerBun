@@ -18,7 +18,7 @@ interface Media {
   isFavorite: number;
   timeFormat: string;
   duration: string;
-  Title: string;
+  videoTitle: string;
   affectedRows?: any;
 }
 
@@ -36,6 +36,8 @@ export type StreamMediasParams = {
   hidden?: number | null;
   favorite?: number | null;
   duplicate?: number | null;
+
+  albumId?: number | null;
 };
 
 // Define schema
@@ -72,6 +74,11 @@ const querySchema = z.object({
     .string()
     .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
     .optional(),
+
+  albumId: z
+    .string()
+    .regex(/^(?:[0-9]|[1-9][0-9]{1,2}|1000)$/, 'Invalid album format')
+    .optional(),
 });
 
 streamApi.get(
@@ -83,7 +90,7 @@ streamApi.get(
   }),
   async (c) => {
     try {
-      const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder, favorite, hidden, deleted, duplicate } = c.req.valid('query');
+      const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder, favorite, hidden, deleted, duplicate, albumId } = c.req.valid('query');
 
       // Convert parameters to appropriate types
       const parsedPageNumber = Math.max(0, parseInt(pageNumber || '0', 10));
@@ -102,6 +109,8 @@ streamApi.get(
         favorite: favorite ? parseInt(favorite, 10) : null,
         deleted: deleted ? parseInt(deleted, 10) : null,
         hidden: hidden ? parseInt(hidden, 10) : null,
+
+        albumId: albumId ? parseInt(albumId, 10) : null,
       };
 
       // Fetch media using validated parameters

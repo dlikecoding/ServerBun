@@ -16,7 +16,7 @@ const Sql = {
   FETCH_MEDIA_EACH_YEAR: 'CALL GetMediaEachYear()',
   FETCH_MEDIA_EACH_MONTH: 'CALL GetMediaByYear(?)',
   FETCH_MEDIA_STATISTICS: 'CALL GetMediaStatistics()',
-  STREAM_MEDIA: 'CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  STREAM_MEDIA: 'CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 
   GET_ALBUMS: 'CALL GetAlbumsAndCount()',
   ADD_TO_ALBUMS: 'INSERT IGNORE INTO AlbumMedia (album, media) SELECT (?), media_id FROM Media WHERE media_id IN (?)',
@@ -73,8 +73,21 @@ export const deleteImportMedia = async () => {
   await poolPromise.execute(Sql.DELETE_IMPORT_TB);
 };
 
-export const fetchMedias = async ({ year, month, offset, limit, device = null, type = null, sortKey = null, sortOrder = null, favorite = null, hidden = null, deleted = null }: StreamMediasParams) => {
-  const params = [month, year, offset, limit, device, type, sortKey, sortOrder, favorite, hidden, deleted];
+export const fetchMedias = async ({
+  year,
+  month,
+  offset,
+  limit,
+  device = null,
+  type = null,
+  sortKey = null,
+  sortOrder = null,
+  favorite = null,
+  hidden = null,
+  deleted = null,
+  albumId = null,
+}: StreamMediasParams) => {
+  const params = [month, year, offset, limit, device, type, sortKey, sortOrder, favorite, hidden, deleted, albumId];
   const [rows] = await poolPromise.execute(Sql.STREAM_MEDIA, params);
   return (rows as any)[0];
 };

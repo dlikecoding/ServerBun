@@ -211,11 +211,40 @@ SELECT
     im.CameraType,
     CONCAT(DATE_FORMAT(im.CreateDate, '%b'), " ", DAY(im.CreateDate), ", ", YEAR(im.CreateDate)) AS timeFormat,
     v.DisplayDuration as duration,
-    v.Title
+    v.Title as videoTitle
 FROM Media im
 LEFT JOIN Video v ON im.media_id = v.media$$
 
 
+-- ====================================================================================
+/*
+   Stored Procedure: GetAlbumsAndCount
+   - Aggregates total Albums, and count all medias for each album.
+   - Does not count Deleted and Hidden medias.
+   - Returns results as a single query output.
+*/
+
+DROP PROCEDURE IF EXISTS GetAlbumsAndCount$$
+CREATE PROCEDURE GetAlbumsAndCount()
+BEGIN
+    SELECT 
+    ab.album_id, 
+    ab.title, 
+    md.media_id, 
+    md.ThumbPath,
+    (SELECT COUNT(*) FROM AlbumMedia am_count 
+        LEFT JOIN Media as md ON md.media_id = am_count.media      
+        WHERE am_count.album = ab.album_id AND md.Hidden = 0 AND md.DeletedStatus = 0) AS media_count
+    FROM Album ab
+    LEFT JOIN AlbumMedia AS am ON am.album = ab.album_id
+    LEFT JOIN Media as md ON md.media_id = am.media
+    WHERE md.media_id = (
+        SELECT m2.media_id FROM AlbumMedia am2 
+        JOIN Media m2 ON m2.media_id = am2.media 
+        WHERE am2.album = ab.album_id
+        LIMIT 1
+    );
+END
 
 -- ====================================================================================
 /*
@@ -231,14 +260,14 @@ BEGIN
     WITH countData AS (
         SELECT COUNT(media_id) AS countDup 
         FROM Media 
-        WHERE HashCode IS NOT NULL 
+        WHERE HashCode IS NOT NULL AND Hidden = 0 AND DeletedStatus = 0
         GROUP BY HashCode 
         HAVING countDup > 1
     )
     SELECT 
-        SUM(Favorite) AS 'Favorite',
+        SUM(CASE WHEN Favorite = 1 AND Hidden = 0 AND DeletedStatus = 0 THEN 1 ELSE 0 END) AS 'Favorite',
         (SELECT COALESCE(SUM(countDup), 0) FROM countData) AS 'Duplicate',
-        SUM(Hidden) AS 'Hidden',
+        SUM(CASE WHEN Hidden = 1 AND DeletedStatus = 0 THEN 1 ELSE 0 END) AS 'Hidden',
         SUM(DeletedStatus) AS 'Recently Deleted'
     FROM Media;
 END $$
@@ -294,7 +323,80 @@ END $$
 -- ==============================================================================
 -- Find medias for All display in database
 
-DROP PROCEDURE IF EXISTS StreamSearchMedias;
+DROP PROCEDURE IF EXISTS BuildWhereClause$$
+CREATE PROCEDURE BuildWhereClause(
+    IN inputMonth INT,
+    IN inputYear INT,
+    IN findMake INT,
+    IN findMediaType VARCHAR(10),
+    
+    IN findFavorite TINYINT(1),
+    IN findHidden TINYINT(1),
+    IN findDeleted TINYINT(1),
+    
+    OUT whereClause TEXT
+)
+BEGIN
+    SET whereClause = CONCAT(
+        '1=1 ',
+        CASE WHEN inputYear IS NOT NULL AND inputYear > 0 THEN CONCAT(' AND YEAR(CreateDate) = ', inputYear) ELSE '' END,
+        CASE WHEN inputMonth IS NOT NULL AND inputMonth > 0 THEN CONCAT(' AND MONTH(CreateDate) = ', inputMonth) ELSE '' END,
+        
+        CASE WHEN findMake IS NOT NULL THEN CONCAT(' AND CameraType = ', findMake) ELSE '' END,
+        CASE WHEN findMediaType IS NOT NULL THEN CONCAT(' AND FileType = ''', findMediaType, '''') ELSE '' END,
+        
+        CASE WHEN findFavorite IS NOT NULL THEN ' AND isFavorite = 1' ELSE '' END,
+        
+        CASE WHEN findHidden IS NOT NULL THEN CONCAT(' AND isHidden = 1') ELSE (CASE WHEN findDeleted IS NOT NULL THEN '' ELSE ' AND isHidden = 0 ' END) END,
+        CASE WHEN findDeleted IS NOT NULL THEN CONCAT(' AND isDeleted = 1') ELSE ' AND isDeleted = 0 ' END
+    );
+END$$
+
+
+DROP PROCEDURE IF EXISTS ValidateSorting$$
+CREATE PROCEDURE ValidateSorting(
+    IN sortColumnInput VARCHAR(10),
+    IN sortOrderInput VARCHAR(5),
+    OUT sortColumn VARCHAR(10),
+    OUT sortOrder VARCHAR(5)
+)
+BEGIN
+    SET sortColumn = CASE 
+        WHEN sortColumnInput IN ('CreateDate', 'FileSize', 'UploadAt') THEN sortColumnInput 
+        ELSE 'CreateDate' 
+    END;
+
+    SET sortOrder = CASE 
+        WHEN sortOrderInput = 1 THEN 'ASC' 
+        ELSE 'DESC' 
+    END;
+END$$
+
+
+DROP PROCEDURE IF EXISTS CteClauseAlbum$$
+CREATE PROCEDURE CteClauseAlbum(
+    IN albumId INT,
+    OUT cteClause TEXT
+)
+BEGIN
+    IF albumId IS NOT NULL THEN
+        -- Use CTE when albumId is provided
+        SET cteClause = CONCAT(
+            'WITH PhotoView AS ( ',
+            '   SELECT * FROM Album as ab ',
+            '   LEFT JOIN AlbumMedia am ON am.album = ab.album_id ',
+            '   LEFT JOIN PhotoView md ON md.media_id = am.media ',
+            '   WHERE ab.album_id = ', albumId,
+            ') '
+        );
+    ELSE
+        SET cteClause = ' ';
+
+    END IF;
+END$$
+
+
+DROP PROCEDURE IF EXISTS StreamSearchMedias$$
 CREATE PROCEDURE StreamSearchMedias(
     IN inputMonth INT,
     IN inputYear INT,
@@ -302,81 +404,37 @@ CREATE PROCEDURE StreamSearchMedias(
     IN limitInput INT,
     IN findMake INT,
     IN findMediaType VARCHAR(10),
-    IN sortColumn VARCHAR(10),
-    IN sortOrder VARCHAR(4),
+    
+    IN sortColumnInput VARCHAR(10),
+    IN sortOrderInput VARCHAR(5),
     
     IN findFavorite TINYINT(1),
     IN findHidden TINYINT(1),
-    IN findDeleted TINYINT(1)
-    
+    IN findDeleted TINYINT(1),
+
+    IN albumId INT
 )
 BEGIN
-    DECLARE whereClause TEXT; -- Base condition to simplify appending filters
+    DECLARE whereClause TEXT;
+    DECLARE cteClause TEXT;
+    DECLARE sortColumn VARCHAR(10);
+    DECLARE sortOrder VARCHAR(5);
 
-    -- Validate sorting inputs
-    SET sortColumn = CASE 
-        WHEN sortColumn IN ('CreateDate', 'FileSize', 'UploadAt') THEN sortColumn 
-        ELSE 'CreateDate' 
-    END;
+    CALL ValidateSorting(sortColumnInput, sortOrderInput, sortColumn, sortOrder);
+    CALL BuildWhereClause(inputMonth, inputYear, findMake, findMediaType, findFavorite, findHidden, findDeleted, whereClause);
+    CALL CteClauseAlbum(albumId, cteClause);
 
-    SET sortOrder = CASE 
-        WHEN sortOrder = 1 THEN 'ASC' 
-        ELSE 'DESC' 
-    END;
-
-    -- Build WHERE Clause
-    SET whereClause = CONCAT(
-        '1=1 ',
-        CASE WHEN inputYear IS NOT NULL AND inputYear > 0 THEN CONCAT(' AND YEAR(CreateDate) = ', inputYear) ELSE '' END,
-        CASE WHEN inputMonth IS NOT NULL AND inputMonth > 0 THEN CONCAT(' AND MONTH(CreateDate) = ', inputMonth) ELSE '' END,
-        CASE WHEN findMake IS NOT NULL THEN CONCAT(' AND CameraType = ', findMake) ELSE '' END,
-        CASE WHEN findMediaType IS NOT NULL THEN CONCAT(' AND FileType = ''', findMediaType, '''') ELSE '' END,
-        CASE WHEN findFavorite IS NOT NULL THEN ' AND isFavorite = 1' ELSE '' END,
-        
-        CASE WHEN findHidden IS NOT NULL THEN CONCAT(' AND isHidden = 1') ELSE  ' AND isHidden = 0 ' END,
-        CASE WHEN findDeleted IS NOT NULL THEN CONCAT(' AND isDeleted = 1') ELSE ' AND isDeleted = 0 ' END  
-    );
-
-    -- Construct final query: FileType, FileName, FileSize, Cameratype,
     SET @query = CONCAT(
-        'SELECT media_id, FileType, FileName, FileSize, isFavorite, CreateDate, UploadAt, ThumbPath, SourceFile, CameraType, timeFormat, duration, Title ',
+        cteClause,
+        'SELECT media_id, FileType, FileName, FileSize, isFavorite, CreateDate, UploadAt, ThumbPath, SourceFile, CameraType, timeFormat, duration, videoTitle ',
         'FROM PhotoView ',
         'WHERE ', whereClause, ' ',
         'ORDER BY ', sortColumn, ' ', sortOrder, ' ',
         'LIMIT ', offsetIdx, ', ', limitInput
     );
 
-    -- Debugging: Log query (optional)
-    -- INSERT INTO QueryLog(queryText) VALUES (@query);
-
-    -- Prepare and Execute query
     PREPARE stmt FROM @query;
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
 END$$
-
-
-DROP PROCEDURE IF EXISTS GetAlbumsAndCount$$
-CREATE PROCEDURE GetAlbumsAndCount()
-BEGIN
-    SELECT 
-    ab.album_id, 
-    ab.title, 
-    md.media_id, 
-    md.ThumbPath,
-    (SELECT COUNT(*) 
-         FROM AlbumMedia am_count 
-         WHERE am_count.album = ab.album_id) AS media_count
-    FROM Album ab
-    LEFT JOIN AlbumMedia AS am ON am.album = ab.album_id
-    LEFT JOIN Media as md ON md.media_id = am.media
-    WHERE md.media_id = (
-        SELECT m2.media_id FROM AlbumMedia am2 
-        JOIN Media m2 ON m2.media_id = am2.media 
-        WHERE am2.album = ab.album_id
-        LIMIT 1
-    );
-END $$
-
-DELIMITER ;
 
