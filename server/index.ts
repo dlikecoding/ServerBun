@@ -26,12 +26,12 @@ const server = Bun.serve({
 // await createDBMS();
 // await insertMediaToDB(1, Bun.env['PHOTO_PATH']!);
 
-// // // await backupToDB();
+// await backupToDB();
 
-// await createThumbnails();
+await createThumbnails();
 
 // await createHashs();
-///////////////////////////////////////////////////
+// ///////////////////////////////////////////////////
 // await restoreToDB();
 
 /** Process when frist start page:

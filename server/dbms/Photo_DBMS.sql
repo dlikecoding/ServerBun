@@ -83,8 +83,6 @@ END$$
 -- =======================================
 
 DROP TRIGGER IF EXISTS ImportMedias_AFTER_INSERT$$
-DELIMITER $$
-
 CREATE TRIGGER ImportMedias_AFTER_INSERT 
 AFTER INSERT ON ImportMedias FOR EACH ROW
 BEGIN
@@ -209,11 +207,14 @@ SELECT
     im.Hidden as isHidden,
     im.DeletedStatus as isDeleted,
     im.CameraType,
+    im.HashCode,
     CONCAT(DATE_FORMAT(im.CreateDate, '%b'), " ", DAY(im.CreateDate), ", ", YEAR(im.CreateDate)) AS timeFormat,
     v.DisplayDuration as duration,
-    v.Title as videoTitle
+    v.Title as videoTitle,
+    im.MIMEType
 FROM Media im
 LEFT JOIN Video v ON im.media_id = v.media$$
+
 
 
 -- ====================================================================================
@@ -286,6 +287,7 @@ BEGIN
             YEAR(CreateDate) AS createAtYear,
             ROW_NUMBER() OVER (PARTITION BY YEAR(CreateDate) ORDER BY CreateDate) AS rn
         FROM PhotoView
+        WHERE isHidden = 0 AND isDeleted = 0
     )
     SELECT media_id, ThumbPath, FileType, createAtYear as timeFormat
     FROM ranked_media
@@ -311,7 +313,7 @@ BEGIN
                 ORDER BY CreateDate
             ) AS rn
         FROM PhotoView
-        WHERE inputYear = 0 OR YEAR(CreateDate) = inputYear
+        WHERE (inputYear = 0 OR inputYear = YEAR(CreateDate)) AND isHidden = 0 AND isDeleted = 0
     )
     SELECT media_id, ThumbPath, FileType, createAtYear, createAtMonth, createAtDate, CONCAT(DATE_FORMAT(CreateDate, '%M'), " ", createAtYear) as timeFormat
     FROM ranked_media
@@ -334,22 +336,36 @@ CREATE PROCEDURE BuildWhereClause(
     IN findHidden TINYINT(1),
     IN findDeleted TINYINT(1),
     
+    IN findDuplicate TINYINT(1),
+
     OUT whereClause TEXT
 )
 BEGIN
-    SET whereClause = CONCAT(
-        '1=1 ',
-        CASE WHEN inputYear IS NOT NULL AND inputYear > 0 THEN CONCAT(' AND YEAR(CreateDate) = ', inputYear) ELSE '' END,
-        CASE WHEN inputMonth IS NOT NULL AND inputMonth > 0 THEN CONCAT(' AND MONTH(CreateDate) = ', inputMonth) ELSE '' END,
-        
-        CASE WHEN findMake IS NOT NULL THEN CONCAT(' AND CameraType = ', findMake) ELSE '' END,
-        CASE WHEN findMediaType IS NOT NULL THEN CONCAT(' AND FileType = ''', findMediaType, '''') ELSE '' END,
-        
-        CASE WHEN findFavorite IS NOT NULL THEN ' AND isFavorite = 1' ELSE '' END,
-        
-        CASE WHEN findHidden IS NOT NULL THEN CONCAT(' AND isHidden = 1') ELSE (CASE WHEN findDeleted IS NOT NULL THEN '' ELSE ' AND isHidden = 0 ' END) END,
-        CASE WHEN findDeleted IS NOT NULL THEN CONCAT(' AND isDeleted = 1') ELSE ' AND isDeleted = 0 ' END
-    );
+    IF findDuplicate = 1 THEN
+        SET whereClause = CONCAT(
+            ' HashCode IN (',
+            'SELECT HashCode ',
+            'FROM Media ',
+            'WHERE HashCode IS NOT NULL AND Hidden = 0 AND DeletedStatus = 0 ',
+            'GROUP BY HashCode ',
+            'HAVING COUNT(media_id) > 1)'
+        );
+    ELSE
+        SET whereClause = CONCAT(
+            '1=1 ',
+            CASE WHEN inputYear IS NOT NULL AND inputYear > 0 THEN CONCAT(' AND YEAR(CreateDate) = ', inputYear) ELSE '' END,
+            CASE WHEN inputMonth IS NOT NULL AND inputMonth > 0 THEN CONCAT(' AND MONTH(CreateDate) = ', inputMonth) ELSE '' END,
+            
+            CASE WHEN findMake IS NOT NULL THEN CONCAT(' AND CameraType = ', findMake) ELSE '' END,
+            CASE WHEN findMediaType IS NOT NULL THEN CONCAT(' AND FileType = ''', findMediaType, '''') ELSE '' END,
+            
+            CASE WHEN findFavorite IS NOT NULL THEN ' AND isFavorite = 1' ELSE '' END,
+            
+            CASE WHEN findHidden IS NOT NULL THEN CONCAT(' AND isHidden = 1') ELSE (CASE WHEN findDeleted IS NOT NULL THEN '' ELSE ' AND isHidden = 0 ' END) END,
+            CASE WHEN findDeleted IS NOT NULL THEN CONCAT(' AND isDeleted = 1') ELSE ' AND isDeleted = 0 ' END
+        );
+
+    END IF;
 END$$
 
 
@@ -362,7 +378,7 @@ CREATE PROCEDURE ValidateSorting(
 )
 BEGIN
     SET sortColumn = CASE 
-        WHEN sortColumnInput IN ('CreateDate', 'FileSize', 'UploadAt') THEN sortColumnInput 
+        WHEN sortColumnInput IN ('CreateDate', 'FileSize', 'UploadAt', 'HashCode') THEN sortColumnInput 
         ELSE 'CreateDate' 
     END;
 
@@ -411,6 +427,7 @@ CREATE PROCEDURE StreamSearchMedias(
     IN findFavorite TINYINT(1),
     IN findHidden TINYINT(1),
     IN findDeleted TINYINT(1),
+    IN findDuplicate TINYINT(1),
 
     IN albumId INT
 )
@@ -421,15 +438,17 @@ BEGIN
     DECLARE sortOrder VARCHAR(5);
 
     CALL ValidateSorting(sortColumnInput, sortOrderInput, sortColumn, sortOrder);
-    CALL BuildWhereClause(inputMonth, inputYear, findMake, findMediaType, findFavorite, findHidden, findDeleted, whereClause);
+    CALL BuildWhereClause(inputMonth, inputYear, findMake, findMediaType, findFavorite, findHidden, findDeleted, findDuplicate, whereClause);
     CALL CteClauseAlbum(albumId, cteClause);
+
+    IF findDuplicate = 1 THEN SET sortColumn = 'HashCode '; END IF;
 
     SET @query = CONCAT(
         cteClause,
-        'SELECT media_id, FileType, FileName, FileSize, isFavorite, CreateDate, UploadAt, ThumbPath, SourceFile, CameraType, timeFormat, duration, videoTitle ',
+        'SELECT media_id, FileType, FileName, FileSize, isFavorite, CreateDate, UploadAt, ThumbPath, SourceFile, CameraType, timeFormat, duration, videoTitle, MIMEType ',
         'FROM PhotoView ',
         'WHERE ', whereClause, ' ',
-        'ORDER BY ', sortColumn, ' ', sortOrder, ' ',
+        'ORDER BY ', sortColumn, ' ', sortOrder, ', media_id ASC ',
         'LIMIT ', offsetIdx, ', ', limitInput
     );
 

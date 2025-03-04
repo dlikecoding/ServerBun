@@ -3,7 +3,7 @@ import { fetchMedias } from '../db/module/media';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 
-const PAGE_SIZE = 250; // Max size per page
+const PAGE_SIZE = 50; // Max size per page
 
 const streamApi = new Hono();
 
@@ -19,6 +19,7 @@ interface Media {
   timeFormat: string;
   duration: string;
   videoTitle: string;
+
   affectedRows?: any;
 }
 
@@ -32,9 +33,10 @@ export type StreamMediasParams = {
   type?: string | null;
   sortKey?: string | null;
   sortOrder?: number | null;
-  deleted?: number | null;
-  hidden?: number | null;
+
   favorite?: number | null;
+  hidden?: number | null;
+  deleted?: number | null;
   duplicate?: number | null;
 
   albumId?: number | null;
@@ -50,7 +52,7 @@ const querySchema = z.object({
     .string()
     .regex(/^(0|[1-9]|1[0-2])$/, 'Invalid month format')
     .optional(),
-  pageNumber: z.string().regex(/^\d+$/, 'Page number must be a number').optional(),
+  pageNumber: z.string().regex(/^\d+$/, 'Page number must be a number'),
   filterDevice: z.string().regex(/^\d+$/, 'Device must be a number').optional(),
   filterType: z.string().optional(),
   sortKey: z.string().optional(),
@@ -60,19 +62,19 @@ const querySchema = z.object({
     .optional(),
   favorite: z
     .string()
-    .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
+    .regex(/^(0|1)$/, 'Boolean favorite must be either 0 or 1')
     .optional(),
   hidden: z
     .string()
-    .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
+    .regex(/^(0|1)$/, 'Boolean hidden value must be either 0 or 1')
     .optional(),
   deleted: z
     .string()
-    .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
+    .regex(/^(0|1)$/, 'Boolean delete value must be either 0 or 1')
     .optional(),
   duplicate: z
     .string()
-    .regex(/^(0|1)$/, 'Sort order must be either 0 or 1')
+    .regex(/^(0|1)$/, 'Boolean duplicate value must be either 0 or 1')
     .optional(),
 
   albumId: z
@@ -91,26 +93,29 @@ streamApi.get(
   async (c) => {
     try {
       const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder, favorite, hidden, deleted, duplicate, albumId } = c.req.valid('query');
-
+      // console.log(year, month, 'pageNumber', pageNumber, filterDevice, filterType, sortKey, sortOrder, favorite, hidden, deleted, duplicate, albumId);
       // Convert parameters to appropriate types
-      const parsedPageNumber = Math.max(0, parseInt(pageNumber || '0', 10));
+      const parsedPageNumber = parseInt(pageNumber!);
+
       const offset = parsedPageNumber * PAGE_SIZE;
       const limit = PAGE_SIZE;
 
       const queryStreamParams: StreamMediasParams = {
-        year: year ? parseInt(year, 10) : 0,
-        month: month ? parseInt(month, 10) : 0,
-        offset,
-        limit,
-        device: filterDevice ? parseInt(filterDevice, 10) : null,
+        year: year ? parseInt(year) : 0,
+        month: month ? parseInt(month) : 0,
+        offset: offset,
+        limit: limit,
+        device: filterDevice ? parseInt(filterDevice) : null,
         type: filterType || null,
         sortKey: sortKey || null,
-        sortOrder: sortOrder ? parseInt(sortOrder, 10) : null,
-        favorite: favorite ? parseInt(favorite, 10) : null,
-        deleted: deleted ? parseInt(deleted, 10) : null,
-        hidden: hidden ? parseInt(hidden, 10) : null,
+        sortOrder: sortOrder ? parseInt(sortOrder) : null,
 
-        albumId: albumId ? parseInt(albumId, 10) : null,
+        favorite: favorite ? parseInt(favorite) : null,
+        hidden: hidden ? parseInt(hidden) : null,
+        deleted: deleted ? parseInt(deleted) : null,
+        duplicate: duplicate ? parseInt(duplicate) : null,
+
+        albumId: albumId ? parseInt(albumId) : null,
       };
 
       // Fetch media using validated parameters

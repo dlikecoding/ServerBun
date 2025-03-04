@@ -9,21 +9,23 @@ const Sql = {
   LOAD_IMPORTED_MEDIA: 'SELECT md.media_id, md.SourceFile, md.ThumbPath, md.FileType FROM ImportMedias im LEFT JOIN Media md ON im.import_id = md.media_id',
   UPDATE_THUMB: 'UPDATE Media SET ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
   UPDATE_HASH: 'UPDATE Media SET HashCode = (?) WHERE media_id = ?',
-  // DELETE: "DELETE FROM Media WHERE media_id = ?",
+
   DELETE_IMPORT_TB: 'DELETE FROM ImportMedias',
-  FETCH_ALL: 'SELECT * FROM PhotoView ORDER BY media_id ASC',
   FETCH_CAMERATYPE: 'SELECT * FROM CameraType',
+
   FETCH_MEDIA_EACH_YEAR: 'CALL GetMediaEachYear()',
   FETCH_MEDIA_EACH_MONTH: 'CALL GetMediaByYear(?)',
-  FETCH_MEDIA_STATISTICS: 'CALL GetMediaStatistics()',
-  STREAM_MEDIA: 'CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 
+  STREAM_MEDIA: 'CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+
+  FETCH_MEDIA_STATISTICS: 'CALL GetMediaStatistics()',
   GET_ALBUMS: 'CALL GetAlbumsAndCount()',
   ADD_TO_ALBUMS: 'INSERT IGNORE INTO AlbumMedia (album, media) SELECT (?), media_id FROM Media WHERE media_id IN (?)',
   CREATE_ALBUM: 'INSERT INTO Album (account, title) VALUES (?, ?)',
 
   FIND_MEDIA_TO_DEL: 'SELECT media_id, SourceFile, ThumbPath FROM Media WHERE media_id IN (?)',
   DELETE_MEDIAS: 'DELETE FROM Media WHERE media_id IN (?)',
+
   // MARK_FAVORITES: "UPDATE Media SET Favorite = ? WHERE media_id IN (?)",
   // MARK_DELETED: "UPDATE Media SET DeletedStatus = 1 WHERE media_id = ?",
   // LOAD_MEDIA_HASH: "SELECT media_id, SourceFile, ThumbPath, FileType FROM Media WHERE HashCode = ?`,
@@ -82,12 +84,15 @@ export const fetchMedias = async ({
   type = null,
   sortKey = null,
   sortOrder = null,
+
   favorite = null,
   hidden = null,
   deleted = null,
+  duplicate = null,
+
   albumId = null,
 }: StreamMediasParams) => {
-  const params = [month, year, offset, limit, device, type, sortKey, sortOrder, favorite, hidden, deleted, albumId];
+  const params = [month, year, offset, limit, device, type, sortKey, sortOrder, favorite, hidden, deleted, duplicate, albumId];
   const [rows] = await poolPromise.execute(Sql.STREAM_MEDIA, params);
   return (rows as any)[0];
 };
