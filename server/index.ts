@@ -28,7 +28,7 @@ const server = Bun.serve({
 
 // await backupToDB();
 
-await createThumbnails();
+// await createThumbnails();
 
 // await createHashs();
 // ///////////////////////////////////////////////////

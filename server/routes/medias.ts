@@ -72,7 +72,7 @@ medias.get('/devices', async (c) => {
 
 const updateSchema = z.object({
   mediaIds: z.array(z.number()),
-  updateKey: z.enum(['Favorite', 'DeletedStatus', 'Hidden']), // If updateKey is not in Favorite, DeletedStatus, Hidden ... return error
+  updateKey: z.enum(['Favorite', 'Deleted', 'Hidden']), // If updateKey is not in Favorite, Deleted, Hidden ... return error
   updateValue: z.boolean(),
 });
 

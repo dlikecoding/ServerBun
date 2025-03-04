@@ -6,15 +6,15 @@ USE Photos;
 DELIMITER $$
 
 -- ====================================================================================
--- Trigger to update DeletionDate in Media table when DeletedStatus changes
+-- Trigger to update DeletionDate in Media table when Deleted changes
 DROP TRIGGER IF EXISTS Media_BEFORE_UPDATE$$
 CREATE TRIGGER Media_BEFORE_UPDATE BEFORE UPDATE ON Media
 FOR EACH ROW
 BEGIN
 
-    -- Set DeletionDate to NOW() if DeletedStatus changes to 1, otherwise set to NULL
-    IF OLD.DeletedStatus <> NEW.DeletedStatus THEN
-        SET NEW.DeletionDate = IF(NEW.DeletedStatus = 1, NOW(), NULL);
+    -- Set DeletionDate to NOW() if Deleted changes to 1, otherwise set to NULL
+    IF OLD.Deleted <> NEW.Deleted THEN
+        SET NEW.DeletionDate = IF(NEW.Deleted = 1, NOW(), NULL);
         
         IF NEW.Favorite = 1 THEN
             SET NEW.Favorite = 0;
@@ -91,7 +91,7 @@ BEGIN
     DECLARE cameraTypeId INT; -- Camera ID if have any
     DECLARE durationDisplay VARCHAR(10); -- Display duration time for videos
     DECLARE mediaType ENUM('Photo', 'Video', 'Live', 'Unknown');
-    DECLARE lastInsertMediaID INT;
+    -- DECLARE lastInsertMediaID INT;
     DECLARE thumbnailName VARCHAR(15); -- Create a random string for thumbnailFile
     
     DECLARE currentDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
@@ -129,24 +129,21 @@ BEGIN
                     IF ( (NEW.Duration > 5), 'Video', 'Live' ), 'Unknown') );
     
     -- Generate unique thumbnail name
-    SET thumbnailName = CONCAT(
-        CAST(NEW.import_id AS CHAR),
-        SUBSTRING(REPLACE(UUID(), '-', ''), 1, 15 - LENGTH(CAST(NEW.import_id AS CHAR)))
-    );
+    SET thumbnailName = CONCAT(NEW.import_id, LPAD(CONV(NEW.import_id, 10, 36), 8, '0'));
 
     -- Insert into Media table
-    INSERT INTO Media (FileName, FileType, FileExt, Software, FileSize, CameraType, CreateDate, SourceFile, MIMEType, ThumbPath) 
-        VALUES (NEW.FileName, mediaType, NEW.FileType, NEW.Software, NEW.FileSize, cameraTypeId,
+    INSERT INTO Media (media_id, FileName, FileType, FileExt, Software, FileSize, CameraType, CreateDate, SourceFile, MIMEType, ThumbPath) 
+        VALUES (NEW.import_id, NEW.FileName, mediaType, NEW.FileType, NEW.Software, NEW.FileSize, cameraTypeId,
         STR_TO_DATE(smallestDate, '%Y-%m-%d %H:%i:%s'), NEW.SourceFile, NEW.MIMEType,
         CONCAT('/Thumbnails/', YEAR(smallestDate), '/', DATE_FORMAT(smallestDate, '%M'), '/', thumbnailName, '.webp')
     );
 
     -- Reuse this variable as media_id for the last Media inserted
-    SET lastInsertMediaID = LAST_INSERT_ID();
+    -- SET lastInsertMediaID = LAST_INSERT_ID();
 
     -- ///////////// NOTE ///////////////////
     -- The account number needs to be added when the user is created, so we can identify which user uploaded these media.
-    INSERT INTO UploadBy (account, media) VALUES (NEW.account, lastInsertMediaID);
+    INSERT INTO UploadBy (account, media) VALUES (NEW.account, NEW.import_id);
 
     -- -- Create a thumbnail path and add it to Thumbnail table
     -- INSERT INTO Thumbnail (media, ThumbPath, isImage) 
@@ -159,7 +156,7 @@ BEGIN
     CASE 
         WHEN mediaType = 'Photo' THEN
             INSERT INTO Photo (media, Orientation, ImageWidth, ImageHeight, Megapixels)
-            VALUES (lastInsertMediaID, NEW.Orientation, NEW.ImageWidth, NEW.ImageHeight, ROUND(NEW.Megapixels, 1));
+            VALUES (NEW.import_id, NEW.Orientation, NEW.ImageWidth, NEW.ImageHeight, ROUND(NEW.Megapixels, 1));
             
         WHEN mediaType = 'Video' THEN
             SET durationDisplay = CASE
@@ -168,18 +165,18 @@ BEGIN
                 ELSE CONCAT('0:', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
             END;
             INSERT INTO Video (media, Title, Duration, DisplayDuration) 
-            VALUES (lastInsertMediaID, NEW.Title, NEW.Duration, durationDisplay);
+            VALUES (NEW.import_id, NEW.Title, NEW.Duration, durationDisplay);
             
         WHEN mediaType = 'Live' THEN
             INSERT INTO Live (media, Title, Duration) 
-            VALUES (lastInsertMediaID, NEW.Title, NEW.Duration);
+            VALUES (NEW.import_id, NEW.Title, NEW.Duration);
     END CASE;
 
     -- Handle GPS data
     IF NEW.GPSLatitude IS NOT NULL AND NEW.GPSLatitude != '' 
        AND NEW.GPSLongitude IS NOT NULL AND NEW.GPSLongitude != '' THEN
         INSERT INTO Location (media, GPSLatitude, GPSLongitude) 
-        VALUES (lastInsertMediaID, NEW.GPSLatitude, NEW.GPSLongitude );
+        VALUES (NEW.import_id, NEW.GPSLatitude, NEW.GPSLongitude );
     END IF;
 
 END$$
@@ -205,7 +202,7 @@ SELECT
     im.SourceFile,
     im.Favorite as isFavorite,
     im.Hidden as isHidden,
-    im.DeletedStatus as isDeleted,
+    im.Deleted as isDeleted,
     im.CameraType,
     im.HashCode,
     CONCAT(DATE_FORMAT(im.CreateDate, '%b'), " ", DAY(im.CreateDate), ", ", YEAR(im.CreateDate)) AS timeFormat,
@@ -235,7 +232,7 @@ BEGIN
     md.ThumbPath,
     (SELECT COUNT(*) FROM AlbumMedia am_count 
         LEFT JOIN Media as md ON md.media_id = am_count.media      
-        WHERE am_count.album = ab.album_id AND md.Hidden = 0 AND md.DeletedStatus = 0) AS media_count
+        WHERE am_count.album = ab.album_id AND md.Hidden = 0 AND md.Deleted = 0) AS media_count
     FROM Album ab
     LEFT JOIN AlbumMedia AS am ON am.album = ab.album_id
     LEFT JOIN Media as md ON md.media_id = am.media
@@ -261,15 +258,15 @@ BEGIN
     WITH countData AS (
         SELECT COUNT(media_id) AS countDup 
         FROM Media 
-        WHERE HashCode IS NOT NULL AND Hidden = 0 AND DeletedStatus = 0
+        WHERE HashCode IS NOT NULL AND Hidden = 0 AND Deleted = 0
         GROUP BY HashCode 
         HAVING countDup > 1
     )
     SELECT 
-        SUM(CASE WHEN Favorite = 1 AND Hidden = 0 AND DeletedStatus = 0 THEN 1 ELSE 0 END) AS 'Favorite',
+        SUM(CASE WHEN Favorite = 1 AND Hidden = 0 AND Deleted = 0 THEN 1 ELSE 0 END) AS 'Favorite',
         (SELECT COALESCE(SUM(countDup), 0) FROM countData) AS 'Duplicate',
-        SUM(CASE WHEN Hidden = 1 AND DeletedStatus = 0 THEN 1 ELSE 0 END) AS 'Hidden',
-        SUM(DeletedStatus) AS 'Recently Deleted'
+        SUM(CASE WHEN Hidden = 1 AND Deleted = 0 THEN 1 ELSE 0 END) AS 'Hidden',
+        SUM(Deleted) AS 'Recently Deleted'
     FROM Media;
 END $$
 
@@ -346,7 +343,7 @@ BEGIN
             ' HashCode IN (',
             'SELECT HashCode ',
             'FROM Media ',
-            'WHERE HashCode IS NOT NULL AND Hidden = 0 AND DeletedStatus = 0 ',
+            'WHERE HashCode IS NOT NULL AND Hidden = 0 AND Deleted = 0 ',
             'GROUP BY HashCode ',
             'HAVING COUNT(media_id) > 1)'
         );
