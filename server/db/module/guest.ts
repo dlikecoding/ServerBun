@@ -2,13 +2,13 @@ import { poolPromise } from '..';
 
 // SQL Queries
 const Sql = {
-  INSERT: `INSERT INTO Photos.UserGuest (user_email, user_name, request_status, request_at) VALUES (?, ?, ?, ?)`,
-  EXISTS: `SELECT user_id FROM Photos.UserGuest WHERE user_email = ?`,
-  FIND_BY_ID: `SELECT * FROM Photos.UserGuest WHERE user_id = ?`,
-  FIND_BY_EMAIL: `SELECT * FROM Photos.UserGuest WHERE user_email = ?`,
-  UPDATE_REQUEST_STATUS: `UPDATE Photos.UserGuest SET request_status = ?, request_at = ? WHERE user_id = ?`,
-  DELETE: `DELETE FROM Photos.UserGuest WHERE user_id = ?`,
-  FETCH_ALL: `SELECT user_id, user_email, user_name, request_status, request_at FROM Photos.UserGuest`,
+  INSERT: `INSERT INTO UserGuest (user_email, user_name, request_status, request_at) VALUES (?, ?, ?, ?)`,
+  EXISTS: `SELECT user_id FROM UserGuest WHERE user_email = ?`,
+  FIND_BY_ID: `SELECT * FROM UserGuest WHERE user_id = ?`,
+  FIND_BY_EMAIL: `SELECT * FROM UserGuest WHERE user_email = ?`,
+  UPDATE_REQUEST_STATUS: `UPDATE UserGuest SET request_status = ?, request_at = ? WHERE user_id = ?`,
+  DELETE: `DELETE FROM UserGuest WHERE user_id = ?`,
+  FETCH_ALL: `SELECT user_id, user_email, user_name, request_status, request_at FROM UserGuest`,
 };
 
 // UserGuest Management Functions

@@ -239,10 +239,10 @@ BEGIN
     WHERE md.media_id = (
         SELECT m2.media_id FROM AlbumMedia am2 
         JOIN Media m2 ON m2.media_id = am2.media 
-        WHERE am2.album = ab.album_id
+        WHERE am2.album = ab.album_id AND m2.Hidden = 0 AND m2.Deleted = 0
         LIMIT 1
     );
-END
+END$$
 
 -- ====================================================================================
 /*
@@ -329,11 +329,11 @@ CREATE PROCEDURE BuildWhereClause(
     IN findMake INT,
     IN findMediaType VARCHAR(10),
     
-    IN findFavorite TINYINT(1),
-    IN findHidden TINYINT(1),
-    IN findDeleted TINYINT(1),
+    IN findFavorite BOOLEAN,
+    IN findHidden BOOLEAN,
+    IN findDeleted BOOLEAN,
     
-    IN findDuplicate TINYINT(1),
+    IN findDuplicate BOOLEAN,
 
     OUT whereClause TEXT
 )
@@ -421,10 +421,10 @@ CREATE PROCEDURE StreamSearchMedias(
     IN sortColumnInput VARCHAR(10),
     IN sortOrderInput VARCHAR(5),
     
-    IN findFavorite TINYINT(1),
-    IN findHidden TINYINT(1),
-    IN findDeleted TINYINT(1),
-    IN findDuplicate TINYINT(1),
+    IN findFavorite BOOLEAN,
+    IN findHidden BOOLEAN,
+    IN findDeleted BOOLEAN,
+    IN findDuplicate BOOLEAN,
 
     IN albumId INT
 )
@@ -453,4 +453,3 @@ BEGIN
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
 END$$
-

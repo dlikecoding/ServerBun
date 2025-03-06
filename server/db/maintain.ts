@@ -32,12 +32,12 @@ export async function insertMediaToDB(account: Number = 1, sourcePath: string) {
 export async function backupToDB() {
   // stdout, stderr, exitCode
   const { stderr, exitCode } = await $`mysqldump -u $DB_USER -p$DB_PASS $DB_NAME > $DB_BACKUP`.nothrow().quiet();
-
   if (exitCode !== 0) {
     return console.log(`Non-zero exit code ${stderr}`);
   }
   console.log(`BACKUP successfully to the DB!`);
 }
+
 export async function restoreToDB() {
   const { stderr, exitCode } = await $`mysql -u $DB_USER -p$DB_PASS $DB_NAME < $DB_BACKUP`;
   if (exitCode !== 0) {

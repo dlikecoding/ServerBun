@@ -22,11 +22,11 @@ const server = Bun.serve({
 
 // await createUserGuest('guasdaaesaasdaaat@Hwllo.com', 'Guest ASHD User');
 
-///// Test implementation ////////////////////////////////////////////
+/// Test implementation ////////////////////////////////////////////
 // await createDBMS();
 // await insertMediaToDB(1, Bun.env['PHOTO_PATH']!);
 
-// await backupToDB();
+// // await backupToDB();
 
 // await createThumbnails();
 

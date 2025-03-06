@@ -12,17 +12,17 @@ VALUES
 (3, '/models/segment', 'segment', 'run_segment.sh', 'Segmentation model', '123e4567-e89b-12d3-a456-426614174000');
 
 
-INSERT INTO UserGuest (user_email, user_name, request_status, request_at)
+INSERT INTO UserGuest (user_email, public_key, request_status, request_at)
 VALUES
 ('user1@example.com', 'Alice Smith',  1, NOW()),
 ('jane.smith@example.com', 'Jane Smith', 0, NULL),
 ('john.doe@example.com', 'Carol Williams', 0, NULL);
 
-INSERT INTO Account (user_email, created_at, status, password, role_type, m2f_isEnable)
+INSERT INTO Account (user_email, created_at, status, role_type, m2f_isEnable)
 VALUES
-('user1@example.com', NOW(), 'active', 'password1', 'admin', 0),
-('jane.smith@example.com', NOW(), 'active', 'password2', 'user', 1),
-('john.doe@example.com', NOW(), 'suspended', 'password3', 'user', 1);
+('user1@example.com', NOW(), 'active', 'admin', 1),
+('jane.smith@example.com', NOW(), 'active', 'user', 1),
+('john.doe@example.com', NOW(), 'suspended', 'user', 1);
 
 
 -- INSERT INTO ErrorLog ( server_system, error_msg, stack_trace, error_type, logged_at)

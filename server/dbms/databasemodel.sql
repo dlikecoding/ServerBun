@@ -23,6 +23,7 @@ USE `Photos` ;
 CREATE TABLE IF NOT EXISTS `Photos`.`ServerSystem` (
   `uuid` VARCHAR(36) NOT NULL DEFAULT 'UUID()',
   `license_key` VARCHAR(512) NULL DEFAULT NULL,
+  `signature` VARCHAR(256) NULL,
   PRIMARY KEY (`uuid`))
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4
@@ -55,9 +56,10 @@ COLLATE = utf8mb4_0900_ai_ci;
 CREATE TABLE IF NOT EXISTS `Photos`.`UserGuest` (
   `user_id` SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_email` VARCHAR(50) NOT NULL,
-  `user_name` VARCHAR(40) NOT NULL,
-  `request_status` TINYINT(1) UNSIGNED NULL DEFAULT NULL,
+  `public_key` VARCHAR(256) NOT NULL,
+  `request_status` TINYINT(1) NULL DEFAULT 1 COMMENT '“Waiting” = 0,  “Approved” = 1',
   `request_at` TIMESTAMP NULL DEFAULT NULL,
+  `registered_device` VARCHAR(45) NULL,
   PRIMARY KEY (`user_id`),
   UNIQUE INDEX `email_UNIQUE` (`user_email` ASC) VISIBLE)
 ENGINE = InnoDB
@@ -72,11 +74,9 @@ CREATE TABLE IF NOT EXISTS `Photos`.`Account` (
   `account_id` SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_email` VARCHAR(50) NOT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  `status` ENUM('active', 'suspended', 'deleted') NOT NULL DEFAULT 'active',
-  `password` VARCHAR(255) NOT NULL,
+  `status` ENUM('active', 'suspended') NOT NULL DEFAULT 'active' COMMENT 'ENUM(\'active\', \'suspended\')',
   `role_type` ENUM('user', 'admin') NOT NULL,
   `m2f_isEnable` TINYINT(1) NOT NULL DEFAULT 0,
-  `public_key` BLOB NULL,
   PRIMARY KEY (`account_id`),
   INDEX `PKFK_ACCOUNT_USER_EMAIL_idx` (`user_email` ASC) VISIBLE,
   CONSTRAINT `PKFK_ACCOUNT_USER_EMAIL`
