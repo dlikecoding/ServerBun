@@ -5,7 +5,7 @@ import { createUserGuest } from './db/module/guest';
 import { createThumbnails } from './service/createThumb';
 import { createHashs } from './service/generateSHA';
 
-export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; //2GB
+export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; // 2 GB
 
 const server = Bun.serve({
   //////////////////////////
@@ -15,6 +15,11 @@ const server = Bun.serve({
   port: Bun.env.PORT || 3000,
   fetch: app.fetch,
   maxRequestBodySize: MAX_UPLOAD_FILE_SIZE,
+
+  // tls: {
+  //   cert: Bun.file('/Users/danishmc/Desktop/Linux/PhotoX/Server/server/cert.pem'),
+  //   key: Bun.file('/Users/danishmc/Desktop/Linux/PhotoX/Server/server/key.pem'),
+  // },
 });
 
 // await getUserById(2);

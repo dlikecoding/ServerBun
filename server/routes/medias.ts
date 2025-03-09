@@ -25,7 +25,7 @@ medias.get(
     }
   }),
   async (c) => {
-    const { year } = c.req.query();
+    const { year } = c.req.valid('query');
 
     try {
       let fetchAllMedia;

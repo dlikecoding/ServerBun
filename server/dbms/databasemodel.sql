@@ -55,11 +55,10 @@ COLLATE = utf8mb4_0900_ai_ci;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`UserGuest` (
   `user_id` SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_email` VARCHAR(50) NOT NULL,
-  `public_key` VARCHAR(256) NOT NULL,
-  `request_status` TINYINT(1) NULL DEFAULT 1 COMMENT '“Waiting” = 0,  “Approved” = 1',
-  `request_at` TIMESTAMP NULL DEFAULT NULL,
-  `registered_device` VARCHAR(45) NULL,
+  `user_name` VARCHAR(45) NULL,
+  `user_email` VARCHAR(100) NOT NULL,
+  `request_status` TINYINT(1) NULL DEFAULT 0 COMMENT '“Waiting” = 0,  “Approved” = 1',
+  `request_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`),
   UNIQUE INDEX `email_UNIQUE` (`user_email` ASC) VISIBLE)
 ENGINE = InnoDB
@@ -72,7 +71,7 @@ COLLATE = utf8mb4_0900_ai_ci;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`Account` (
   `account_id` SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_email` VARCHAR(50) NOT NULL,
+  `user_email` VARCHAR(100) NOT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `status` ENUM('active', 'suspended') NOT NULL DEFAULT 'active' COMMENT 'ENUM(\'active\', \'suspended\')',
   `role_type` ENUM('user', 'admin') NOT NULL,
@@ -506,6 +505,34 @@ CREATE TABLE IF NOT EXISTS `Photos`.`Face` (
   CONSTRAINT `PKFK_FACE_AiRECOG_ID0`
     FOREIGN KEY (`ai_recognition`)
     REFERENCES `Photos`.`AiRecognition` (`ai_recognition_id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `Photos`.`Passkeys`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Photos`.`Passkeys` (
+  `cred_id` VARCHAR(50) NOT NULL COMMENT 'base64url string',
+  `cred_public_key` BLOB NOT NULL,
+  `UserGuest` SMALLINT UNSIGNED NOT NULL,
+  `webauthn_user_id` VARCHAR(50) NOT NULL COMMENT 'base64url string; userHandle during auth',
+  `counter` BIGINT NOT NULL,
+  `registered_device` ENUM('singleDevice', 'multiDevice') NOT NULL,
+  `backup_eligible` TINYINT NOT NULL,
+  `backup_status` TINYINT NOT NULL DEFAULT 0,
+  `transports` TEXT NOT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_used` TIMESTAMP NULL,
+  INDEX `FK_USER_PASSKEYS_ID0_idx` (`UserGuest` ASC) VISIBLE,
+  INDEX `UNIQUE_INTERNAL_WEBAUTHN` (`webauthn_user_id` ASC, `UserGuest` ASC) VISIBLE,
+  PRIMARY KEY (`cred_id`, `UserGuest`),
+  CONSTRAINT `FK_USER_PASSKEYS_ID0`
+    FOREIGN KEY (`UserGuest`)
+    REFERENCES `Photos`.`UserGuest` (`user_id`)
     ON DELETE CASCADE
     ON UPDATE CASCADE)
 ENGINE = InnoDB

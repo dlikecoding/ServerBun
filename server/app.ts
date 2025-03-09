@@ -9,6 +9,7 @@ import { csrf } from 'hono/csrf';
 // import { getConnInfo } from 'hono/bun';
 /////////////////////////////
 import { cors } from 'hono/cors';
+
 // ===============================
 import home from './routes/medias';
 
@@ -22,7 +23,18 @@ import album from './routes/album';
 const app = new Hono();
 
 // DEV MODE - NEED TO REMOVE CORS ///////////////////////////////////
-app.use(cors());
+// CORS should be called before the route
+app.use(
+  '/api/v1/*',
+  cors({
+    origin: 'http://localhost:7979',
+    allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
+    allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
+    exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
+    maxAge: 600,
+    credentials: true,
+  })
+);
 ///////////////////////////////////
 
 app.use(csrf());

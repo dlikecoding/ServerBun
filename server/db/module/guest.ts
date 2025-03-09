@@ -1,29 +1,55 @@
+import type { FieldPacket, ResultSetHeader } from 'mysql2/promise';
 import { poolPromise } from '..';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 
 // SQL Queries
 const Sql = {
-  INSERT: `INSERT INTO UserGuest (user_email, user_name, request_status, request_at) VALUES (?, ?, ?, ?)`,
+  INSERT_GUEST: `INSERT INTO UserGuest (user_name, user_email) VALUES (?, ?)`,
+  INSERT_PASSKEY: `INSERT INTO Passkeys (cred_id, cred_public_key, UserGuest, webauthn_user_id, counter, registered_device, backup_eligible, transports) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   EXISTS: `SELECT user_id FROM UserGuest WHERE user_email = ?`,
-  FIND_BY_ID: `SELECT * FROM UserGuest WHERE user_id = ?`,
-  FIND_BY_EMAIL: `SELECT * FROM UserGuest WHERE user_email = ?`,
+
+  PASSKEYS: `SELECT * FROM Passkeys as pks WHERE pks.UserGuest = (SELECT user_id FROM UserGuest WHERE user_email = (?) LIMIT 1)`,
+  UPDATE_PASSKEY: `UPDATE Passkeys SET counter = ?, last_used = NOW() WHERE cred_id = ? AND UserGuest = ?`,
+  FIND_BY_EMAIL: `SELECT * FROM UserGuest as ug LEFT JOIN Passkeys as pks ON ug.user_id = pks.UserGuest WHERE user_email = (?)`,
+
   UPDATE_REQUEST_STATUS: `UPDATE UserGuest SET request_status = ?, request_at = ? WHERE user_id = ?`,
   DELETE: `DELETE FROM UserGuest WHERE user_id = ?`,
   FETCH_ALL: `SELECT user_id, user_email, user_name, request_status, request_at FROM UserGuest`,
 };
 
-// UserGuest Management Functions
-const createUserGuest = async (user_email: string, user_name: string, request_status: number | null = null) => {
-  const request_at = request_status !== null ? new Date() : null;
-
+const createUserGuest = async (user_name: string, user_email: string) => {
   try {
-    const isExist = await findUserGuestByEmail(user_email);
-    if (isExist) {
-      console.log(`User already exist ${isExist.user_id}`);
-      return null;
-    }
+    const result: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.INSERT_GUEST, [user_name, user_email]);
+    return result[0].insertId;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
 
-    await poolPromise.execute(Sql.INSERT, [user_email, user_name, request_status, request_at]);
-    return { user_email, user_name, request_status, request_at };
+const createPasskey = async (
+  cred_id: string,
+  cred_public_key: Uint8Array,
+  UserGuest: number,
+  webauthn_user_id: string,
+  counter: number,
+  registered_device: string,
+  backup_eligible: boolean,
+  transports: AuthenticatorTransportFuture[] | undefined
+) => {
+  try {
+    const result: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.INSERT_PASSKEY, [
+      cred_id,
+      cred_public_key,
+      UserGuest,
+      webauthn_user_id,
+      counter,
+      registered_device,
+      backup_eligible,
+      transports,
+    ]);
+
+    return result[0].affectedRows > 0;
   } catch (error) {
     return null;
   }
@@ -34,20 +60,21 @@ const userGuestExists = async (user_email: string): Promise<boolean> => {
   return (rows as any).length > 0;
 };
 
-const findUserGuestById = async (user_id: number) => {
-  const [rows] = await poolPromise.execute(Sql.FIND_BY_ID, [user_id]);
-  if ((rows as any).length === 0) {
-    return null;
-  }
+const userPassKeyByEmail = async (user_email: string) => {
+  const [rows] = await poolPromise.execute(Sql.FIND_BY_EMAIL, [user_email]);
+  if ((rows as any).length === 0) return null;
   return (rows as any)[0];
 };
 
-const findUserGuestByEmail = async (user_email: string) => {
-  const [rows] = await poolPromise.execute(Sql.FIND_BY_EMAIL, [user_email]);
-  if ((rows as any).length === 0) {
-    return null;
-  }
+const userPKsByEmail = async (user_email: string) => {
+  const [rows] = await poolPromise.execute(Sql.PASSKEYS, [user_email]);
+  if ((rows as any).length === 0) return null;
   return (rows as any)[0];
+};
+
+const updatePassKey = async (newCounter: number, cred_id: number, user_id: number) => {
+  const result: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.UPDATE_PASSKEY, [newCounter, cred_id, user_id]);
+  return result[0].affectedRows > 0;
 };
 
 const updateRequestStatus = async (user_id: number, request_status: number) => {
@@ -67,4 +94,4 @@ const fetchAllUserGuests = async () => {
 };
 
 // Export All Functions
-export { createUserGuest, userGuestExists, findUserGuestById, findUserGuestByEmail, updateRequestStatus, deleteUserGuest, fetchAllUserGuests };
+export { createUserGuest, userGuestExists, userPassKeyByEmail, updateRequestStatus, deleteUserGuest, fetchAllUserGuests, createPasskey, updatePassKey, userPKsByEmail };

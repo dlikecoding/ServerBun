@@ -87,7 +87,7 @@ streamApi.get(
   '/',
   zValidator('query', querySchema, (result, c) => {
     if (!result.success) {
-      return c.json({ error: 'Invalid input' }, 400);
+      return c.json({ error: result.error.errors[0]?.message }, 400);
     }
   }),
   async (c) => {
