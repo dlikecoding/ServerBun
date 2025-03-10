@@ -13,8 +13,8 @@ import { cors } from 'hono/cors';
 // ===============================
 import home from './routes/medias';
 
+import auth from './routes/auth';
 import users from './routes/users';
-
 import streamApi from './routes/stream';
 import medias from './routes/medias';
 import media from './routes/media';
@@ -24,6 +24,8 @@ const app = new Hono();
 
 // DEV MODE - NEED TO REMOVE CORS ///////////////////////////////////
 // CORS should be called before the route
+// app.use(cors());
+
 app.use(
   '/api/v1/*',
   cors({
@@ -107,13 +109,16 @@ app.use(secureHeaders());
 //   // console.log(info);
 //   return c.json({ homepage: 'YOU ARE HOME' });
 // });
+app
+  .basePath('api/v1')
+  .route('/home', home)
+  .route('/auth', auth)
+  .route('/stream', streamApi)
+  .route('/users', users)
+  .route('/medias', medias)
+  .route('/media', media)
+  .route('/album', album);
 
-const apiRoutes = app.basePath('api').route('/v1/home', home);
-app.route('/api/v1/stream', streamApi);
-app.route('/api/v1/users', users);
-app.route('/api/v1/medias', medias);
-app.route('/api/v1/media', media);
-app.route('/api/v1/album', album);
 // app.post
 // app.put
 // app.delete
@@ -132,4 +137,4 @@ app.use('*', serveStatic({ root: Bun.env.MAIN_PATH }));
 app.use('*', serveStatic({ root: './dist' }));
 
 export default app;
-export type ApiRoutes = typeof apiRoutes;
+// export type ApiRoutes = typeof apiRoutes;

@@ -6,7 +6,7 @@ const access: PoolOptions = {
   password: Bun.env.DB_PASS,
   database: Bun.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 5,
+  connectionLimit: 10,
   maxIdle: 5, // max idle connections, the default value is the same as `connectionLimit`
   idleTimeout: 60000, // idle connections timeout, in milliseconds, the default value 60000
   queueLimit: 0,

@@ -66,11 +66,6 @@ export const updateMedias = async (mediaIds: number[], updateKey: string, update
   }
 };
 
-// export const deleteMedia = async (media_id: number) => {
-//   await poolPromise.execute(Sql.DELETE, [media_id]);
-//   return { message: `Media with ID ${media_id} deleted` };
-// };
-
 export const deleteImportMedia = async () => {
   await poolPromise.execute(Sql.DELETE_IMPORT_TB);
 };

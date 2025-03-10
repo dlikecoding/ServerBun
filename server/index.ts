@@ -29,7 +29,7 @@ const server = Bun.serve({
 
 /// Test implementation ////////////////////////////////////////////
 // await createDBMS();
-// await insertMediaToDB(1, Bun.env['PHOTO_PATH']!);
+// await insertMediaToDB(1, Bun.env.PHOTO_PATH);
 
 // // await backupToDB();
 

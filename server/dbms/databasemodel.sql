@@ -55,7 +55,7 @@ COLLATE = utf8mb4_0900_ai_ci;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`UserGuest` (
   `user_id` SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_name` VARCHAR(45) NULL,
+  `user_name` VARCHAR(45) NULL DEFAULT NULL,
   `user_email` VARCHAR(100) NOT NULL,
   `request_status` TINYINT(1) NULL DEFAULT 0 COMMENT '“Waiting” = 0,  “Approved” = 1',
   `request_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
@@ -72,10 +72,10 @@ COLLATE = utf8mb4_0900_ai_ci;
 CREATE TABLE IF NOT EXISTS `Photos`.`Account` (
   `account_id` SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_email` VARCHAR(100) NOT NULL,
-  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `role_type` ENUM('user', 'admin') NOT NULL DEFAULT 'user',
   `status` ENUM('active', 'suspended') NOT NULL DEFAULT 'active' COMMENT 'ENUM(\'active\', \'suspended\')',
-  `role_type` ENUM('user', 'admin') NOT NULL,
-  `m2f_isEnable` TINYINT(1) NOT NULL DEFAULT 0,
+  `m2f_isEnable` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'If enable, send an email with code to verify login',
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`account_id`),
   INDEX `PKFK_ACCOUNT_USER_EMAIL_idx` (`user_email` ASC) VISIBLE,
   CONSTRAINT `PKFK_ACCOUNT_USER_EMAIL`
@@ -519,7 +519,6 @@ CREATE TABLE IF NOT EXISTS `Photos`.`Passkeys` (
   `cred_id` VARCHAR(50) NOT NULL COMMENT 'base64url string',
   `cred_public_key` BLOB NOT NULL,
   `UserGuest` SMALLINT UNSIGNED NOT NULL,
-  `webauthn_user_id` VARCHAR(50) NOT NULL COMMENT 'base64url string; userHandle during auth',
   `counter` BIGINT NOT NULL,
   `registered_device` ENUM('singleDevice', 'multiDevice') NOT NULL,
   `backup_eligible` TINYINT NOT NULL,
@@ -528,7 +527,7 @@ CREATE TABLE IF NOT EXISTS `Photos`.`Passkeys` (
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `last_used` TIMESTAMP NULL,
   INDEX `FK_USER_PASSKEYS_ID0_idx` (`UserGuest` ASC) VISIBLE,
-  INDEX `UNIQUE_INTERNAL_WEBAUTHN` (`webauthn_user_id` ASC, `UserGuest` ASC) VISIBLE,
+  INDEX `UNIQUE_INTERNAL_WEBAUTHN` (`UserGuest` ASC) VISIBLE,
   PRIMARY KEY (`cred_id`, `UserGuest`),
   CONSTRAINT `FK_USER_PASSKEYS_ID0`
     FOREIGN KEY (`UserGuest`)

@@ -2,6 +2,10 @@ declare module 'bun' {
   interface Env {
     PORT: string;
     MAIN_PATH: string;
+    PHOTO_PATH: string;
+
+    ORIGIN_URL: string;
+    DOMAIN_NAME: string;
 
     COMMAND: string;
     DB_INSERT: string;

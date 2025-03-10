@@ -5,7 +5,7 @@ import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 // SQL Queries
 const Sql = {
   INSERT_GUEST: `INSERT INTO UserGuest (user_name, user_email) VALUES (?, ?)`,
-  INSERT_PASSKEY: `INSERT INTO Passkeys (cred_id, cred_public_key, UserGuest, webauthn_user_id, counter, registered_device, backup_eligible, transports) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  INSERT_PASSKEY: `INSERT INTO Passkeys (cred_id, cred_public_key, UserGuest, counter, registered_device, backup_eligible, transports) VALUES (?, ?, ?, ?, ?, ?, ?)`,
   EXISTS: `SELECT user_id FROM UserGuest WHERE user_email = ?`,
 
   PASSKEYS: `SELECT * FROM Passkeys as pks WHERE pks.UserGuest = (SELECT user_id FROM UserGuest WHERE user_email = (?) LIMIT 1)`,
@@ -31,7 +31,6 @@ const createPasskey = async (
   cred_id: string,
   cred_public_key: Uint8Array,
   UserGuest: number,
-  webauthn_user_id: string,
   counter: number,
   registered_device: string,
   backup_eligible: boolean,
@@ -42,15 +41,14 @@ const createPasskey = async (
       cred_id,
       cred_public_key,
       UserGuest,
-      webauthn_user_id,
       counter,
       registered_device,
       backup_eligible,
       transports,
     ]);
-
     return result[0].affectedRows > 0;
   } catch (error) {
+    console.log(error);
     return null;
   }
 };
@@ -94,4 +92,14 @@ const fetchAllUserGuests = async () => {
 };
 
 // Export All Functions
-export { createUserGuest, userGuestExists, userPassKeyByEmail, updateRequestStatus, deleteUserGuest, fetchAllUserGuests, createPasskey, updatePassKey, userPKsByEmail };
+export {
+  createUserGuest,
+  userGuestExists,
+  userPassKeyByEmail,
+  updateRequestStatus,
+  deleteUserGuest,
+  fetchAllUserGuests,
+  createPasskey,
+  updatePassKey,
+  userPKsByEmail,
+};

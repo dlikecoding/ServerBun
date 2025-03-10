@@ -453,3 +453,20 @@ BEGIN
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
 END$$
+
+-- Auto create an admin if there is no user exist in the db
+DROP TRIGGER IF EXISTS UserGuest_AFTER_INSERT$$
+CREATE TRIGGER UserGuest_AFTER_INSERT AFTER INSERT ON UserGuest 
+FOR EACH ROW
+BEGIN 
+    DECLARE account_exist INT;
+    -- SELECT account_id INTO account_exist FROM Account WHERE role_type = 'admin' LIMIT 1;
+    SELECT account_id INTO account_exist FROM Account LIMIT 1;
+    -- If no user has been create an account, create an admin
+    IF account_exist IS NULL THEN
+        INSERT INTO Account (user_email, role_type)
+        VALUES (NEW.user_email, 'admin');
+    END IF;
+
+END$$ 
+
