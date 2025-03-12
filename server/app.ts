@@ -3,7 +3,6 @@ import { logger } from 'hono/logger';
 import { serveStatic } from 'hono/bun';
 import { secureHeaders } from 'hono/secure-headers';
 import { compress } from 'hono/compress';
-import { basicAuth } from 'hono/basic-auth';
 import { csrf } from 'hono/csrf';
 
 // import { getConnInfo } from 'hono/bun';
@@ -20,23 +19,26 @@ import medias from './routes/medias';
 import media from './routes/media';
 import album from './routes/album';
 
+import { getSignedCookie } from 'hono/cookie';
+import { sessionStore } from './routes/authHelper/cookies';
+
 const app = new Hono();
 
 // DEV MODE - NEED TO REMOVE CORS ///////////////////////////////////
 // CORS should be called before the route
-// app.use(cors());
+app.use(cors());
 
-app.use(
-  '/api/v1/*',
-  cors({
-    origin: 'http://localhost:7979',
-    allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
-    allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
-    exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
-    maxAge: 600,
-    credentials: true,
-  })
-);
+// app.use(
+//   '/api/v1/*',
+//   cors({
+//     origin: 'http://localhost:7979',
+//     allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
+//     allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
+//     exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
+//     maxAge: 600,
+//     credentials: true,
+//   })
+// );
 ///////////////////////////////////
 
 app.use(csrf());
@@ -47,6 +49,46 @@ app.use(secureHeaders());
 // app.use(compress()); // Request must send with "Accept-Encoding" in Header
 
 // app.use('*', logger());
+
+app.route('api/v1/auth', auth);
+
+app.use('*', async (c, next) => {
+  const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, 'auth_token');
+  if (sessionId && sessionStore.has(sessionId)) return await next();
+
+  return c.text('Unauthorized access', 401);
+});
+
+app
+  .basePath('api/v1')
+  .route('/home', home)
+  // .route('/auth', auth)
+  .route('/stream', streamApi)
+  .route('/users', users)
+  .route('/medias', medias)
+  .route('/media', media)
+  .route('/album', album);
+
+/////////////////////////////////
+// app.post
+// app.put
+// app.delete
+
+// app.on('message', (message) => {
+//   if (message.topic === '/hello') {
+//     hono.publish({
+//       topic: message.topic,
+//       data: 'Hello from Hono!',
+//     });
+//   }
+// });
+
+// Serve static files
+app.use('*', serveStatic({ root: Bun.env.MAIN_PATH }));
+app.use('*', serveStatic({ root: './dist' }));
+
+export default app;
+// export type ApiRoutes = typeof apiRoutes;
 
 // const logRequestDetails = async (ctx: any) => {
 //   const { req } = ctx;
@@ -76,11 +118,6 @@ app.use(secureHeaders());
 //   return next();
 // });
 
-// // Encrypt password
-// const password = 'hello@12039aisdoquwe283';
-// const argonHash = await Bun.password.hash(password);
-// console.log(argonHash);
-
 // // use bcrypt
 // const bcryptHash = await Bun.password.hash(password, {
 //   algorithm: 'bcrypt',
@@ -109,32 +146,3 @@ app.use(secureHeaders());
 //   // console.log(info);
 //   return c.json({ homepage: 'YOU ARE HOME' });
 // });
-app
-  .basePath('api/v1')
-  .route('/home', home)
-  .route('/auth', auth)
-  .route('/stream', streamApi)
-  .route('/users', users)
-  .route('/medias', medias)
-  .route('/media', media)
-  .route('/album', album);
-
-// app.post
-// app.put
-// app.delete
-
-// app.on('message', (message) => {
-//   if (message.topic === '/hello') {
-//     hono.publish({
-//       topic: message.topic,
-//       data: 'Hello from Hono!',
-//     });
-//   }
-// });
-
-// Serve static files
-app.use('*', serveStatic({ root: Bun.env.MAIN_PATH }));
-app.use('*', serveStatic({ root: './dist' }));
-
-export default app;
-// export type ApiRoutes = typeof apiRoutes;

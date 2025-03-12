@@ -37,15 +37,14 @@ medias.get(
       } else {
         const yearInt = parseInt(year);
         if (isNaN(yearInt)) {
-          return c.json({ error: 'Invalid year parameter' }, 400);
+          return c.text('Invalid year parameter', 400);
         }
         fetchAllMedia = await fetchMediaOfEachMonth(yearInt);
       }
 
       return c.json(fetchAllMedia);
     } catch (error) {
-      console.error('Error fetching media:', error);
-      return c.json({ error: 'Failed to fetch media' }, 500);
+      return c.text('Failed to fetch media', 500);
     }
   }
 );

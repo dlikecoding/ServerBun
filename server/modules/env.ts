@@ -7,6 +7,8 @@ declare module 'bun' {
     ORIGIN_URL: string;
     DOMAIN_NAME: string;
 
+    SECRET_KEY: string;
+
     COMMAND: string;
     DB_INSERT: string;
     DB_HOST: string;

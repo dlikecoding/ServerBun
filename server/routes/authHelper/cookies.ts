@@ -1,6 +1,11 @@
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
 import type { Context } from 'hono';
+import crypto from 'crypto';
 import { z } from 'zod';
+
+const isNotDevMode: boolean = Bun.env.NODE_ENV !== 'dev';
+
+export const sessionStore = new Map(); // In-memory session store
 
 export const userAuthSchema = z.object({
   username: z
@@ -10,15 +15,36 @@ export const userAuthSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
-export const setSecureCookie = (c: Context, name: string, value: object, secure = false) => {
-  setCookie(c, name, JSON.stringify(value), { httpOnly: true, maxAge: 600, secure });
+export const setSecureCookie = async (c: Context, name: string, value: object) => {
+  await setSignedCookie(c, name, JSON.stringify(value), Bun.env.SECRET_KEY, {
+    httpOnly: true,
+    maxAge: 15, // Only 15s
+    sameSite: isNotDevMode ? 'Strict' : 'Lax',
+    secure: isNotDevMode,
+  });
 };
 
-export const getSecureCookie = (c: Context, name: string) => {
-  const cookie = getCookie(c, name);
-  return cookie ? JSON.parse(cookie) : null;
+export const getSecureCookie = async (c: Context, name: string) => {
+  const cookie = await getSignedCookie(c, Bun.env.SECRET_KEY, name);
+  return cookie && typeof cookie === 'string' ? JSON.parse(cookie) : null;
 };
 
 export const clearCookie = (c: Context, name: string) => {
   deleteCookie(c, name);
+};
+
+const generateSid = () => crypto.randomBytes(32).toString('hex');
+
+export const createAuthSession = async (c: Context, user: object) => {
+  const sessionId = generateSid();
+
+  sessionStore.set(sessionId, { user });
+
+  await setSignedCookie(c, 'auth_token', sessionId, Bun.env.SECRET_KEY, {
+    httpOnly: true,
+    path: '/',
+    maxAge: 24 * 60 * 60, // 1 day expiration
+    sameSite: isNotDevMode ? 'Strict' : 'Lax',
+    secure: isNotDevMode,
+  });
 };

@@ -1,14 +1,9 @@
-import {
-  generateAuthenticationOptions,
-  generateRegistrationOptions,
-  verifyAuthenticationResponse,
-  verifyRegistrationResponse,
-} from '@simplewebauthn/server';
+import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse } from '@simplewebauthn/server';
 import { Hono } from 'hono';
 import { createPasskey, createUserGuest, userPassKeyByEmail, updatePassKey, userGuestExists, userPKsByEmail } from '../db/module/guest';
 
 import { zValidator } from '@hono/zod-validator';
-import { clearCookie, getSecureCookie, setSecureCookie, userAuthSchema } from './authHelper/cookies';
+import { clearCookie, createAuthSession, getSecureCookie, setSecureCookie, userAuthSchema } from './authHelper/cookies';
 import { accountExists } from '../db/module/account';
 
 const auth = new Hono();
@@ -36,7 +31,7 @@ auth.get('/init-register', userValidate, async (c) => {
       },
     });
 
-    setSecureCookie(c, 'regInfo', { username, email, challenge: options.challenge });
+    await setSecureCookie(c, 'regInfo', { username, email, challenge: options.challenge });
 
     return c.json(options, 200);
   } catch (err) {
@@ -46,7 +41,7 @@ auth.get('/init-register', userValidate, async (c) => {
 });
 
 auth.post('/verify-register', async (c) => {
-  const regInfo = getSecureCookie(c, 'regInfo');
+  const regInfo = await getSecureCookie(c, 'regInfo');
   if (!regInfo) return c.json({ error: 'Registration info not found' }, 400);
 
   const reqJson = await c.req.json();
@@ -104,19 +99,19 @@ auth.get('/init-auth', userValidate, async (c) => {
     userVerification: 'required',
   });
 
-  setSecureCookie(c, 'authInfo', { email, challenge: options.challenge });
+  await setSecureCookie(c, 'authInfo', { email, challenge: options.challenge });
 
   return c.json(options, 200);
 });
 
 auth.post('/verify-auth', async (c) => {
-  const authInfo = getSecureCookie(c, 'authInfo');
+  const authInfo = await getSecureCookie(c, 'authInfo');
   if (!authInfo) return c.json({ error: 'Authentication info not found' }, 400);
 
   const userPasskeys = await userPassKeyByEmail(authInfo.email);
   const reqJsonBody = await c.req.json();
 
-  if (!userPasskeys) return c.json({ error: 'Invalid user' }, 400);
+  if (!userPasskeys) return c.json({ error: 'Invalid credentials' }, 401);
 
   let verification;
   try {
@@ -135,7 +130,7 @@ auth.post('/verify-auth', async (c) => {
     });
   } catch (error) {
     console.error(error);
-    return c.json({ error: 'Error verify user' }, 400);
+    return c.text('Unauthorized access', 401);
   }
 
   if (!verification.verified) return c.json({ verified: false, error: 'Verification failed' }, 400);
@@ -143,6 +138,8 @@ auth.post('/verify-auth', async (c) => {
   const updatePKstatus = await updatePassKey(verification.authenticationInfo.newCounter, userPasskeys.cred_id, userPasskeys.UserGuest);
   if (!updatePKstatus) console.log('Update Passkeys status failed!');
   clearCookie(c, 'authInfo');
+
+  await createAuthSession(c, { email: authInfo.email, isAuth: true });
 
   return c.json({ verified: verification.verified });
 });
