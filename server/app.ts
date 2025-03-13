@@ -1,33 +1,31 @@
-import { Hono } from 'hono';
-import { logger } from 'hono/logger';
 import { serveStatic } from 'hono/bun';
-import { secureHeaders } from 'hono/secure-headers';
-import { compress } from 'hono/compress';
-import { csrf } from 'hono/csrf';
+import { getConnInfo } from 'hono/bun';
 
-// import { getConnInfo } from 'hono/bun';
-/////////////////////////////
+import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { csrf } from 'hono/csrf';
+import { logger } from 'hono/logger';
+import { compress } from 'hono/compress';
+import { getSignedCookie } from 'hono/cookie';
+import { secureHeaders } from 'hono/secure-headers';
 
 // ===============================
-import home from './routes/medias';
-
+import { sessionStore } from './routes/authHelper/cookies';
 import auth from './routes/auth';
+
+import home from './routes/medias';
 import users from './routes/users';
 import streamApi from './routes/stream';
 import medias from './routes/medias';
 import media from './routes/media';
 import album from './routes/album';
 
-import { getSignedCookie } from 'hono/cookie';
-import { sessionStore } from './routes/authHelper/cookies';
-
 const app = new Hono();
 
 // DEV MODE - NEED TO REMOVE CORS ///////////////////////////////////
 // CORS should be called before the route
+app.use(csrf());
 app.use(cors());
-
 // app.use(
 //   '/api/v1/*',
 //   cors({
@@ -39,9 +37,6 @@ app.use(cors());
 //     credentials: true,
 //   })
 // );
-///////////////////////////////////
-
-app.use(csrf());
 
 // https://hono.dev/docs/middleware/builtin/secure-headers#secure-headers-middleware
 app.use(secureHeaders());
@@ -50,6 +45,7 @@ app.use(secureHeaders());
 
 // app.use('*', logger());
 
+/////////// IMPORTANT Manage login //////////////////////////////
 app.route('api/v1/auth', auth);
 
 app.use('*', async (c, next) => {
@@ -61,8 +57,8 @@ app.use('*', async (c, next) => {
 
 app
   .basePath('api/v1')
-  .route('/home', home)
   // .route('/auth', auth)
+  .route('/home', home)
   .route('/stream', streamApi)
   .route('/users', users)
   .route('/medias', medias)

@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { createAlbum, fetchAddToAlbum, fetchAlbums } from '../db/module/media';
 import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
+
+import { validateSchema } from '../modules/validate';
 
 const album = new Hono();
 
@@ -15,26 +16,18 @@ const addAlbumSchema = z.object({
   albumTitle: z.string().optional(),
 });
 
-album.put(
-  '/add',
-  zValidator('json', addAlbumSchema, (result, c) => {
-    if (!result.success) {
-      return c.text('Invalid!', 400);
-    }
-  }),
-  async (c) => {
-    const { mediaIds, albumId, albumTitle } = c.req.valid('json');
+album.put('/add', validateSchema('json', addAlbumSchema), async (c) => {
+  const { mediaIds, albumId, albumTitle } = c.req.valid('json');
 
-    if (!albumId && !albumTitle) return c.json({ message: 'Missing albumId or albumTitle' }, 400);
+  if (!albumId && !albumTitle) return c.text('Missing Album ID or Album Title', 400);
 
-    const targetAlbumId = !albumId && albumTitle ? await createAlbum(albumTitle) : albumId;
+  const targetAlbumId = !albumId && albumTitle ? await createAlbum(albumTitle) : albumId;
 
-    if (targetAlbumId) {
-      await fetchAddToAlbum(mediaIds, targetAlbumId);
-      return c.json({ message: 'Success' }, 204);
-    }
-    return c.json({ message: 'Album creation failed' }, 500);
+  if (targetAlbumId) {
+    await fetchAddToAlbum(mediaIds, targetAlbumId);
+    return c.text('Success', 204);
   }
-);
+  return c.text('Album creation failed', 500);
+});
 
 export default album;

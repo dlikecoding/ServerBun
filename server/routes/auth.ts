@@ -2,18 +2,14 @@ import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthe
 import { Hono } from 'hono';
 import { createPasskey, createUserGuest, userPassKeyByEmail, updatePassKey, userGuestExists, userPKsByEmail } from '../db/module/guest';
 
-import { zValidator } from '@hono/zod-validator';
 import { clearCookie, createAuthSession, getSecureCookie, setSecureCookie, userAuthSchema } from './authHelper/cookies';
 import { accountExists } from '../db/module/account';
+import { validateSchema } from '../modules/validate';
 
 const auth = new Hono();
 const WEBSITE_TITLE = 'Photos Gallery X';
 
-const userValidate = zValidator('query', userAuthSchema, (result, c) => {
-  if (!result.success) return c.json({ error: result.error.errors[0]?.message }, 400);
-});
-
-auth.get('/init-register', userValidate, async (c) => {
+auth.get('/init-register', validateSchema('query', userAuthSchema), async (c) => {
   try {
     const { username, email } = c.req.valid('query');
     if (!email) return c.json({ error: 'Email is required' }, 400);
@@ -77,7 +73,7 @@ auth.post('/verify-register', async (c) => {
   return c.json({ verified: verification.verified }, 200);
 });
 
-auth.get('/init-auth', userValidate, async (c) => {
+auth.get('/init-auth', validateSchema('query', userAuthSchema), async (c) => {
   const { email } = c.req.valid('query');
   if (!email) return c.json({ error: 'Email is required' }, 400);
 
