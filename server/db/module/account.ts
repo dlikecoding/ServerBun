@@ -2,88 +2,17 @@ import { poolPromise } from '..';
 
 // SQL Queries
 const Sql = {
-  INSERT: `
-    INSERT INTO Photos.Account 
-    (user_email, password, status, role_type, m2f_isEnable, public_key) 
-    VALUES (?, ?, 'active', 'user', 0, NULL)
-  `,
-  EXISTS: `
-    SELECT account_id FROM Photos.Account 
-    WHERE user_email = ?
-  `,
-  FIND_BY_EMAIL: `
-    SELECT * FROM Photos.Account 
-    WHERE user_email = ?
-  `,
-  UPDATE_EMAIL: `
-    UPDATE Photos.Account 
-    SET user_email = ? 
-    WHERE account_id = ?
-  `,
-  UPDATE_PASSWORD: `
-    UPDATE Photos.Account 
-    SET password = ? 
-    WHERE account_id = ?
-  `,
-  UPDATE_STATUS: `
-    UPDATE Photos.Account 
-    SET status = ? 
-    WHERE account_id = ?
-  `,
-  DELETE: `
-    DELETE FROM Photos.Account 
-    WHERE account_id = ?
-  `,
-  FETCH_ALL: `
-    SELECT account_id, user_email, status, role_type, created_at 
-    FROM Photos.Account
-  `,
-  ENABLE_M2FA: `
-    UPDATE Photos.Account 
-    SET m2f_isEnable = 1, public_key = ? 
-    WHERE account_id = ?
-  `,
-};
+  EXISTS: `SELECT account_id FROM Photos.Account WHERE user_email = ?`,
+  FIND_BY_EMAIL: `SELECT * FROM Account WHERE user_email = ?`,
 
-// userService.js
-export const getUserById = async (id: any) => {
-  poolPromise.getConnection;
-  const [user] = await poolPromise.execute('SELECT * FROM Account WHERE account_id = ?', [id]);
-  console.log(user);
-  poolPromise.releaseConnection;
-  return user;
-};
+  INSERT: `INSERT INTO Photos.Account (user_email, password, status, role_type, m2f_isEnable, public_key) VALUES (?, ?, 'active', 'user', 0, NULL)`,
 
-// Utility Functions
-const hashPassword = async (password: string): Promise<string> => {
-  return await Bun.password.hash(password, {
-    algorithm: 'bcrypt',
-    cost: 4, // number between 4-31
-  });
-};
-
-const verifyPassword = async (password: string, hash: string): Promise<boolean> => {
-  return await Bun.password.verify(password, hash);
-};
-
-const generatePublicKey = async (): Promise<string> => {
-  return await Bun.password.hash(Date.now().toString());
-};
-
-// User Management Functions
-const createAccount = async (user_email: string, password: string) => {
-  const hashedPassword = await hashPassword(password);
-
-  const [result] = await poolPromise.execute(Sql.INSERT, [user_email, hashedPassword]);
-  const insertedId = (result as any).insertId;
-
-  return {
-    account_id: insertedId,
-    user_email,
-    status: 'active',
-    role_type: 'user',
-    m2f_isEnable: 0,
-  };
+  UPDATE_EMAIL: `UPDATE Photos.Account SET user_email = ? WHERE account_id = ?`,
+  UPDATE_PASSWORD: `UPDATE Photos.Account SET password = ? WHERE account_id = ?`,
+  UPDATE_STATUS: `UPDATE Photos.Account SET status = ? WHERE account_id = ?`,
+  DELETE: `DELETE FROM Photos.Account WHERE account_id = ?`,
+  FETCH_ALL: `SELECT account_id, user_email, status, role_type, created_at FROM Photos.Account`,
+  ENABLE_M2FA: `UPDATE Photos.Account SET m2f_isEnable = 1, public_key = ? WHERE account_id = ?`,
 };
 
 const accountExists = async (user_email: string): Promise<boolean> => {
@@ -99,56 +28,105 @@ const findAccountByEmail = async (user_email: string) => {
   return (rows as any)[0];
 };
 
-const updateAccountEmail = async (account_id: number, newEmail: string) => {
-  await poolPromise.execute(Sql.UPDATE_EMAIL, [newEmail, account_id]);
-  return { account_id, newEmail };
-};
-
-const updateAccountPassword = async (account_id: number, newPassword: string) => {
-  const hashedPassword = await hashPassword(newPassword);
-  await poolPromise.execute(Sql.UPDATE_PASSWORD, [hashedPassword, account_id]);
-  return { account_id };
-};
-
-const updateAccountStatus = async (account_id: number, status: 'active' | 'suspended' | 'deleted') => {
-  await poolPromise.execute(Sql.UPDATE_STATUS, [status, account_id]);
-  return { account_id, status };
-};
-
-const deleteAccount = async (account_id: number) => {
-  await poolPromise.execute(Sql.DELETE, [account_id]);
-  return { message: `Account with ID ${account_id} deleted` };
-};
-
-const fetchAllAccounts = async () => {
-  const [rows] = await poolPromise.execute(Sql.FETCH_ALL);
-  return rows as any[];
-};
-
-const authenticateAccount = async (user_email: string, password: string) => {
-  const account = await findAccountByEmail(user_email);
-
-  if (account.status !== 'active') {
-    throw new Error('Account is not active');
-  }
-
-  const isPasswordValid = await verifyPassword(password, account.password);
-  if (!isPasswordValid) {
-    throw new Error('Invalid email or password');
-  }
-
-  return {
-    account_id: account.account_id,
-    user_email: account.user_email,
-    role_type: account.role_type,
-  };
-};
-
-const enableM2FA = async (account_id: number) => {
-  const publicKey = generatePublicKey();
-  await poolPromise.execute(Sql.ENABLE_M2FA, [publicKey, account_id]);
-  return { account_id, m2f_isEnable: 1, publicKey };
-};
-
 // Export All Functions
-export { createAccount, accountExists, findAccountByEmail, updateAccountEmail, updateAccountPassword, updateAccountStatus, deleteAccount, fetchAllAccounts, authenticateAccount, enableM2FA };
+export {
+  accountExists,
+  findAccountByEmail,
+  // createAccount,
+  // updateAccountEmail,
+  // updateAccountPassword,
+  // updateAccountStatus,
+  // deleteAccount,
+  // fetchAllAccounts,
+  // authenticateAccount,
+  // enableM2FA,
+};
+
+// // userService.js
+// export const getUserById = async (id: any) => {
+//   const [user] = await poolPromise.execute('SELECT * FROM Account WHERE email = ?', [id]);
+//   return (user as any)[0];
+// };
+
+// // Utility Functions
+// const hashPassword = async (password: string): Promise<string> => {
+//   return await Bun.password.hash(password, {
+//  algorithm: 'bcrypt',
+//  cost: 4, // number between 4-31
+//   });
+// };
+
+// const verifyPassword = async (password: string, hash: string): Promise<boolean> => {
+//   return await Bun.password.verify(password, hash);
+// };
+
+// const generatePublicKey = async (): Promise<string> => {
+//   return await Bun.password.hash(Date.now().toString());
+// };
+
+// // User Management Functions
+// const createAccount = async (user_email: string, password: string) => {
+//   const hashedPassword = await hashPassword(password);
+
+//   const [result] = await poolPromise.execute(Sql.INSERT, [user_email, hashedPassword]);
+//   const insertedId = (result as any).insertId;
+
+//   return {
+//  account_id: insertedId,
+//  user_email,
+//  status: 'active',
+//  role_type: 'user',
+//  m2f_isEnable: 0,
+//   };
+// };
+
+// const updateAccountEmail = async (account_id: number, newEmail: string) => {
+//   await poolPromise.execute(Sql.UPDATE_EMAIL, [newEmail, account_id]);
+//   return { account_id, newEmail };
+// };
+
+// const updateAccountPassword = async (account_id: number, newPassword: string) => {
+//   const hashedPassword = await hashPassword(newPassword);
+//   await poolPromise.execute(Sql.UPDATE_PASSWORD, [hashedPassword, account_id]);
+//   return { account_id };
+// };
+
+// const updateAccountStatus = async (account_id: number, status: 'active' | 'suspended' | 'deleted') => {
+//   await poolPromise.execute(Sql.UPDATE_STATUS, [status, account_id]);
+//   return { account_id, status };
+// };
+
+// const deleteAccount = async (account_id: number) => {
+//   await poolPromise.execute(Sql.DELETE, [account_id]);
+//   return { message: `Account with ID ${account_id} deleted` };
+// };
+
+// const fetchAllAccounts = async () => {
+//   const [rows] = await poolPromise.execute(Sql.FETCH_ALL);
+//   return rows as any[];
+// };
+
+// const authenticateAccount = async (user_email: string, password: string) => {
+//   const account = await findAccountByEmail(user_email);
+
+//   if (account.status !== 'active') {
+//  throw new Error('Account is not active');
+//   }
+
+//   const isPasswordValid = await verifyPassword(password, account.password);
+//   if (!isPasswordValid) {
+//  throw new Error('Invalid email or password');
+//   }
+
+//   return {
+//  account_id: account.account_id,
+//  user_email: account.user_email,
+//  role_type: account.role_type,
+//   };
+// };
+
+// const enableM2FA = async (account_id: number) => {
+//   const publicKey = generatePublicKey();
+//   await poolPromise.execute(Sql.ENABLE_M2FA, [publicKey, account_id]);
+//   return { account_id, m2f_isEnable: 1, publicKey };
+// };

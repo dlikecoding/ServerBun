@@ -6,7 +6,7 @@ import { validateSchema } from '../modules/validate';
 
 const medias = new Hono();
 
-// // Make sure all of id is numbers
+// Make sure all of id is numbers
 // medias.get('/:id{[0-9]+}', (c) => {
 //   return c.json({ homepage: 'YOU ARE HOME' });
 // });

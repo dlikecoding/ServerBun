@@ -2,7 +2,7 @@ import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthe
 import { Hono } from 'hono';
 import { createPasskey, createUserGuest, userPassKeyByEmail, updatePassKey, userGuestExists, userPKsByEmail } from '../db/module/guest';
 
-import { clearCookie, createAuthSession, getSecureCookie, setSecureCookie, userAuthSchema } from './authHelper/cookies';
+import { clearCookie, createAuthSession, getSecureCookie, setSecureCookie, userAuthSchema } from './authHelper/_cookies';
 import { accountExists } from '../db/module/account';
 import { validateSchema } from '../modules/validate';
 

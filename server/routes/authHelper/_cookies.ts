@@ -2,6 +2,7 @@ import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
 import type { Context } from 'hono';
 import crypto from 'crypto';
 import { z } from 'zod';
+import { createMiddleware } from 'hono/factory';
 
 const isNotDevMode: boolean = Bun.env.NODE_ENV !== 'dev';
 
@@ -48,3 +49,13 @@ export const createAuthSession = async (c: Context, user: object) => {
     secure: isNotDevMode,
   });
 };
+
+export const isAuthenticate = createMiddleware(async (c, next) => {
+  const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, 'auth_token');
+  if (sessionId && sessionStore.has(sessionId)) return await next();
+  return c.text('Unauthorized access', 401);
+  // serveStatic({ root: './dist' });
+  // return serveStatic({ path: './dist/index.html' })(c, next);
+
+  // return c.redirect('./dist/index.html');
+});

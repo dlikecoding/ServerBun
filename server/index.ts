@@ -1,6 +1,6 @@
 import app from './app';
 import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
-import { accountExists, getUserById } from './db/module/account';
+import { accountExists } from './db/module/account';
 import { createUserGuest } from './db/module/guest';
 import { createThumbnails } from './service/createThumb';
 import { createHashs } from './service/generateSHA';

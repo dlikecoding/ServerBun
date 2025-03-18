@@ -1,33 +1,33 @@
 import { serveStatic } from 'hono/bun';
-import { getConnInfo } from 'hono/bun';
+// import { getConnInfo } from 'hono/bun';
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { csrf } from 'hono/csrf';
 import { logger } from 'hono/logger';
-import { compress } from 'hono/compress';
-import { getSignedCookie } from 'hono/cookie';
+// import { compress } from 'hono/compress';
+// import { getSignedCookie } from 'hono/cookie';
 import { secureHeaders } from 'hono/secure-headers';
 
 // ===============================
-import { sessionStore } from './routes/authHelper/cookies';
+import { isAuthenticate, sessionStore } from './routes/authHelper/_cookies';
 import auth from './routes/auth';
 
-import home from './routes/medias';
 import users from './routes/users';
 import streamApi from './routes/stream';
 import medias from './routes/medias';
-import media from './routes/media';
+// import media from './routes/media';
 import album from './routes/album';
 
 const app = new Hono();
 
+app.use(csrf());
+
 // DEV MODE - NEED TO REMOVE CORS ///////////////////////////////////
 // CORS should be called before the route
-app.use(csrf());
-app.use(cors());
 // app.use(
-//   '/api/v1/*',
+//   '/*',
+//   // '/api/v1/*',
 //   cors({
 //     origin: 'http://localhost:7979',
 //     allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
@@ -43,27 +43,51 @@ app.use(secureHeaders());
 // https://hono.dev/docs/middleware/builtin/compress
 // app.use(compress()); // Request must send with "Accept-Encoding" in Header
 
-// app.use('*', logger());
+/////////////////////////////////////////////////////////////////////////////
+// app.get('/library/all', (c) => {
+//   return c.redirect('/library/all');
+// });
+
+/////////// IMPORTANT Security allow connection //////////////////////////////
+
+app.use('*', logger());
+// app.use('*', async (c, next) => {
+//   const info = getConnInfo(c); // info is `ConnInfo`
+
+//   // Can refuse access for certain IP address.
+//   console.log(`Your remote address is ${info.remote.address}`);
+
+//   return await next();
+// });
 
 /////////// IMPORTANT Manage login //////////////////////////////
-app.route('api/v1/auth', auth);
-
-app.use('*', async (c, next) => {
-  const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, 'auth_token');
-  if (sessionId && sessionStore.has(sessionId)) return await next();
-
-  return c.text('Unauthorized access', 401);
-});
+// app.route('api/v1/auth', auth);
+// app.use(isAuthenticate);
+// app.use('*', async (c, next) => {
+//   const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, 'auth_token');
+//   if (sessionId && sessionStore.has(sessionId)) return await next();
+//   return c.text('Unauthorized access', 401);
+// });
 
 app
   .basePath('api/v1')
-  // .route('/auth', auth)
-  .route('/home', home)
+  .route('/auth', auth)
+  .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
   .route('/stream', streamApi)
   .route('/users', users)
   .route('/medias', medias)
-  .route('/media', media)
   .route('/album', album);
+
+// Catch-all for protected API routes
+app.get('/Thumbnails/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+app.get('/importPhotos/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+app.get('/StoreUpload/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+// app.get('/Thumbnails/*', serveStatic({ root: Bun.env.MAIN_PATH }));
+// app.get('/Thumbnails/*', serveStatic({ root: '/Users/danishmc/Downloads/mediaTestFolder/Thumbnails' }));
+
+// Serve static files first (without authentication)
+app.get('*', serveStatic({ root: './dist' }));
+app.get('*', serveStatic({ path: './dist/index.html' }));
 
 /////////////////////////////////
 // app.post
@@ -80,10 +104,9 @@ app
 // });
 
 // Serve static files
-app.use('*', serveStatic({ root: Bun.env.MAIN_PATH }));
-app.use('*', serveStatic({ root: './dist' }));
 
 export default app;
+
 // export type ApiRoutes = typeof apiRoutes;
 
 // const logRequestDetails = async (ctx: any) => {
