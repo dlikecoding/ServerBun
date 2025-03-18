@@ -10,7 +10,7 @@ import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 
 // ===============================
-import { isAuthenticate, sessionStore } from './routes/authHelper/_cookies';
+import { isAuthenticate } from './routes/authHelper/_cookies';
 import auth from './routes/auth';
 
 import users from './routes/users';
@@ -43,13 +43,7 @@ app.use(secureHeaders());
 // https://hono.dev/docs/middleware/builtin/compress
 // app.use(compress()); // Request must send with "Accept-Encoding" in Header
 
-/////////////////////////////////////////////////////////////////////////////
-// app.get('/library/all', (c) => {
-//   return c.redirect('/library/all');
-// });
-
 /////////// IMPORTANT Security allow connection //////////////////////////////
-
 app.use('*', logger());
 // app.use('*', async (c, next) => {
 //   const info = getConnInfo(c); // info is `ConnInfo`
@@ -58,15 +52,6 @@ app.use('*', logger());
 //   console.log(`Your remote address is ${info.remote.address}`);
 
 //   return await next();
-// });
-
-/////////// IMPORTANT Manage login //////////////////////////////
-// app.route('api/v1/auth', auth);
-// app.use(isAuthenticate);
-// app.use('*', async (c, next) => {
-//   const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, 'auth_token');
-//   if (sessionId && sessionStore.has(sessionId)) return await next();
-//   return c.text('Unauthorized access', 401);
 // });
 
 app
@@ -79,31 +64,15 @@ app
   .route('/album', album);
 
 // Catch-all for protected API routes
-app.get('/Thumbnails/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-app.get('/importPhotos/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-app.get('/StoreUpload/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-// app.get('/Thumbnails/*', serveStatic({ root: Bun.env.MAIN_PATH }));
-// app.get('/Thumbnails/*', serveStatic({ root: '/Users/danishmc/Downloads/mediaTestFolder/Thumbnails' }));
+// app.get('/Thumbnails/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+// app.get('/importPhotos/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+// app.get('/StoreUpload/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+
+app.on('GET', ['/Thumbnails/*', '/importPhotos/*', '/StoreUpload/*'], isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
 
 // Serve static files first (without authentication)
 app.get('*', serveStatic({ root: './dist' }));
 app.get('*', serveStatic({ path: './dist/index.html' }));
-
-/////////////////////////////////
-// app.post
-// app.put
-// app.delete
-
-// app.on('message', (message) => {
-//   if (message.topic === '/hello') {
-//     hono.publish({
-//       topic: message.topic,
-//       data: 'Hello from Hono!',
-//     });
-//   }
-// });
-
-// Serve static files
 
 export default app;
 
@@ -164,4 +133,24 @@ export default app;
 //   // console.log(c.req.header());
 //   // console.log(info);
 //   return c.json({ homepage: 'YOU ARE HOME' });
+// });
+
+/////////// IMPORTANT Manage login //////////////////////////////
+// app.route('api/v1/auth', auth);
+// app.use(isAuthenticate);
+// app.use('*', async (c, next) => {
+//   const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, 'auth_token');
+//   if (sessionId && sessionStore.has(sessionId)) return await next();
+//   return c.text('Unauthorized access', 401);
+// });
+
+/////////////////////////////////
+
+// app.on('message', (message) => {
+//   if (message.topic === '/hello') {
+//     hono.publish({
+//       topic: message.topic,
+//       data: 'Hello from Hono!',
+//     });
+//   }
 // });
