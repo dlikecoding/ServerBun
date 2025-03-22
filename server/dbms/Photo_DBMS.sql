@@ -11,7 +11,6 @@ DROP TRIGGER IF EXISTS Media_BEFORE_UPDATE$$
 CREATE TRIGGER Media_BEFORE_UPDATE BEFORE UPDATE ON Media
 FOR EACH ROW
 BEGIN
-
     -- Set DeletionDate to NOW() if Deleted changes to 1, otherwise set to NULL
     IF OLD.Deleted <> NEW.Deleted THEN
         SET NEW.DeletionDate = IF(NEW.Deleted = 1, NOW(), NULL);
@@ -20,31 +19,36 @@ BEGIN
             SET NEW.Favorite = 0;
         END IF;
     END IF;
-
 END$$
 
 -- ====================================================================================
-DROP TRIGGER IF EXISTS Account_BEFORE_INSERT$$
-CREATE TRIGGER Account_BEFORE_INSERT
-BEFORE INSERT ON Account
+-- -- Auto create an admin if there is no user exist in the db
+
+-- DROP PROCEDURE IF EXISTS CreateAdmin$$
+-- CREATE PROCEDURE CreateAdmin(IN uEmail VARCHAR(100))
+-- BEGIN
+--     IF NOT EXISTS (SELECT 1 FROM Account LIMIT 1) THEN
+--         INSERT INTO Account (user_email, role_type) VALUES (uEmail, 'admin');
+--     END IF;
+-- END $$
+
+-- DROP TRIGGER IF EXISTS UserGuest_BEFORE_INSERT$$
+-- CREATE TRIGGER UserGuest_BEFORE_INSERT AFTER INSERT ON UserGuest 
+-- FOR EACH ROW
+-- BEGIN
+--     IF NOT EXISTS (SELECT 1 FROM Account LIMIT 1) THEN
+--         INSERT INTO Account (user_email, role_type)
+--         VALUES (NEW.user_email, 'admin');
+--     END IF;
+-- END$$
+
+
+DROP TRIGGER IF EXISTS Account_AFTER_INSERT$$
+CREATE TRIGGER Account_AFTER_INSERT AFTER INSERT ON Account 
 FOR EACH ROW
 BEGIN
-    DECLARE admin_exists INT;
-
-    -- Check if an admin account already exists
-    SELECT COUNT(*) INTO admin_exists FROM Account WHERE role_type = 'admin';
-
-    -- If NEW account is admin and an admin already exists, block the insert
-    IF NEW.role_type = 'admin' AND admin_exists > 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Admin already exists, insert is prevented';
-    END IF;
-
-    -- If NEW account is not admin and no admin exists, block the insert
-    IF NEW.role_type <> 'admin' AND admin_exists = 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No admin exists, please create an admin account first';
-    END IF;
+    UPDATE UserGuest SET request_status = 1 WHERE user_email = NEW.user_email;
 END$$
-
 
 /*
     Business Requirement #1
@@ -453,20 +457,4 @@ BEGIN
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
 END$$
-
--- Auto create an admin if there is no user exist in the db
-DROP TRIGGER IF EXISTS UserGuest_AFTER_INSERT$$
-CREATE TRIGGER UserGuest_AFTER_INSERT AFTER INSERT ON UserGuest 
-FOR EACH ROW
-BEGIN 
-    DECLARE account_exist INT;
-    -- SELECT account_id INTO account_exist FROM Account WHERE role_type = 'admin' LIMIT 1;
-    SELECT account_id INTO account_exist FROM Account LIMIT 1;
-    -- If no user has been create an account, create an admin
-    IF account_exist IS NULL THEN
-        INSERT INTO Account (user_email, role_type)
-        VALUES (NEW.user_email, 'admin');
-    END IF;
-
-END$$ 
 

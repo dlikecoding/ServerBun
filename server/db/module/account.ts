@@ -1,23 +1,46 @@
+import type { FieldPacket, ResultSetHeader } from 'mysql2/promise';
 import { poolPromise } from '..';
 
 // SQL Queries
 const Sql = {
-  EXISTS: `SELECT account_id FROM Photos.Account WHERE user_email = ?`,
+  EXISTS: `SELECT account_id FROM Account WHERE user_email = ?`,
   FIND_BY_EMAIL: `SELECT * FROM Account WHERE user_email = ?`,
 
-  INSERT: `INSERT INTO Photos.Account (user_email, password, status, role_type, m2f_isEnable, public_key) VALUES (?, ?, 'active', 'user', 0, NULL)`,
+  CREATE_ADMIN: `CALL CreateAdmin(?)`,
+  INSERT: `INSERT INTO Account (user_email, role_type) VALUES (?, ?)`,
 
-  UPDATE_EMAIL: `UPDATE Photos.Account SET user_email = ? WHERE account_id = ?`,
-  UPDATE_PASSWORD: `UPDATE Photos.Account SET password = ? WHERE account_id = ?`,
-  UPDATE_STATUS: `UPDATE Photos.Account SET status = ? WHERE account_id = ?`,
-  DELETE: `DELETE FROM Photos.Account WHERE account_id = ?`,
-  FETCH_ALL: `SELECT account_id, user_email, status, role_type, created_at FROM Photos.Account`,
-  ENABLE_M2FA: `UPDATE Photos.Account SET m2f_isEnable = 1, public_key = ? WHERE account_id = ?`,
+  // UPDATE_EMAIL: `UPDATE Account SET user_email = ? WHERE account_id = ?`,
+  // UPDATE_STATUS: `UPDATE Account SET status = ? WHERE account_id = ?`,
+  DELETE: `DELETE FROM Account WHERE account_id = ?`,
+  FETCH_ALL: `SELECT account_id, user_email, status, role_type, created_at FROM Account`,
+  ENABLE_M2FA: `UPDATE Account SET m2f_isEnable = 1, public_key = ? WHERE account_id = ?`,
 };
 
 const accountExists = async (user_email: string): Promise<boolean> => {
   const [rows] = await poolPromise.execute(Sql.EXISTS, [user_email]);
   return (rows as any).length > 0;
+};
+
+const createAdminAcc = async (user_email: string) => {
+  const [rows] = await poolPromise.execute(`SELECT account_id FROM Account LIMIT 1`);
+  if ((rows as any).length > 0) return (rows as any)[0];
+
+  return await createAccount(user_email, 'admin');
+};
+
+const createAccount = async (user_email: string, role_type: string = 'user') => {
+  const connection = await poolPromise.getConnection();
+  try {
+    await connection.beginTransaction();
+    const result: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.INSERT, [user_email, role_type]);
+    await connection.commit();
+
+    return result[0].affectedRows > 0;
+  } catch (error) {
+    if (connection) await connection.rollback();
+  } finally {
+    if (connection) connection.release();
+  }
 };
 
 const findAccountByEmail = async (user_email: string) => {
@@ -32,6 +55,8 @@ const findAccountByEmail = async (user_email: string) => {
 export {
   accountExists,
   findAccountByEmail,
+  createAdminAcc,
+
   // createAccount,
   // updateAccountEmail,
   // updateAccountPassword,

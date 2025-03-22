@@ -1,6 +1,8 @@
 key.pem
 cert.pem
 
+/serverBunX
+
 .*
 
 # Logs

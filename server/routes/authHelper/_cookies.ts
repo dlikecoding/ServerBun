@@ -3,8 +3,17 @@ import type { Context } from 'hono';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { createMiddleware } from 'hono/factory';
+import { isNotDevMode } from '../..';
 
-const isNotDevMode: boolean = Bun.env.NODE_ENV !== 'dev';
+const SESSION_KEY = 'auth_token';
+
+export interface UserType {
+  userEmail: string;
+  userName: string;
+  roleType: string;
+  status: string;
+  credId: string;
+}
 
 export const sessionStore = new Map(); // In-memory session store
 
@@ -34,14 +43,13 @@ export const clearCookie = (c: Context, name: string) => {
   deleteCookie(c, name);
 };
 
-const generateSid = () => crypto.randomBytes(32).toString('hex');
+export const createAuthSession = async (c: Context, user: UserType) => {
+  deleteOldSession(user);
 
-export const createAuthSession = async (c: Context, user: object) => {
   const sessionId = generateSid();
+  sessionStore.set(sessionId, user);
 
-  sessionStore.set(sessionId, { user });
-
-  await setSignedCookie(c, 'auth_token', sessionId, Bun.env.SECRET_KEY, {
+  await setSignedCookie(c, SESSION_KEY, sessionId, Bun.env.SECRET_KEY, {
     httpOnly: true,
     path: '/',
     maxAge: 24 * 60 * 60, // 1 day expiration
@@ -51,11 +59,24 @@ export const createAuthSession = async (c: Context, user: object) => {
 };
 
 export const isAuthenticate = createMiddleware(async (c, next) => {
-  const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, 'auth_token');
+  const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, SESSION_KEY);
   if (sessionId && sessionStore.has(sessionId)) return await next();
   return c.text('Unauthorized access', 401);
-  // serveStatic({ root: './dist' });
-  // return serveStatic({ path: './dist/index.html' })(c, next);
-
-  // return c.redirect('./dist/index.html');
 });
+
+export const logoutUser = createMiddleware(async (c, next) => {
+  const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, SESSION_KEY);
+  if (!sessionId || !sessionStore.has(sessionId)) return c.text('Unauthorized access', 401);
+  sessionStore.delete(sessionId);
+  deleteCookie(c, SESSION_KEY);
+  return await next();
+});
+
+const generateSid = () => crypto.randomBytes(32).toString('hex');
+
+/** Remove old session everytime a user relogin to the server */
+const deleteOldSession = (user: UserType) => {
+  sessionStore.forEach((userValue: UserType, sessionId: string) => {
+    if (userValue.userEmail === user.userEmail) sessionStore.delete(sessionId); // console.log(`${sessionId}: ${userValue.email}`);
+  });
+};

@@ -6,7 +6,6 @@ import { cors } from 'hono/cors';
 import { csrf } from 'hono/csrf';
 import { logger } from 'hono/logger';
 // import { compress } from 'hono/compress';
-// import { getSignedCookie } from 'hono/cookie';
 import { secureHeaders } from 'hono/secure-headers';
 
 // ===============================
@@ -25,18 +24,17 @@ app.use(csrf());
 
 // DEV MODE - NEED TO REMOVE CORS ///////////////////////////////////
 // CORS should be called before the route
-// app.use(
-//   '/*',
-//   // '/api/v1/*',
-//   cors({
-//     origin: 'http://localhost:7979',
-//     allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
-//     allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
-//     exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
-//     maxAge: 600,
-//     credentials: true,
-//   })
-// );
+app.use(
+  '/*',
+  cors({
+    origin: 'http://localhost:7979',
+    allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
+    allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
+    exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
+    maxAge: 600,
+    credentials: true,
+  })
+);
 
 // https://hono.dev/docs/middleware/builtin/secure-headers#secure-headers-middleware
 app.use(secureHeaders());
@@ -64,10 +62,6 @@ app
   .route('/album', album);
 
 // Catch-all for protected API routes
-// app.get('/Thumbnails/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-// app.get('/importPhotos/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-// app.get('/StoreUpload/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-
 app.on('GET', ['/Thumbnails/*', '/importPhotos/*', '/StoreUpload/*'], isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
 
 // Serve static files first (without authentication)
@@ -143,6 +137,10 @@ export default app;
 //   if (sessionId && sessionStore.has(sessionId)) return await next();
 //   return c.text('Unauthorized access', 401);
 // });
+
+// app.get('/Thumbnails/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+// app.get('/importPhotos/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+// app.get('/StoreUpload/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
 
 /////////////////////////////////
 

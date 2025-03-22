@@ -1,16 +1,21 @@
 import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse } from '@simplewebauthn/server';
 import { Hono } from 'hono';
-import { createPasskey, createUserGuest, userPassKeyByEmail, updatePassKey, userGuestExists, userPKsByEmail } from '../db/module/guest';
+import { createPasskey, createUserGuest, userPassKeyByEmail, userGuestExists, countWaiting } from '../db/module/guest';
 
-import { clearCookie, createAuthSession, getSecureCookie, setSecureCookie, userAuthSchema } from './authHelper/_cookies';
-import { accountExists } from '../db/module/account';
+import { clearCookie, createAuthSession, getSecureCookie, logoutUser, setSecureCookie, userAuthSchema, type UserType } from './authHelper/_cookies';
+import { accountExists, createAdminAcc } from '../db/module/account';
 import { validateSchema } from '../modules/validate';
 
 const auth = new Hono();
 const WEBSITE_TITLE = 'Photos Gallery X';
 
+const LIMIT_NUMBER_REGISTER = 3; // Limit number of user can register for an account
+
 auth.get('/init-register', validateSchema('query', userAuthSchema), async (c) => {
   try {
+    const result = await countWaiting(); // if userGuest wating status is >= N, return reach limit.
+    if (result.waiting >= LIMIT_NUMBER_REGISTER) return c.json({ error: 'User creation have reached limited.' }, 400);
+
     const { username, email } = c.req.valid('query');
     if (!email) return c.json({ error: 'Email is required' }, 400);
 
@@ -58,6 +63,10 @@ auth.post('/verify-register', async (c) => {
   const lastInsertId = await createUserGuest(regInfo.username, regInfo.email);
   if (!lastInsertId) return c.json({ error: 'User creation failed' }, 400);
 
+  // if no account exist, create admin account
+  const createAdmin = await createAdminAcc(regInfo.email);
+  if (createAdmin === 0) return c.json({ error: 'Failed to create admin account' }, 400);
+
   const createPK = await createPasskey(
     verification.registrationInfo.credential.id,
     verification.registrationInfo.credential.publicKey,
@@ -77,12 +86,14 @@ auth.get('/init-auth', validateSchema('query', userAuthSchema), async (c) => {
   const { email } = c.req.valid('query');
   if (!email) return c.json({ error: 'Email is required' }, 400);
 
-  const userPasskeys = await userPKsByEmail(email);
-  if (!userPasskeys) return c.json({ error: 'No user for this email' }, 400);
+  if (!(await userGuestExists(email))) return c.json({ error: 'No user for this email' }, 400);
 
   // Reject user have no account to login
-  const accountCreated = await accountExists(email);
-  if (!accountCreated) return c.json({ error: `You don't have an account yet. Please wait for admin` }, 400);
+  if (!(await accountExists(email))) return c.json({ error: `You don't have an account yet. Please wait for admin` }, 400);
+
+  // Passkeys
+  const userPasskeys = await userPassKeyByEmail(email);
+  if (!userPasskeys) return c.json({ error: 'No passkey created for this email' }, 400);
 
   const options: PublicKeyCredentialRequestOptionsJSON = await generateAuthenticationOptions({
     rpID: Bun.env.DOMAIN_NAME,
@@ -129,15 +140,28 @@ auth.post('/verify-auth', async (c) => {
     return c.text('Unauthorized access', 401);
   }
 
+  const userLoggedIn: UserType = {
+    userEmail: userPasskeys.user_email,
+    userName: userPasskeys.user_name,
+    roleType: userPasskeys.role_type,
+    status: userPasskeys.status,
+    credId: userPasskeys.cred_id,
+  };
+
   if (!verification.verified) return c.json({ verified: false, error: 'Verification failed' }, 400);
 
-  const updatePKstatus = await updatePassKey(verification.authenticationInfo.newCounter, userPasskeys.cred_id, userPasskeys.UserGuest);
-  if (!updatePKstatus) console.log('Update Passkeys status failed!');
+  // const updatePKstatus = await updatePassKey(verification.authenticationInfo.newCounter, userPasskeys.cred_id, userPasskeys.UserGuest);
+  // if (!updatePKstatus) console.log('Update Passkeys status failed!');
   clearCookie(c, 'authInfo');
 
-  await createAuthSession(c, { email: authInfo.email, isAuth: true });
+  await createAuthSession(c, userLoggedIn);
 
+  // c.set({userLoggedIn: userLoggedIn})
   return c.json({ verified: verification.verified });
+});
+
+auth.get('/logout', logoutUser, async (c) => {
+  return c.text('Successfully logout!', 200);
 });
 
 export default auth;

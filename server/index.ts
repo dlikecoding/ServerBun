@@ -6,10 +6,11 @@ import { createThumbnails } from './service/createThumb';
 import { createHashs } from './service/generateSHA';
 
 export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; // 2 GB
+export const isNotDevMode: boolean = Bun.env.NODE_ENV !== 'dev';
 
 const server = Bun.serve({
   //////////////////////////
-  development: true,
+  development: !isNotDevMode,
   //////////////////////////
 
   port: Bun.env.PORT || 3000,
