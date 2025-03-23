@@ -116,9 +116,9 @@ auth.post('/verify-auth', async (c) => {
   if (!authInfo) return c.json({ error: 'Authentication info not found' }, 400);
 
   const userPasskeys = await userPassKeyByEmail(authInfo.email);
-  const reqJsonBody = await c.req.json();
-
   if (!userPasskeys) return c.json({ error: 'Invalid credentials' }, 401);
+
+  const reqJsonBody = await c.req.json();
 
   let verification;
   try {
@@ -156,12 +156,17 @@ auth.post('/verify-auth', async (c) => {
 
   await createAuthSession(c, userLoggedIn);
 
-  // c.set({userLoggedIn: userLoggedIn})
   return c.json({ verified: verification.verified });
 });
 
 auth.get('/logout', logoutUser, async (c) => {
   return c.text('Successfully logout!', 200);
+});
+
+auth.get('/check', async (c) => {
+  // const userLogged = c.get('loggedUser');
+  // console.log();
+  return c.text('Successfully checked!', 200);
 });
 
 export default auth;

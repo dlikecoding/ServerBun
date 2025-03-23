@@ -66,7 +66,6 @@ export const isAuthenticate = createMiddleware(async (c, next) => {
 
 export const logoutUser = createMiddleware(async (c, next) => {
   const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, SESSION_KEY);
-  if (!sessionId || !sessionStore.has(sessionId)) return c.text('Unauthorized access', 401);
   sessionStore.delete(sessionId);
   deleteCookie(c, SESSION_KEY);
   return await next();
