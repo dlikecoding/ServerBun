@@ -39,7 +39,7 @@ medias.get('/', validateSchema('query', yearSchema), async (c) => {
 
     return c.json(mediaData, 200);
   } catch (error) {
-    return c.text('Failed to fetch media', 500);
+    return c.json({ error: 'Failed to fetch media' }, 500);
   }
 });
 
@@ -50,7 +50,7 @@ medias.get('/statistic', async (c) => {
     return c.json(result, 200);
   } catch (error) {
     console.error('Error fetching media:', error);
-    return c.text('Failed to fetch media', 500);
+    return c.json({ error: 'Failed to fetch media' }, 500);
   }
 });
 
@@ -59,7 +59,7 @@ medias.get('/devices', async (c) => {
     return c.json(await fetchCameraType(), 200);
   } catch (error) {
     console.error('Error fetching media:', error);
-    return c.text('Failed to fetch media', 500);
+    return c.json({ error: 'Failed to fetch media' }, 500);
   }
 });
 
@@ -67,17 +67,17 @@ medias.put('/', validateSchema('json', updateSchema), async (c) => {
   const { mediaIds, updateKey, updateValue } = c.req.valid('json');
   const result = await updateMedias(mediaIds, updateKey, updateValue);
 
-  if (result) return c.text('Success', 204);
-  return c.text('Failed to fetch media', 500);
+  if (result) return c.json('Success', 204);
+  return c.json({ error: 'Failed to fetch media' }, 500);
 });
 
 medias.delete('/', validateSchema('json', deleteSchema), async (c) => {
   const { mediasToDel } = c.req.valid('json');
 
   const result = await deleteMedias(mediasToDel);
-  if (result) return c.text('Success', 204);
+  if (result) return c.json('Success', 204);
 
-  return c.text('Failed to fetch media', 500);
+  return c.json({ error: 'Failed to fetch media' }, 500);
 });
 
 export default medias;

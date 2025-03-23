@@ -145,7 +145,6 @@ auth.post('/verify-auth', async (c) => {
     userName: userPasskeys.user_name,
     roleType: userPasskeys.role_type,
     status: userPasskeys.status,
-    credId: userPasskeys.cred_id,
   };
 
   if (!verification.verified) return c.json({ verified: false, error: 'Verification failed' }, 400);
@@ -161,12 +160,6 @@ auth.post('/verify-auth', async (c) => {
 
 auth.get('/logout', logoutUser, async (c) => {
   return c.text('Successfully logout!', 200);
-});
-
-auth.get('/check', async (c) => {
-  // const userLogged = c.get('loggedUser');
-  // console.log();
-  return c.text('Successfully checked!', 200);
 });
 
 export default auth;

@@ -5,14 +5,20 @@ import { z } from 'zod';
 import { createMiddleware } from 'hono/factory';
 import { isNotDevMode } from '../..';
 
-const SESSION_KEY = 'auth_token';
+export const SESSION_KEY = 'auth_token';
+export const SET_USER_SESSION = 'user_session_id';
 
 export interface UserType {
   userEmail: string;
   userName: string;
   roleType: string;
   status: string;
-  credId: string;
+}
+
+declare module 'hono' {
+  interface ContextVariableMap {
+    user_session_id: string;
+  }
 }
 
 export const sessionStore = new Map(); // In-memory session store
@@ -60,12 +66,15 @@ export const createAuthSession = async (c: Context, user: UserType) => {
 
 export const isAuthenticate = createMiddleware(async (c, next) => {
   const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, SESSION_KEY);
-  if (sessionId && sessionStore.has(sessionId)) return await next();
+  if (sessionId && sessionStore.has(sessionId)) {
+    c.set(SET_USER_SESSION, sessionId);
+    return await next();
+  }
   return c.text('Unauthorized access', 401);
 });
 
 export const logoutUser = createMiddleware(async (c, next) => {
-  const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, SESSION_KEY);
+  const sessionId = c.get(SET_USER_SESSION);
   sessionStore.delete(sessionId);
   deleteCookie(c, SESSION_KEY);
   return await next();

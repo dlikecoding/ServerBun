@@ -13,7 +13,7 @@ upload.post(
   bodyLimit({
     maxSize: MAX_UPLOAD_FILE_SIZE,
     onError: (c) => {
-      return c.text('overflow :(', 413);
+      return c.json({ error: 'overflow :(' }, 413);
     },
   }),
   async (c) => {
@@ -24,7 +24,7 @@ upload.post(
     if (body['file'] instanceof File) {
       console.log(`Got file sized: ${body['file'].size}`);
     }
-    return c.text('pass :)');
+    return c.json('pass :)');
   }
 );
 

@@ -117,7 +117,7 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
     return c.json(fetchMedia); //{ data: fetchMedia, meta: { page: parsedPageNumber, pageSize: PAGE_SIZE } }
   } catch (err) {
     console.error('Unexpected error:', err);
-    return c.text('Internal Server Error', 500);
+    return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
 

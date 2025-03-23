@@ -18,16 +18,16 @@ const addAlbumSchema = z.object({
 
 album.put('/add', validateSchema('json', addAlbumSchema), async (c) => {
   const { mediaIds, albumId, albumTitle } = c.req.valid('json');
-
-  if (!albumId && !albumTitle) return c.text('Missing Album ID or Album Title', 400);
+  if (!albumId && !albumTitle) return c.json({ error: 'Missing Album ID or Album Title' }, 400);
 
   const targetAlbumId = !albumId && albumTitle ? await createAlbum(albumTitle) : albumId;
 
-  if (targetAlbumId) {
-    await fetchAddToAlbum(mediaIds, targetAlbumId);
-    return c.text('Success', 204);
-  }
-  return c.text('Album creation failed', 500);
+  if (!targetAlbumId) return c.json({ error: 'Album creation failed' }, 500);
+
+  const addStatus = await fetchAddToAlbum(mediaIds, targetAlbumId);
+  if (addStatus) return c.json('Success', 204);
+
+  return c.json({ error: 'Failed to add media to album' }, 500);
 });
 
 export default album;
