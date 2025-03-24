@@ -51,38 +51,18 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `Photos`.`UserGuest`
+-- Table `Photos`.`RegisteredUser`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `Photos`.`UserGuest` (
-  `user_id` SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_name` VARCHAR(45) NULL DEFAULT NULL,
+CREATE TABLE IF NOT EXISTS `Photos`.`RegisteredUser` (
+  `reg_user_id` VARCHAR(36) NOT NULL DEFAULT 'UUID()',
   `user_email` VARCHAR(100) NOT NULL,
-  `request_status` TINYINT(1) NULL DEFAULT 0 COMMENT '“Waiting” = 0,  “Approved” = 1',
-  `request_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`user_id`),
-  UNIQUE INDEX `email_UNIQUE` (`user_email` ASC) VISIBLE)
-ENGINE = InnoDB
-DEFAULT CHARACTER SET = utf8mb4
-COLLATE = utf8mb4_0900_ai_ci;
-
-
--- -----------------------------------------------------
--- Table `Photos`.`Account`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `Photos`.`Account` (
-  `account_id` SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_email` VARCHAR(100) NOT NULL,
+  `user_name` VARCHAR(45) NOT NULL,
   `role_type` ENUM('user', 'admin') NOT NULL DEFAULT 'user',
-  `status` ENUM('active', 'suspended') NOT NULL DEFAULT 'active' COMMENT 'ENUM(\'active\', \'suspended\')',
+  `status` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '“Suspended” = 0,  “Active” = 1',
   `m2f_isEnable` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'If enable, send an email with code to verify login',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`account_id`),
-  INDEX `PKFK_ACCOUNT_USER_EMAIL_idx` (`user_email` ASC) VISIBLE,
-  CONSTRAINT `PKFK_ACCOUNT_USER_EMAIL`
-    FOREIGN KEY (`user_email`)
-    REFERENCES `Photos`.`UserGuest` (`user_email`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE)
+  PRIMARY KEY (`reg_user_id`),
+  UNIQUE INDEX `user_email_UNIQUE` (`user_email` ASC) VISIBLE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4
 COLLATE = utf8mb4_0900_ai_ci;
@@ -182,16 +162,16 @@ COLLATE = utf8mb4_0900_ai_ci;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`Album` (
   `album_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `account` SMALLINT UNSIGNED NOT NULL,
+  `RegisteredUser` VARCHAR(36) NOT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `title` VARCHAR(50) NULL DEFAULT NULL,
   `modify_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`album_id`),
   UNIQUE INDEX `title_UNIQUE` (`title` ASC) VISIBLE,
-  INDEX `FK_ALBUM_ACCOUNT_ID_idx` (`account` ASC) VISIBLE,
-  CONSTRAINT `FK_ALBUM_ACCOUNT_ID`
-    FOREIGN KEY (`account`)
-    REFERENCES `Photos`.`Account` (`account_id`)
+  INDEX `FK_ALBUM_REGISTERED_USER_ID_idx` (`RegisteredUser` ASC) VISIBLE,
+  CONSTRAINT `FK_ALBUM_REGISTERED_USER_ID`
+    FOREIGN KEY (`RegisteredUser`)
+    REFERENCES `Photos`.`RegisteredUser` (`reg_user_id`)
     ON DELETE CASCADE
     ON UPDATE CASCADE)
 ENGINE = InnoDB
@@ -313,12 +293,12 @@ CREATE TABLE IF NOT EXISTS `Photos`.`ImportMedias` (
   `ImageHeight` SMALLINT UNSIGNED NULL DEFAULT NULL,
   `SourceFile` TEXT NULL DEFAULT NULL,
   `Megapixels` DECIMAL(5,2) NULL DEFAULT NULL,
-  `account` SMALLINT UNSIGNED NOT NULL,
+  `RegisteredUser` VARCHAR(36) NOT NULL,
   PRIMARY KEY (`import_id`),
-  INDEX `FK_IMPORTMEDIAS_ACCOUNT_ID_idx` (`account` ASC) VISIBLE,
-  CONSTRAINT `FK_IMPORTMEDIAS_ACCOUNT_ID`
-    FOREIGN KEY (`account`)
-    REFERENCES `Photos`.`Account` (`account_id`)
+  INDEX `FK_IMPORTMEDIAS_REGISTERED_USER_ID_idx` (`RegisteredUser` ASC) VISIBLE,
+  CONSTRAINT `FK_IMPORTMEDIAS_REGISTERED_USER_ID`
+    FOREIGN KEY (`RegisteredUser`)
+    REFERENCES `Photos`.`RegisteredUser` (`reg_user_id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB
@@ -409,14 +389,14 @@ COLLATE = utf8mb4_0900_ai_ci;
 -- Table `Photos`.`UploadBy`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`UploadBy` (
-  `account` SMALLINT UNSIGNED NOT NULL,
+  `RegisteredUser` VARCHAR(36) NOT NULL,
   `media` INT UNSIGNED NOT NULL,
   `uploaded_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`media`, `account`),
-  INDEX `PKFK_UPLOADBY_ACCOUNT_ID_idx` (`account` ASC) VISIBLE,
-  CONSTRAINT `PKFK_UPLOADBY_ACCOUNT_ID`
-    FOREIGN KEY (`account`)
-    REFERENCES `Photos`.`Account` (`account_id`)
+  PRIMARY KEY (`media`, `RegisteredUser`),
+  INDEX `PKFK_UPLOADBY_REGISTERED_USER_ID_idx` (`RegisteredUser` ASC) VISIBLE,
+  CONSTRAINT `PKFK_UPLOADBY_REGISTERED_USER_ID`
+    FOREIGN KEY (`RegisteredUser`)
+    REFERENCES `Photos`.`RegisteredUser` (`reg_user_id`)
     ON DELETE NO ACTION
     ON UPDATE CASCADE,
   CONSTRAINT `PKFK_UPLOADBY_MEDIA_ID`
@@ -433,19 +413,20 @@ COLLATE = utf8mb4_0900_ai_ci;
 -- Table `Photos`.`UserLog`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`UserLog` (
-  `UserGuest` SMALLINT UNSIGNED NULL,
+  `user_log_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `RegisteredUser` VARCHAR(36) NULL,
   `user_device` VARCHAR(255) NULL DEFAULT NULL,
   `last_url_request` VARCHAR(200) NULL DEFAULT NULL,
   `last_logged_in` TIMESTAMP NULL,
   `ip_address` VARCHAR(45) NOT NULL,
   `logged_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  `user_log_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (`user_log_id`),
-  CONSTRAINT `FK_USERLOG_USER_ID`
-    FOREIGN KEY (`UserGuest`)
-    REFERENCES `Photos`.`UserGuest` (`user_id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE)
+  INDEX `FK_REG_USER_USERLOG_ID0_idx` (`RegisteredUser` ASC) VISIBLE,
+  CONSTRAINT `FK_REG_USER_USERLOG_ID0`
+    FOREIGN KEY (`RegisteredUser`)
+    REFERENCES `Photos`.`RegisteredUser` (`reg_user_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4
 COLLATE = utf8mb4_0900_ai_ci;
@@ -518,7 +499,7 @@ COLLATE = utf8mb4_0900_ai_ci;
 CREATE TABLE IF NOT EXISTS `Photos`.`Passkeys` (
   `cred_id` VARCHAR(50) NOT NULL COMMENT 'base64url string',
   `cred_public_key` BLOB NOT NULL,
-  `UserGuest` SMALLINT UNSIGNED NOT NULL,
+  `RegisteredUser` VARCHAR(36) NOT NULL,
   `counter` BIGINT NOT NULL,
   `registered_device` ENUM('singleDevice', 'multiDevice') NOT NULL,
   `backup_eligible` TINYINT NOT NULL,
@@ -526,14 +507,13 @@ CREATE TABLE IF NOT EXISTS `Photos`.`Passkeys` (
   `transports` TEXT NOT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `last_used` TIMESTAMP NULL,
-  INDEX `FK_USER_PASSKEYS_ID0_idx` (`UserGuest` ASC) VISIBLE,
-  INDEX `UNIQUE_INTERNAL_WEBAUTHN` (`UserGuest` ASC) VISIBLE,
-  PRIMARY KEY (`cred_id`, `UserGuest`),
-  CONSTRAINT `FK_USER_PASSKEYS_ID0`
-    FOREIGN KEY (`UserGuest`)
-    REFERENCES `Photos`.`UserGuest` (`user_id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE)
+  INDEX `UNIQUE_INTERNAL_WEBAUTHN` (`RegisteredUser` ASC) VISIBLE,
+  PRIMARY KEY (`cred_id`, `RegisteredUser`),
+  CONSTRAINT `FK_REG_USER_PASSKEYS_ID0`
+    FOREIGN KEY (`RegisteredUser`)
+    REFERENCES `Photos`.`RegisteredUser` (`reg_user_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4
 COLLATE = utf8mb4_0900_ai_ci;

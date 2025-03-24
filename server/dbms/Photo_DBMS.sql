@@ -22,34 +22,6 @@ BEGIN
 END$$
 
 -- ====================================================================================
--- -- Auto create an admin if there is no user exist in the db
-
--- DROP PROCEDURE IF EXISTS CreateAdmin$$
--- CREATE PROCEDURE CreateAdmin(IN uEmail VARCHAR(100))
--- BEGIN
---     IF NOT EXISTS (SELECT 1 FROM Account LIMIT 1) THEN
---         INSERT INTO Account (user_email, role_type) VALUES (uEmail, 'admin');
---     END IF;
--- END $$
-
--- DROP TRIGGER IF EXISTS UserGuest_BEFORE_INSERT$$
--- CREATE TRIGGER UserGuest_BEFORE_INSERT AFTER INSERT ON UserGuest 
--- FOR EACH ROW
--- BEGIN
---     IF NOT EXISTS (SELECT 1 FROM Account LIMIT 1) THEN
---         INSERT INTO Account (user_email, role_type)
---         VALUES (NEW.user_email, 'admin');
---     END IF;
--- END$$
-
-
-DROP TRIGGER IF EXISTS Account_AFTER_INSERT$$
-CREATE TRIGGER Account_AFTER_INSERT AFTER INSERT ON Account 
-FOR EACH ROW
-BEGIN
-    UPDATE UserGuest SET request_status = 1 WHERE user_email = NEW.user_email;
-END$$
-
 /*
     Business Requirement #1
     ----------------------------------------------------

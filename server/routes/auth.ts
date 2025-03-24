@@ -1,9 +1,8 @@
 import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse } from '@simplewebauthn/server';
 import { Hono } from 'hono';
-import { createPasskey, createUserGuest, userPassKeyByEmail, userGuestExists, countWaiting } from '../db/module/guest';
+import { createPasskey, userPassKeyByEmail, findRegUser, countSuspendedUsers, createAdminOrUsers } from '../db/module/regUser';
 
 import { clearCookie, createAuthSession, getSecureCookie, logoutUser, setSecureCookie, userAuthSchema, type UserType } from './authHelper/_cookies';
-import { getAccountByEmail, createAdminAcc } from '../db/module/account';
 import { validateSchema } from '../modules/validate';
 
 const auth = new Hono();
@@ -13,13 +12,13 @@ const LIMIT_NUMBER_REGISTER = 3; // Limit number of user can register for an acc
 
 auth.get('/init-register', validateSchema('query', userAuthSchema), async (c) => {
   try {
-    const result = await countWaiting(); // if userGuest wating status is >= N, return reach limit.
+    const result = await countSuspendedUsers(); // if userGuest wating status is >= N, return reach limit.
     if (result.waiting >= LIMIT_NUMBER_REGISTER) return c.json({ error: 'User creation have reached limited.' }, 400);
 
     const { username, email } = c.req.valid('query');
     if (!email) return c.json({ error: 'Email is required' }, 400);
 
-    if (await userGuestExists(email)) return c.json({ error: 'User already exists' }, 400);
+    if (await findRegUser(email)) return c.json({ error: 'User already exists' }, 400);
 
     const options = await generateRegistrationOptions({
       rpName: WEBSITE_TITLE,
@@ -60,12 +59,9 @@ auth.post('/verify-register', async (c) => {
     return c.json({ verified: false, error: 'Verification failed' }, 400);
   }
 
-  const lastInsertId = await createUserGuest(regInfo.username, regInfo.email);
-  if (!lastInsertId) return c.json({ error: 'User creation failed' }, 400);
-
   // if no account exist, create admin account, otherwise, create user with suppended status
-  const createAccounts = await createAdminAcc(regInfo.email);
-  if (!createAccounts) return c.json({ error: 'Failed to create account' }, 400);
+  const lastInsertId = await createAdminOrUsers(regInfo.username, regInfo.email);
+  if (!lastInsertId) return c.json({ error: 'User creation failed' }, 400);
 
   const createPK = await createPasskey(
     verification.registrationInfo.credential.id,
@@ -86,12 +82,11 @@ auth.get('/init-auth', validateSchema('query', userAuthSchema), async (c) => {
   const { email } = c.req.valid('query');
   if (!email) return c.json({ error: 'Email is required' }, 400);
 
-  if (!(await userGuestExists(email))) return c.json({ error: 'No user for this email' }, 400);
+  const userAccount: UserType = await findRegUser(email);
+  if (!userAccount) return c.json({ error: 'No user for this email' }, 400);
 
-  // Reject user have no account to login
-  const userAccount = await getAccountByEmail(email);
-  if (!userAccount) return c.json({ error: `You don't have an account yet. Please wait for admin approval` }, 400);
-  if (userAccount.status === 'suspended') return c.json({ error: `You don't have permission to log in at the moment. Please wait for admin approval` }, 400);
+  // Reject user have susppended status to login
+  if (!userAccount.status) return c.json({ error: `You don't have permission to log in at the moment. Please wait for admin approval` }, 400);
 
   // Passkeys
   const userPasskeys = await userPassKeyByEmail(email);
@@ -118,7 +113,7 @@ auth.post('/verify-auth', async (c) => {
   if (!authInfo) return c.json({ error: 'Authentication info not found' }, 400);
 
   const userPasskeys = await userPassKeyByEmail(authInfo.email);
-  if (!userPasskeys) return c.json({ error: 'Invalid credentials' }, 401);
+  if (!userPasskeys) return c.json({ error: 'Invalid user credentials' }, 401);
 
   const reqJsonBody = await c.req.json();
 

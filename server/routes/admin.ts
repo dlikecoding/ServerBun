@@ -1,16 +1,15 @@
 import { Hono } from 'hono';
 import { sessionStore, SET_USER_SESSION } from './authHelper/_cookies';
 import { createMiddleware } from 'hono/factory';
-import { fetchAllUserGuests } from '../db/module/guest';
-import { updateAccountStatus } from '../db/module/account';
+
 import { z } from 'zod';
 import { validateSchema } from '../modules/validate';
+import { fetchAllRegisteredUsers, updateAccountStatus } from '../db/module/regUser';
 
 const admin = new Hono();
 
 const userAuthSchema = z.object({
-  accountId: z.number(),
-  status: z.boolean(),
+  accountId: z.string().uuid(),
 });
 
 const isAdmin = createMiddleware(async (c, next) => {
@@ -21,17 +20,15 @@ const isAdmin = createMiddleware(async (c, next) => {
 });
 
 admin.get('/dashboard', isAdmin, async (c) => {
-  const allUsers = await fetchAllUserGuests();
+  const allUsers = await fetchAllRegisteredUsers();
   return c.json(allUsers, 200);
 });
 
 admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), async (c) => {
   try {
-    const { accountId, status } = c.req.valid('json');
+    const { accountId } = c.req.valid('json');
 
-    const updateStatus = status ? 'active' : 'suspended';
-    const updatedUser = await updateAccountStatus(accountId, updateStatus);
-
+    const updatedUser = await updateAccountStatus(accountId);
     if (!updatedUser) return c.json({ error: 'Failed to update user status' }, 200);
 
     return c.json('Success!', 200);
