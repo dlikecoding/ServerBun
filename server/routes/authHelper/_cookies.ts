@@ -70,7 +70,7 @@ export const isAuthenticate = createMiddleware(async (c, next) => {
     c.set(SET_USER_SESSION, sessionId);
     return await next();
   }
-  return c.text('Unauthorized access', 401);
+  return c.json({ error: 'Unauthorized access' }, 401);
 });
 
 export const logoutUser = createMiddleware(async (c, next) => {

@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { createPasskey, createUserGuest, userPassKeyByEmail, userGuestExists, countWaiting } from '../db/module/guest';
 
 import { clearCookie, createAuthSession, getSecureCookie, logoutUser, setSecureCookie, userAuthSchema, type UserType } from './authHelper/_cookies';
-import { accountExists, createAdminAcc } from '../db/module/account';
+import { getAccountByEmail, createAdminAcc } from '../db/module/account';
 import { validateSchema } from '../modules/validate';
 
 const auth = new Hono();
@@ -63,9 +63,9 @@ auth.post('/verify-register', async (c) => {
   const lastInsertId = await createUserGuest(regInfo.username, regInfo.email);
   if (!lastInsertId) return c.json({ error: 'User creation failed' }, 400);
 
-  // if no account exist, create admin account
-  const createAdmin = await createAdminAcc(regInfo.email);
-  if (createAdmin === 0) return c.json({ error: 'Failed to create admin account' }, 400);
+  // if no account exist, create admin account, otherwise, create user with suppended status
+  const createAccounts = await createAdminAcc(regInfo.email);
+  if (!createAccounts) return c.json({ error: 'Failed to create account' }, 400);
 
   const createPK = await createPasskey(
     verification.registrationInfo.credential.id,
@@ -89,7 +89,9 @@ auth.get('/init-auth', validateSchema('query', userAuthSchema), async (c) => {
   if (!(await userGuestExists(email))) return c.json({ error: 'No user for this email' }, 400);
 
   // Reject user have no account to login
-  if (!(await accountExists(email))) return c.json({ error: `You don't have an account yet. Please wait for admin` }, 400);
+  const userAccount = await getAccountByEmail(email);
+  if (!userAccount) return c.json({ error: `You don't have an account yet. Please wait for admin approval` }, 400);
+  if (userAccount.status === 'suspended') return c.json({ error: `You don't have permission to log in at the moment. Please wait for admin approval` }, 400);
 
   // Passkeys
   const userPasskeys = await userPassKeyByEmail(email);
@@ -137,7 +139,7 @@ auth.post('/verify-auth', async (c) => {
     });
   } catch (error) {
     console.error(error);
-    return c.text('Unauthorized access', 401);
+    return c.json({ error: 'Unauthorized access' }, 401);
   }
 
   const userLoggedIn: UserType = {
@@ -159,7 +161,7 @@ auth.post('/verify-auth', async (c) => {
 });
 
 auth.get('/logout', logoutUser, async (c) => {
-  return c.text('Successfully logout!', 200);
+  return c.json('Successfully logout!', 200);
 });
 
 export default auth;

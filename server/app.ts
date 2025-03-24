@@ -12,11 +12,12 @@ import { secureHeaders } from 'hono/secure-headers';
 import { isAuthenticate } from './routes/authHelper/_cookies';
 import auth from './routes/auth';
 
-import users from './routes/users';
+import user from './routes/user';
 import streamApi from './routes/stream';
 import medias from './routes/medias';
 // import media from './routes/media';
 import album from './routes/album';
+import admin from './routes/admin';
 
 const app = new Hono();
 
@@ -56,8 +57,9 @@ app
   .basePath('api/v1')
   .route('/auth', auth)
   .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
+  .route('/admin', admin)
   .route('/stream', streamApi)
-  .route('/users', users)
+  .route('/user', user)
   .route('/medias', medias)
   .route('/album', album);
 

@@ -4,7 +4,7 @@ export const createDBMS = async () => {
   try {
     await $`mysql -u $DB_USER -p$DB_PASS < $DB_CREATE`;
     await $`mysql -u $DB_USER -p$DB_PASS < $DB_TRIGGERS`;
-    await $`mysql -u $DB_USER -p$DB_PASS < $TEST_DB_INSERT_ACCOUNT`;
+    // await $`mysql -u $DB_USER -p$DB_PASS < $TEST_DB_INSERT_ACCOUNT`;
   } catch (error) {
     console.log(error);
   }
@@ -16,8 +16,7 @@ export async function insertMediaToDB(account: Number = 1, sourcePath: string) {
       await $`find ${sourcePath} -depth -name '*[^a-zA-Z0-9._/-]*' -exec bash -c 'mv "$0" "$(dirname "$0")/$(basename "$0" | sed "s/[^a-zA-Z0-9._-]/_/g")"' {} \;`;
     if (exitCode !== 0) return console.log('Error:', stderr);
 
-    const { stderr: exifErr, exitCode: exifCode } =
-      await $`exiftool -r -a -d "%Y-%m-%dT%H:%M:%S" -csv -SourceFile -FileName -FileType -MIMEType \
+    const { stderr: exifErr, exitCode: exifCode } = await $`exiftool -r -a -d "%Y-%m-%dT%H:%M:%S" -csv -SourceFile -FileName -FileType -MIMEType \
     -Software -Title -FileSize# -Make -Model -LensModel -Orientation -CreateDate -DateCreated \
     -CreationDate -DateTimeOriginal -FileModifyDate -MediaCreateDate -MediaModifyDate -Duration# \
     -GPSLatitude# -GPSLongitude# -ImageWidth -ImageHeight -Megapixels ${sourcePath} | \
