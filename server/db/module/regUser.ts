@@ -15,7 +15,7 @@ const Sql = {
                       JOIN Passkeys pks ON reg.reg_user_id = pks.RegisteredUser
                       WHERE reg.user_email = (?)`,
 
-  UPDATE_STATUS: `UPDATE RegisteredUser SET status = !status WHERE reg_user_id = ?`,
+  UPDATE_STATUS: `UPDATE RegisteredUser SET status = !status WHERE user_email = ?`,
 
   FETCH_ALL: `SELECT reg_user_id, user_name, user_email, role_type, created_at, status FROM RegisteredUser reg WHERE role_type IS NULL OR role_type = 'user'`,
 

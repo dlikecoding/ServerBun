@@ -50,7 +50,7 @@ export const clearCookie = (c: Context, name: string) => {
 };
 
 export const createAuthSession = async (c: Context, user: UserType) => {
-  deleteOldSession(user);
+  deleteOldUserSession(user.userEmail);
 
   const sessionId = generateSid();
   sessionStore.set(sessionId, user);
@@ -83,8 +83,8 @@ export const logoutUser = createMiddleware(async (c, next) => {
 const generateSid = () => crypto.randomBytes(32).toString('hex');
 
 /** Remove old session everytime a user relogin to the server */
-const deleteOldSession = (user: UserType) => {
+export const deleteOldUserSession = (userEmail: string) => {
   sessionStore.forEach((userValue: UserType, sessionId: string) => {
-    if (userValue.userEmail === user.userEmail) sessionStore.delete(sessionId); // console.log(`${sessionId}: ${userValue.email}`);
+    if (userValue.userEmail === userEmail) sessionStore.delete(sessionId); // console.log(`${sessionId}: ${userValue.email}`);
   });
 };

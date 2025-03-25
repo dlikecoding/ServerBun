@@ -118,8 +118,8 @@ BEGIN
     -- SET lastInsertMediaID = LAST_INSERT_ID();
 
     -- ///////////// NOTE ///////////////////
-    -- The account number needs to be added when the user is created, so we can identify which user uploaded these media.
-    INSERT INTO UploadBy (account, media) VALUES (NEW.account, NEW.import_id);
+    -- The RegisteredUser number needs to be added when the user is created, so we can identify which user uploaded these media.
+    INSERT INTO UploadBy (RegisteredUser, media) VALUES (NEW.RegisteredUser, NEW.import_id);
 
     -- -- Create a thumbnail path and add it to Thumbnail table
     -- INSERT INTO Thumbnail (media, ThumbPath, isImage) 

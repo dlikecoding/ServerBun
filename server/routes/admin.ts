@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { sessionStore, SET_USER_SESSION } from './authHelper/_cookies';
+import { deleteOldUserSession, sessionStore, SET_USER_SESSION } from './authHelper/_cookies';
 import { createMiddleware } from 'hono/factory';
 
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { fetchAllRegisteredUsers, updateAccountStatus } from '../db/module/regUs
 const admin = new Hono();
 
 const userAuthSchema = z.object({
-  accountId: z.string().uuid(),
+  userEmail: z.string().email(),
 });
 
 const isAdmin = createMiddleware(async (c, next) => {
@@ -26,10 +26,12 @@ admin.get('/dashboard', isAdmin, async (c) => {
 
 admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), async (c) => {
   try {
-    const { accountId } = c.req.valid('json');
+    const { userEmail } = c.req.valid('json');
 
-    const updatedUser = await updateAccountStatus(accountId);
+    const updatedUser = await updateAccountStatus(userEmail);
     if (!updatedUser) return c.json({ error: 'Failed to update user status' }, 200);
+
+    deleteOldUserSession(userEmail);
 
     return c.json('Success!', 200);
   } catch (err) {
