@@ -11,7 +11,7 @@ const Sql = {
 
   PASSKEY: `SELECT * FROM Passkeys as pks WHERE pks.RegisteredUser = (SELECT reg_user_id FROM RegisteredUser WHERE user_email = (?) LIMIT 1)`,
 
-  USER_ACC_PASSKEY: `SELECT reg.user_email, reg.user_name, reg.role_type, reg.status, pks.cred_id, pks.cred_public_key, pks.counter, pks.transports FROM RegisteredUser reg 
+  USER_ACC_PASSKEY: `SELECT reg.reg_user_id, reg.user_email, reg.user_name, reg.role_type, reg.status, pks.cred_id, pks.cred_public_key, pks.counter, pks.transports FROM RegisteredUser reg 
                       JOIN Passkeys pks ON reg.reg_user_id = pks.RegisteredUser
                       WHERE reg.user_email = (?)`,
 

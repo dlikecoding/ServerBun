@@ -23,22 +23,22 @@ const app = new Hono();
 
 app.use(csrf());
 
-// DEV MODE - NEED TO REMOVE CORS ///////////////////////////////////
-// CORS should be called before the route
-app.use(
-  '/*',
-  cors({
-    origin: 'http://localhost:7979',
-    allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
-    allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
-    exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
-    maxAge: 600,
-    credentials: true,
-  })
-);
+// CORS should be called before the route // DEV MODE - NEED TO REMOVE CORS In DEPLOY
+if (Bun.env.NODE_ENV === 'dev') {
+  app.use(
+    '/*',
+    cors({
+      origin: 'http://localhost:7979',
+      allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
+      allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
+      exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
+      maxAge: 600,
+      credentials: true,
+    })
+  );
+}
 
-// https://hono.dev/docs/middleware/builtin/secure-headers#secure-headers-middleware
-app.use(secureHeaders());
+app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-headers#secure-headers-middleware
 // https://hono.dev/docs/middleware/builtin/compress
 // app.use(compress()); // Request must send with "Accept-Encoding" in Header
 

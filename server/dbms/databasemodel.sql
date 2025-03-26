@@ -168,7 +168,6 @@ CREATE TABLE IF NOT EXISTS `Photos`.`Album` (
   `modify_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`album_id`),
   UNIQUE INDEX `title_UNIQUE` (`title` ASC) VISIBLE,
-  INDEX `FK_ALBUM_REGISTERED_USER_ID_idx` (`RegisteredUser` ASC) VISIBLE,
   CONSTRAINT `FK_ALBUM_REGISTERED_USER_ID`
     FOREIGN KEY (`RegisteredUser`)
     REFERENCES `Photos`.`RegisteredUser` (`reg_user_id`)
@@ -393,16 +392,15 @@ CREATE TABLE IF NOT EXISTS `Photos`.`UploadBy` (
   `media` INT UNSIGNED NOT NULL,
   `uploaded_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`media`, `RegisteredUser`),
-  INDEX `PKFK_UPLOADBY_REGISTERED_USER_ID_idx` (`RegisteredUser` ASC) VISIBLE,
-  CONSTRAINT `PKFK_UPLOADBY_REGISTERED_USER_ID`
-    FOREIGN KEY (`RegisteredUser`)
-    REFERENCES `Photos`.`RegisteredUser` (`reg_user_id`)
-    ON DELETE NO ACTION
-    ON UPDATE CASCADE,
   CONSTRAINT `PKFK_UPLOADBY_MEDIA_ID`
     FOREIGN KEY (`media`)
     REFERENCES `Photos`.`Media` (`media_id`)
     ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `PKFK_UPLOADBY_REGISTERED_USER_ID`
+    FOREIGN KEY (`RegisteredUser`)
+    REFERENCES `Photos`.`RegisteredUser` (`reg_user_id`)
+    ON DELETE NO ACTION
     ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4

@@ -1,9 +1,5 @@
 import app from './app';
-import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
-// import { accountExists } from './db/module/account';
-// import { createUserGuest } from './db/module/guest';
-import { createThumbnails } from './service/createThumb';
-import { createHashs } from './service/generateSHA';
+// import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
 
 export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; // 2 GB
 export const isNotDevMode: boolean = Bun.env.NODE_ENV !== 'dev';
@@ -22,11 +18,6 @@ const server = Bun.serve({
   //   key: Bun.file('/Users/danishmc/Desktop/Linux/PhotoX/Server/server/key.pem'),
   // },
 });
-
-// await getUserById(2);
-// await accountExists('jane.smith@example.com');
-
-// await createUserGuest('guasdaaesaasdaaat@Hwllo.com', 'Guest ASHD User');
 
 /// Test implementation ////////////////////////////////////////////
 // await createDBMS();

@@ -1,6 +1,6 @@
 import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
 import type { Context } from 'hono';
-import crypto from 'crypto';
+import crypto, { type UUID } from 'crypto';
 import { z } from 'zod';
 import { createMiddleware } from 'hono/factory';
 import { isNotDevMode } from '../..';
@@ -9,6 +9,7 @@ export const SESSION_KEY = 'auth_token';
 export const SET_USER_SESSION = 'user_session_id';
 
 export interface UserType {
+  userId: UUID;
   userEmail: string;
   userName: string;
   roleType: string;

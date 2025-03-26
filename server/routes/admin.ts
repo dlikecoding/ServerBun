@@ -5,6 +5,10 @@ import { createMiddleware } from 'hono/factory';
 import { z } from 'zod';
 import { validateSchema } from '../modules/validate';
 import { fetchAllRegisteredUsers, updateAccountStatus } from '../db/module/regUser';
+import { insertMediaToDB } from '../db/maintain';
+import { createThumbnails } from '../service/createThumb';
+import { createHashs } from '../service/generateSHA';
+import { deleteImportMedia } from '../db/module/media';
 
 const admin = new Hono();
 
@@ -14,8 +18,10 @@ const userAuthSchema = z.object({
 
 const isAdmin = createMiddleware(async (c, next) => {
   const sessionId = c.get(SET_USER_SESSION);
+  if (!sessionId) return c.json({ error: 'Warning: Unauthorized Access' }, 403);
+
   const roleType = sessionStore.get(sessionId).roleType;
-  if (roleType !== 'admin') return c.json({ error: 'Unauthorized access as admin' }, 401);
+  if (!roleType || roleType !== 'admin') return c.json({ error: 'Warning: Unauthorized Access Attempt Detected' }, 403);
   return await next();
 });
 
@@ -29,7 +35,7 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
     const { userEmail } = c.req.valid('json');
 
     const updatedUser = await updateAccountStatus(userEmail);
-    if (!updatedUser) return c.json({ error: 'Failed to update user status' }, 200);
+    if (!updatedUser) return c.json({ error: 'Failed to update user status' }, 500);
 
     deleteOldUserSession(userEmail);
 
@@ -38,6 +44,23 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
     console.error(err);
     return c.json({ error: 'Failed to fetch Account' }, 500);
   }
+});
+
+admin.get('/import', isAdmin, async (c) => {
+  const sessionId = c.get(SET_USER_SESSION);
+  const userId = sessionStore.get(sessionId).userId;
+
+  const exitCode = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
+  if (exitCode !== 0) return c.json({ error: 'Failed to Import media to account' }, 400);
+
+  await createThumbnails();
+  await createHashs();
+
+  await deleteImportMedia();
+
+  // await backupToDB();
+
+  return c.json('Success', 200);
 });
 
 export default admin;

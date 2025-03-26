@@ -138,6 +138,7 @@ auth.post('/verify-auth', async (c) => {
   }
 
   const userLoggedIn: UserType = {
+    userId: userPasskeys.reg_user_id,
     userEmail: userPasskeys.user_email,
     userName: userPasskeys.user_name,
     roleType: userPasskeys.role_type,
