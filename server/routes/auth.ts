@@ -8,7 +8,7 @@ import { validateSchema } from '../modules/validate';
 const auth = new Hono();
 const WEBSITE_TITLE = 'Photos Gallery X';
 
-const LIMIT_NUMBER_REGISTER = 3; // Limit number of user can register for an account
+const LIMIT_NUMBER_REGISTER = 2; // Limit number of user can register for an account
 
 auth.get('/init-register', validateSchema('query', userAuthSchema), async (c) => {
   try {

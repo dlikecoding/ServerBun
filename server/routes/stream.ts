@@ -3,7 +3,7 @@ import { fetchMedias } from '../db/module/media';
 import { z } from 'zod';
 import { validateSchema } from '../modules/validate';
 
-const PAGE_SIZE = 50; // Max size per page
+const PAGE_SIZE = 250; // Max size per page
 
 const streamApi = new Hono();
 

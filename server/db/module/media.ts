@@ -7,8 +7,10 @@ import { $ } from 'bun';
 // SQL Queries
 const Sql = {
   LOAD_IMPORTED_MEDIA: 'SELECT md.media_id, md.SourceFile, md.ThumbPath, md.FileType FROM ImportMedias im LEFT JOIN Media md ON im.import_id = md.media_id',
-  UPDATE_THUMB: 'UPDATE Media SET ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
-  UPDATE_HASH: 'UPDATE Media SET HashCode = (?) WHERE media_id = ?',
+  UPDATE_HASH_THUMB: 'UPDATE Media SET HashCode = ?, ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
+
+  // UPDATE_THUMB: 'UPDATE Media SET ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
+  // UPDATE_HASH: 'UPDATE Media SET HashCode = (?) WHERE media_id = ?',
 
   DELETE_IMPORT_TB: 'DELETE FROM ImportMedias',
   FETCH_CAMERATYPE: 'SELECT * FROM CameraType',
@@ -37,15 +39,20 @@ export const importedMedias = async () => {
   return rows as any;
 };
 
-export const updateThumb = async (media_id: number, thumbWidth: string, thumbHeight: string) => {
-  await poolPromise.execute(Sql.UPDATE_THUMB, [thumbWidth, thumbHeight, media_id]);
+export const updateHashThumb = async (media_id: number, hashCode: string, thumbWidth: string, thumbHeight: string) => {
+  await poolPromise.execute(Sql.UPDATE_HASH_THUMB, [hashCode, thumbWidth, thumbHeight, media_id]);
   return { media_id };
 };
 
-export const updateHash = async (media_id: number, HashCode: string) => {
-  await poolPromise.execute(Sql.UPDATE_HASH, [HashCode, media_id]);
-  return { media_id, HashCode };
-};
+// export const updateThumb = async (media_id: number, thumbWidth: string, thumbHeight: string) => {
+//   await poolPromise.execute(Sql.UPDATE_THUMB, [thumbWidth, thumbHeight, media_id]);
+//   return { media_id };
+// };
+
+// export const updateHash = async (media_id: number, HashCode: string) => {
+//   await poolPromise.execute(Sql.UPDATE_HASH, [HashCode, media_id]);
+//   return { media_id, HashCode };
+// };
 
 export const updateMedias = async (mediaIds: number[], updateKey: string, updateValue: boolean) => {
   const connection = await poolPromise.getConnection();

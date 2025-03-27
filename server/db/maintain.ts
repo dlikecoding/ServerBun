@@ -23,7 +23,7 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string) 
     -GPSLatitude# -GPSLongitude# -ImageWidth -ImageHeight -Megapixels ${sourcePath} | \
     awk -v RegisteredUser=${RegisteredUser} '{print RegisteredUser "," $0}' | \
     sed '1d'| sed 's|${Bun.env.MAIN_PATH}||g' | \
-    mysql --local-infile=1 -u $DB_USER -p$DB_PASS $DB_NAME -e "LOAD DATA LOCAL INFILE '/dev/stdin' INTO TABLE ImportMedias FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' (RegisteredUser, SourceFile, FileName, FileType, MIMEType, Software, Title, FileSize, Make, Model, LensModel, Orientation, CreateDate, DateCreated, CreationDate, DateTimeOriginal, FileModifyDate, MediaCreateDate, MediaModifyDate, Duration, GPSLatitude, GPSLongitude, ImageWidth, ImageHeight, Megapixels);"`;
+    mysql --local-infile=1 -u $DB_USER -p$DB_PASS $DB_NAME -e $DB_INSERT`;
 
     if (exifCode !== 0) console.log('Error:', exifErr);
 

@@ -6,9 +6,9 @@ import { z } from 'zod';
 import { validateSchema } from '../modules/validate';
 import { fetchAllRegisteredUsers, updateAccountStatus } from '../db/module/regUser';
 import { insertMediaToDB } from '../db/maintain';
-import { createThumbnails } from '../service/createThumb';
-import { createHashs } from '../service/generateSHA';
 import { deleteImportMedia } from '../db/module/media';
+import { executeProcess } from '../service/main';
+import { writeFile } from 'fs/promises';
 
 const admin = new Hono();
 
@@ -46,15 +46,18 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
   }
 });
 
+import { existsSync } from 'fs'; // To check if the file exists synchronously
 admin.get('/import', isAdmin, async (c) => {
+  const isExist = await VerifySystemSignature();
+  if (isExist) return c.json('System has already been initialized');
+
   const sessionId = c.get(SET_USER_SESSION);
   const userId = sessionStore.get(sessionId).userId;
 
   const exitCode = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
   if (exitCode !== 0) return c.json({ error: 'Failed to Import media to account' }, 400);
 
-  await createThumbnails();
-  await createHashs();
+  await executeProcess();
 
   await deleteImportMedia();
 
@@ -64,3 +67,22 @@ admin.get('/import', isAdmin, async (c) => {
 });
 
 export default admin;
+
+const initializationMarkerFile = './.system_initialized';
+
+const VerifySystemSignature = async () => {
+  try {
+    // Check if the initialization marker file exists
+    const exists = existsSync(initializationMarkerFile);
+
+    if (exists) {
+      console.log('System has already been initialized.');
+    } else {
+      await writeFile(initializationMarkerFile, 'System initialized');
+      console.log('Initializing....');
+    }
+    return exists;
+  } catch (error) {
+    console.error('Error checking or initializing the system:', error);
+  }
+};

@@ -10,8 +10,6 @@ declare module 'bun' {
 
     SECRET_KEY: string;
 
-    COMMAND: string;
-    DB_INSERT: string;
     DB_HOST: string;
     DB_USER: string;
     DB_PASS: string;

@@ -2,7 +2,7 @@ import os from 'os';
 
 export const MAX_CONCURRENT_WORKERS = Math.max(1, os.cpus().length - 1); // Number of parallel operations
 
-export const workerQueue = async (tasks: (() => Promise<void>)[], workerLimit: number) => {
+export const workerQueue = async (tasks: (() => Promise<void>)[], workerLimit: number = MAX_CONCURRENT_WORKERS) => {
   const executing: Promise<void>[] = [];
 
   for (const task of tasks) {
