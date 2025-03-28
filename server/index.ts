@@ -7,17 +7,15 @@ export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; // 2 GB
 export const isNotDevMode: boolean = Bun.env.NODE_ENV !== 'dev';
 
 const server = Bun.serve({
-  //////////////////////////
   development: !isNotDevMode,
-  //////////////////////////
 
   port: Bun.env.PORT || 3000,
   fetch: app.fetch,
   maxRequestBodySize: MAX_UPLOAD_FILE_SIZE,
 
   // tls: {
-  //   cert: Bun.file('/Users/danishmc/Desktop/Linux/PhotoX/Server/server/cert.pem'),
-  //   key: Bun.file('/Users/danishmc/Desktop/Linux/PhotoX/Server/server/key.pem'),
+  //   cert: Bun.file('./cert.pem'),
+  //   key: Bun.file('./key.pem'),
   // },
 });
 
@@ -26,7 +24,9 @@ const isInitSys = await checkInitalized();
 if (!isInitSys) {
   console.log('Initializing Server...');
   await createDBMS();
-  await initalizeSys();
+  if (!(await initalizeSys())) {
+    console.log('Failed initialized the Database System');
+  }
 }
 
 /** Process when frist start page:

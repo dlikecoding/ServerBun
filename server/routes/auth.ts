@@ -42,7 +42,7 @@ auth.get('/init-register', validateSchema('query', userAuthSchema), async (c) =>
 
 auth.post('/verify-register', async (c) => {
   const regInfo = await getSecureCookie(c, 'regInfo');
-  if (!regInfo) return c.json({ error: 'Registration info not found' }, 400);
+  if (!regInfo) return c.json({ error: 'Registration info not found' }, 403);
 
   const reqJson = await c.req.json();
 
