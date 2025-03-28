@@ -21,9 +21,9 @@ USE `Photos` ;
 -- Table `Photos`.`ServerSystem`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`ServerSystem` (
-  `uuid` VARCHAR(36) NOT NULL DEFAULT 'UUID()',
+  `uuid` VARCHAR(36) NOT NULL,
+  `process_medias` TINYINT(1) NULL DEFAULT 0 COMMENT 'Have been processed thumbnails, hash, object detection for all of medias if 1, otherwise is 0',
   `license_key` VARCHAR(512) NULL DEFAULT NULL,
-  `signature` VARCHAR(256) NULL,
   PRIMARY KEY (`uuid`))
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4
@@ -298,8 +298,8 @@ CREATE TABLE IF NOT EXISTS `Photos`.`ImportMedias` (
   CONSTRAINT `FK_IMPORTMEDIAS_REGISTERED_USER_ID`
     FOREIGN KEY (`RegisteredUser`)
     REFERENCES `Photos`.`RegisteredUser` (`reg_user_id`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4
 COLLATE = utf8mb4_0900_ai_ci;

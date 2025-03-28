@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { deleteOldUserSession, sessionStore, SET_USER_SESSION } from './authHelper/_cookies';
+import { deleteOldUserSession, sessionStore, SET_USER_SESSION, type UserType } from './authHelper/_cookies';
 import { createMiddleware } from 'hono/factory';
 
 import { z } from 'zod';
@@ -7,8 +7,8 @@ import { validateSchema } from '../modules/validate';
 import { fetchAllRegisteredUsers, updateAccountStatus } from '../db/module/regUser';
 import { insertMediaToDB } from '../db/maintain';
 import { deleteImportMedia } from '../db/module/media';
-import { executeProcess } from '../service/main';
-import { writeFile } from 'fs/promises';
+import { processMedias } from '../service';
+import { processMediaStatus, updateProcessMediaStatus } from '../db/module/system';
 
 const admin = new Hono();
 
@@ -20,8 +20,8 @@ const isAdmin = createMiddleware(async (c, next) => {
   const sessionId = c.get(SET_USER_SESSION);
   if (!sessionId) return c.json({ error: 'Warning: Unauthorized Access' }, 403);
 
-  const roleType = sessionStore.get(sessionId).roleType;
-  if (!roleType || roleType !== 'admin') return c.json({ error: 'Warning: Unauthorized Access Attempt Detected' }, 403);
+  const adminInfo: UserType = sessionStore.get(sessionId);
+  if (!adminInfo.roleType || adminInfo.roleType !== 'admin') return c.json({ error: 'Warning: Unauthorized Access Attempt Detected' }, 403);
   return await next();
 });
 
@@ -46,10 +46,10 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
   }
 });
 
-import { existsSync } from 'fs'; // To check if the file exists synchronously
 admin.get('/import', isAdmin, async (c) => {
-  const isExist = await VerifySystemSignature();
-  if (isExist) return c.json('System has already been initialized');
+  const isExist = await processMediaStatus();
+  if (isExist === 1) return c.json('System has already been initialized', 200);
+  await updateProcessMediaStatus();
 
   const sessionId = c.get(SET_USER_SESSION);
   const userId = sessionStore.get(sessionId).userId;
@@ -57,7 +57,7 @@ admin.get('/import', isAdmin, async (c) => {
   const exitCode = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
   if (exitCode !== 0) return c.json({ error: 'Failed to Import media to account' }, 400);
 
-  await executeProcess();
+  await processMedias();
 
   await deleteImportMedia();
 
@@ -66,23 +66,10 @@ admin.get('/import', isAdmin, async (c) => {
   return c.json('Success', 200);
 });
 
+// admin.get('/test', async (c) => {
+//   const isInitSys = await processMediaStatus();
+//   console.log(isInitSys === 1);
+//   return c.json('Success', 200);
+// });
+
 export default admin;
-
-const initializationMarkerFile = './.system_initialized';
-
-const VerifySystemSignature = async () => {
-  try {
-    // Check if the initialization marker file exists
-    const exists = existsSync(initializationMarkerFile);
-
-    if (exists) {
-      console.log('System has already been initialized.');
-    } else {
-      await writeFile(initializationMarkerFile, 'System initialized');
-      console.log('Initializing....');
-    }
-    return exists;
-  } catch (error) {
-    console.error('Error checking or initializing the system:', error);
-  }
-};

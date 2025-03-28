@@ -20,7 +20,7 @@ const processThumbSHA256 = async (media: any) => {
   }
 };
 
-export const executeProcess = async () => {
+export const processMedias = async () => {
   const loadedmedias = await importedMedias();
   const tasks = loadedmedias.map((media: any) => () => processThumbSHA256(media));
 

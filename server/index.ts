@@ -1,4 +1,6 @@
 import app from './app';
+import { createDBMS } from './db/maintain';
+import { checkInitalized, initalizeSys } from './db/module/system';
 // import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
 
 export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; // 2 GB
@@ -19,17 +21,13 @@ const server = Bun.serve({
   // },
 });
 
-/// Test implementation ////////////////////////////////////////////
-// await createDBMS();
-// await insertMediaToDB(1, Bun.env.PHOTO_PATH);
-
-// // await backupToDB();
-
-// await createThumbnails();
-
-// await createHashs();
 // ///////////////////////////////////////////////////
-// await restoreToDB();
+const isInitSys = await checkInitalized();
+if (!isInitSys) {
+  console.log('Initializing Server...');
+  await createDBMS();
+  await initalizeSys();
+}
 
 /** Process when frist start page:
  * Check if database exist, create one.

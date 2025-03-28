@@ -5,7 +5,6 @@ export const createDBMS = async () => {
   try {
     await $`mysql -u $DB_USER -p$DB_PASS < $DB_CREATE`;
     await $`mysql -u $DB_USER -p$DB_PASS < $DB_TRIGGERS`;
-    // await $`mysql -u $DB_USER -p$DB_PASS < $TEST_DB_INSERT_ACCOUNT`;
   } catch (error) {
     console.log(error);
   }
