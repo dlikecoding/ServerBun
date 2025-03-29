@@ -3,6 +3,7 @@ import { poolPromise } from '..';
 import type { StreamMediasParams } from '../../routes/stream';
 import path from 'path';
 import { $ } from 'bun';
+import type { UUID } from 'crypto';
 
 // SQL Queries
 const Sql = {
@@ -23,7 +24,7 @@ const Sql = {
   FETCH_MEDIA_STATISTICS: 'CALL GetMediaStatistics()',
   GET_ALBUMS: 'CALL GetAlbumsAndCount()',
   ADD_TO_ALBUMS: 'INSERT IGNORE INTO AlbumMedia (album, media) SELECT (?), media_id FROM Media WHERE media_id IN (?)',
-  CREATE_ALBUM: 'INSERT INTO Album (account, title) VALUES (?, ?)',
+  CREATE_ALBUM: 'INSERT INTO Album (RegisteredUser, title) VALUES (?, ?)',
 
   FIND_MEDIA_TO_DEL: 'SELECT media_id, SourceFile, ThumbPath FROM Media WHERE media_id IN (?)',
   DELETE_MEDIAS: 'DELETE FROM Media WHERE media_id IN (?)',
@@ -134,8 +135,8 @@ export const fetchAlbums = async () => {
   return (rows as any)[0];
 };
 
-export const createAlbum = async (albumTitle: string, accountId: number = 1) => {
-  const [result]: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.CREATE_ALBUM, [accountId, albumTitle]);
+export const createAlbum = async (regUserId: UUID, albumTitle: string) => {
+  const [result]: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.CREATE_ALBUM, [regUserId, albumTitle]);
   return result.insertId;
 };
 

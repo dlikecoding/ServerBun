@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { createAlbum, fetchAddToAlbum, fetchAlbums } from '../db/module/media';
 import { z } from 'zod';
 
-import { validateSchema } from '../modules/validate';
+import { validateSchema } from '../modules/validateSchema';
+import { getUserBySession } from '../middleware/validateAuth';
 
 const album = new Hono();
 
@@ -11,8 +12,8 @@ album.get('/', async (c) => {
 });
 
 const addAlbumSchema = z.object({
-  mediaIds: z.array(z.number()),
-  albumId: z.number().optional(),
+  mediaIds: z.array(z.coerce.number()),
+  albumId: z.coerce.number().optional(),
   albumTitle: z.string().optional(),
 });
 
@@ -20,7 +21,8 @@ album.put('/add', validateSchema('json', addAlbumSchema), async (c) => {
   const { mediaIds, albumId, albumTitle } = c.req.valid('json');
   if (!albumId && !albumTitle) return c.json({ error: 'Missing Album ID or Album Title' }, 400);
 
-  const targetAlbumId = !albumId && albumTitle ? await createAlbum(albumTitle) : albumId;
+  const userId = getUserBySession(c).userId;
+  const targetAlbumId = !albumId && albumTitle ? await createAlbum(userId, albumTitle) : albumId;
 
   if (!targetAlbumId) return c.json({ error: 'Album creation failed' }, 500);
 

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { fetchMedias } from '../db/module/media';
 import { z } from 'zod';
-import { validateSchema } from '../modules/validate';
+import { validateSchema } from '../modules/validateSchema';
 
 const PAGE_SIZE = 250; // Max size per page
 

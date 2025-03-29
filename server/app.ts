@@ -9,7 +9,7 @@ import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 
 // ===============================
-import { isAuthenticate } from './routes/authHelper/_cookies';
+
 import auth from './routes/auth';
 
 import user from './routes/user';
@@ -18,6 +18,7 @@ import medias from './routes/medias';
 // import media from './routes/media';
 import album from './routes/album';
 import admin from './routes/admin';
+import { isAuthenticate } from './middleware/validateAuth';
 
 const app = new Hono();
 

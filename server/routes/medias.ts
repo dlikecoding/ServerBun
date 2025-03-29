@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 
 import { z } from 'zod'; // To create a schema to validate post req
 import { deleteMedias, fetchCameraType, fetchMediaCount, fetchMediaEachYear, fetchMediaOfEachMonth, updateMedias } from '../db/module/media';
-import { validateSchema } from '../modules/validate';
+import { validateSchema } from '../modules/validateSchema';
 
 const medias = new Hono();
 
@@ -12,20 +12,22 @@ const medias = new Hono();
 // });
 
 const yearSchema = z.object({
-  year: z
-    .string()
-    .regex(/^(\d{4}|0)$/, 'Invalid year format') // Matches 0 or 4 digits
+  year: z.coerce
+    .number()
+    .min(0)
+    .max(9999)
+    // (/^(\d{4}|0)$/, 'Invalid year format') // Matches 0 or 4 digits
     .optional(),
 });
 
 const updateSchema = z.object({
-  mediaIds: z.array(z.number()),
+  mediaIds: z.array(z.coerce.number()),
   updateKey: z.enum(['Favorite', 'Deleted', 'Hidden']), // If updateKey is not in Favorite, Deleted, Hidden ... return error
   updateValue: z.boolean(),
 });
 
 const deleteSchema = z.object({
-  mediasToDel: z.array(z.number()),
+  mediasToDel: z.array(z.coerce.number()),
 });
 
 medias.get('/', validateSchema('query', yearSchema), async (c) => {

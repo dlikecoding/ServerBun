@@ -2,8 +2,8 @@ import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthe
 import { Hono } from 'hono';
 import { createPasskey, userPassKeyByEmail, findRegUser, countSuspendedUsers, createAdminOrUsers } from '../db/module/regUser';
 
-import { clearCookie, createAuthSession, getSecureCookie, logoutUser, setSecureCookie, userAuthSchema, type UserType } from './authHelper/_cookies';
-import { validateSchema } from '../modules/validate';
+import { clearCookie, createAuthSession, getSecureCookie, setSecureCookie, userAuthSchema, type UserType } from './authHelper/_cookies';
+import { validateSchema } from '../modules/validateSchema';
 
 const auth = new Hono();
 const WEBSITE_TITLE = 'Photos Gallery X';
@@ -154,10 +154,6 @@ auth.post('/verify-auth', async (c) => {
   await createAuthSession(c, userLoggedIn);
 
   return c.json({ verified: verification.verified });
-});
-
-auth.get('/logout', logoutUser, async (c) => {
-  return c.json('Successfully logout!', 200);
 });
 
 export default auth;

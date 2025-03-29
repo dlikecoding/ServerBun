@@ -1,14 +1,21 @@
 import { Hono } from 'hono';
 
-import { sessionStore, SET_USER_SESSION } from './authHelper/_cookies';
+import { clearCookie, SESSION_KEY, sessionStore, SET_USER_SESSION } from './authHelper/_cookies';
+import { getUserBySession } from '../middleware/validateAuth';
 
 const user = new Hono();
 
 user.get('/verified', async (c) => {
-  const sessionId = c.get(SET_USER_SESSION);
-
-  const userInfo = sessionStore.get(sessionId);
+  const userInfo = getUserBySession(c);
   return c.json(userInfo, 200);
+});
+
+user.get('/logout', async (c) => {
+  const sessionId = c.get(SET_USER_SESSION);
+  sessionStore.delete(sessionId);
+  clearCookie(c, SESSION_KEY);
+
+  return c.json('Successfully logout!', 200);
 });
 
 // user.get('/', async (c) => {

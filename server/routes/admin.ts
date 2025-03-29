@@ -1,28 +1,19 @@
 import { Hono } from 'hono';
-import { deleteOldUserSession, sessionStore, SET_USER_SESSION, type UserType } from './authHelper/_cookies';
-import { createMiddleware } from 'hono/factory';
+import { deleteOldUserSession } from './authHelper/_cookies';
 
 import { z } from 'zod';
-import { validateSchema } from '../modules/validate';
+import { validateSchema } from '../modules/validateSchema';
 import { fetchAllRegisteredUsers, updateAccountStatus } from '../db/module/regUser';
 import { insertMediaToDB } from '../db/maintain';
 import { deleteImportMedia } from '../db/module/media';
 import { processMedias } from '../service';
 import { processMediaStatus, updateProcessMediaStatus } from '../db/module/system';
+import { getUserBySession, isAdmin } from '../middleware/validateAuth';
 
 const admin = new Hono();
 
 const userAuthSchema = z.object({
   userEmail: z.string().email(),
-});
-
-const isAdmin = createMiddleware(async (c, next) => {
-  const sessionId = c.get(SET_USER_SESSION);
-  if (!sessionId) return c.json({ error: 'Warning: Unauthorized Access' }, 403);
-
-  const adminInfo: UserType = sessionStore.get(sessionId);
-  if (!adminInfo.roleType || adminInfo.roleType !== 'admin') return c.json({ error: 'Warning: Unauthorized Access Attempt Detected' }, 403);
-  return await next();
 });
 
 admin.get('/dashboard', isAdmin, async (c) => {
@@ -51,8 +42,7 @@ admin.get('/import', isAdmin, async (c) => {
   if (isExist === 1) return c.json('System has already been initialized', 200);
   await updateProcessMediaStatus();
 
-  const sessionId = c.get(SET_USER_SESSION);
-  const userId = sessionStore.get(sessionId).userId;
+  const userId = getUserBySession(c).userId;
 
   const exitCode = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
   if (exitCode !== 0) return c.json({ error: 'Failed to Import media to account' }, 400);
