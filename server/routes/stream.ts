@@ -1,27 +1,11 @@
 import { Hono } from 'hono';
-import { fetchMedias } from '../db/module/media';
+import { fetchMedias, type Media } from '../db/module/media';
 import { z } from 'zod';
 import { validateSchema } from '../modules/validateSchema';
 
 const PAGE_SIZE = 250; // Max size per page
 
 const streamApi = new Hono();
-
-interface Media {
-  media_id: number;
-  FileType: 'Video' | 'Live' | 'Photo';
-  FileName: string;
-  FileSize: number;
-  CreateDate: Date;
-  ThumbPath: string;
-  SourceFile: string;
-  isFavorite: number;
-  timeFormat: string;
-  duration: string;
-  videoTitle: string;
-
-  affectedRows?: any;
-}
 
 // Define type for query parameters
 export type StreamMediasParams = {

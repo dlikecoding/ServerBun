@@ -5,15 +5,30 @@ import path from 'path';
 import { $ } from 'bun';
 import type { UUID } from 'crypto';
 
+export interface Media {
+  media_id: number;
+  FileType: 'Video' | 'Live' | 'Photo';
+  FileName: string;
+  FileSize: number;
+  CreateDate: Date;
+  ThumbPath: string;
+  SourceFile: string;
+  isFavorite: number;
+  timeFormat: string;
+  duration: string;
+  videoTitle: string;
+
+  affectedRows?: any;
+}
+
 // SQL Queries
 const Sql = {
-  LOAD_IMPORTED_MEDIA: 'SELECT md.media_id, md.SourceFile, md.ThumbPath, md.FileType FROM ImportMedias im LEFT JOIN Media md ON im.import_id = md.media_id',
+  LOAD_IMPORTED_MEDIA: 'SELECT media_id, SourceFile, ThumbPath, FileType FROM Media WHERE ThumbPath IS NULL OR HashCode IS NULL',
   UPDATE_HASH_THUMB: 'UPDATE Media SET HashCode = ?, ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
 
   // UPDATE_THUMB: 'UPDATE Media SET ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
   // UPDATE_HASH: 'UPDATE Media SET HashCode = (?) WHERE media_id = ?',
 
-  DELETE_IMPORT_TB: 'DELETE FROM ImportMedias',
   FETCH_CAMERATYPE: 'SELECT * FROM CameraType',
 
   FETCH_MEDIA_EACH_YEAR: 'CALL GetMediaEachYear()',
@@ -72,10 +87,6 @@ export const updateMedias = async (mediaIds: number[], updateKey: string, update
       connection.release();
     }
   }
-};
-
-export const deleteImportMedia = async () => {
-  await poolPromise.execute(Sql.DELETE_IMPORT_TB);
 };
 
 export const fetchMedias = async ({
@@ -141,8 +152,19 @@ export const createAlbum = async (regUserId: UUID, albumTitle: string) => {
 };
 
 export const fetchAddToAlbum = async (mediaIds: number[], albumId: number) => {
-  const [result]: [ResultSetHeader, FieldPacket[]] = await poolPromise.query(Sql.ADD_TO_ALBUMS, [albumId, mediaIds]);
-  return result.affectedRows === mediaIds.length;
+  const connection = await poolPromise.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result]: [ResultSetHeader, FieldPacket[]] = await poolPromise.query(Sql.ADD_TO_ALBUMS, [albumId, mediaIds]);
+    await connection.commit();
+    return result.affectedRows === mediaIds.length;
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error('[transactionalUpdate] Error:', error);
+    return false;
+  } finally {
+    if (connection) connection.release();
+  }
 };
 
 export const deleteMedias = async (mediaIds: number[]) => {
@@ -152,6 +174,7 @@ export const deleteMedias = async (mediaIds: number[]) => {
     await connection.beginTransaction();
 
     const foundPaths: [RowDataPacket[], FieldPacket[]] = await connection.query(Sql.FIND_MEDIA_TO_DEL, [mediaIds]);
+    const result: [ResultSetHeader, FieldPacket[]] = await connection.query(Sql.DELETE_MEDIAS, [mediaIds]);
 
     foundPaths[0].forEach(async (each: any, _index) => {
       const thumbPath = path.join(Bun.env.MAIN_PATH, each.ThumbPath);
@@ -161,19 +184,13 @@ export const deleteMedias = async (mediaIds: number[]) => {
       if (exitCode !== 0) return console.warn(stderr); // Save result in error table
     });
 
-    const result: [ResultSetHeader, FieldPacket[]] = await connection.query(Sql.DELETE_MEDIAS, [mediaIds]);
-
     await connection.commit();
 
     return result[0].affectedRows === mediaIds.length;
   } catch (error) {
-    if (connection) {
-      await connection.rollback();
-    }
+    if (connection) await connection.rollback();
   } finally {
-    if (connection) {
-      connection.release();
-    }
+    if (connection) connection.release();
   }
 };
 

@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { validateSchema } from '../modules/validateSchema';
 import { fetchAllRegisteredUsers, updateAccountStatus } from '../db/module/regUser';
 import { insertMediaToDB } from '../db/maintain';
-import { deleteImportMedia } from '../db/module/media';
 import { processMedias } from '../service';
 import { processMediaStatus, updateProcessMediaStatus } from '../db/module/system';
 import { getUserBySession, isAdmin } from '../middleware/validateAuth';
@@ -39,21 +38,22 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
 
 admin.get('/import', isAdmin, async (c) => {
   const isExist = await processMediaStatus();
+  console.log('Staring import processing ...');
   if (isExist === 1) return c.json('System has already been initialized', 200);
+
   await updateProcessMediaStatus();
+  c.json('Staring processing ...', 202);
 
   const userId = getUserBySession(c).userId;
-
   const exitCode = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
   if (exitCode !== 0) return c.json({ error: 'Failed to Import media to account' }, 400);
+  c.json('Imported media to database', 200);
 
   await processMedias();
-
-  await deleteImportMedia();
+  c.json('Created Thumbnails and Hash have been completed', 200);
 
   // await backupToDB();
-
-  return c.json('Success', 200);
+  return c.json('Finished Importing Multimedia', 200);
 });
 
 // admin.get('/test', async (c) => {

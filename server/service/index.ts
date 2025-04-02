@@ -16,15 +16,20 @@ const processThumbSHA256 = async (media: any) => {
 
     if (w && h) await updateHashThumb(media.media_id, hash, w, h);
   } catch (error) {
-    console.error(`Failed processing ${media.SourceFile}: ${error}`);
+    console.error(`Failed processing - Source: ${media.SourceFile} Thumb: ${media.ThumbPath}: ${error}`);
   }
 };
 
 export const processMedias = async () => {
   const loadedmedias = await importedMedias();
   const tasks = loadedmedias.map((media: any) => () => processThumbSHA256(media));
+  try {
+    await workerQueue(tasks);
+    console.log('======= PROCESS THUMBNAIL AND HASH COMPLETED =======');
 
-  await workerQueue(tasks);
-
-  console.log('======= PROCESS THUMBNAIL AND HASH COMPLETED =======');
+    return true;
+  } catch (error) {
+    console.warn('Error processing Thumb and SHA');
+    return false;
+  }
 };

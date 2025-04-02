@@ -1,25 +1,8 @@
 import * as fs from 'fs/promises';
 import path from 'path';
 
-const isFile = async (fPath: string) => {
-  const stats = await fs.stat(fPath);
-  return stats.isFile();
-};
-
 const isExist = async (path: string) => {
   return await fs.exists(path);
-};
-
-const deleteFileOrDE = async (fPath: string) => {
-  try {
-    (await isFile(fPath)) ? await fs.unlink(fPath) : await fs.rm(fPath, { recursive: true });
-    return console.log(`DELETED ${fPath} -> Deleted successfully.`);
-  } catch (error: any) {
-    // recordErrorInDB(
-    //     'deleteFileOrDE: ',
-    //     `Error deleting ${folderPath}: ${error.message}`
-    // );
-  }
 };
 
 const createFolder = async (dePath: string, isRecursive: boolean = true) => {
@@ -107,4 +90,20 @@ const diskCapacity = async (pathToCheck: string): Promise<any> => {
   }
 };
 
-export { deleteFileOrDE, createFolder, removeFilesUploadDir, isDirEmpty, removeEmptyDirectories, convertFileSize, diskCapacity, isExist };
+const formatDate = (component: number): string => {
+  return String(component).padStart(2, '0');
+};
+
+const nameFolderByTime = (): string => {
+  const currentDate = new Date();
+
+  const year = currentDate.getFullYear();
+  const month = formatDate(currentDate.getMonth() + 1);
+  const day = formatDate(currentDate.getDate());
+  const hour = formatDate(currentDate.getHours());
+  const minute = formatDate(currentDate.getMinutes());
+  const second = formatDate(currentDate.getSeconds());
+
+  return `${year}-${month}-${day}_${hour}-${minute}-${second}`;
+};
+export { createFolder, removeFilesUploadDir, isDirEmpty, removeEmptyDirectories, convertFileSize, diskCapacity, isExist, nameFolderByTime };

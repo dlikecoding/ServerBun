@@ -59,103 +59,106 @@ END$$
 -- =======================================
 
 DROP TRIGGER IF EXISTS ImportMedias_AFTER_INSERT$$
-CREATE TRIGGER ImportMedias_AFTER_INSERT 
-AFTER INSERT ON ImportMedias FOR EACH ROW
-BEGIN
-    DECLARE mimeTypePrefix VARCHAR(10);
-    DECLARE smallestDate DATETIME; -- To store the smallest date if have any
-    DECLARE cameraTypeId INT; -- Camera ID if have any
-    DECLARE durationDisplay VARCHAR(10); -- Display duration time for videos
-    DECLARE mediaType ENUM('Photo', 'Video', 'Live', 'Unknown');
-    -- DECLARE lastInsertMediaID INT;
-    DECLARE thumbnailName VARCHAR(15); -- Create a random string for thumbnailFile
+-- CREATE TRIGGER ImportMedias_AFTER_INSERT 
+-- AFTER INSERT ON ImportMedias FOR EACH ROW
+-- BEGIN
+--     DECLARE mimeTypePrefix VARCHAR(10);
+--     DECLARE smallestDate DATETIME; -- To store the smallest date if have any
+--     DECLARE cameraTypeId INT; -- Camera ID if have any
+--     DECLARE durationDisplay VARCHAR(10); -- Display duration time for videos
+--     DECLARE mediaType ENUM('Photo', 'Video', 'Live', 'Unknown');
+--     -- DECLARE lastInsertMediaID INT;
+--     DECLARE thumbnailName VARCHAR(15); -- Create a random string for thumbnailFile
     
-    DECLARE currentDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+--     DECLARE currentDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
-    -- Extract MIME type prefix (e.g., 'image' from 'image/png')
-    SET mimeTypePrefix = SUBSTRING_INDEX(NEW.MIMEType, '/', 1);  -- 'image' from 'image/png'
+--     -- Extract MIME type prefix (e.g., 'image' from 'image/png')
+--     SET mimeTypePrefix = SUBSTRING_INDEX(NEW.MIMEType, '/', 1);  -- 'image' from 'image/png'
 
-    -- Determine the smallest valid date among multiple fields. Use CASE statements to handle invalid date values
-    SET smallestDate = LEAST(
-        IF((NEW.CreateDate = '' OR NEW.CreateDate = '0000:00:00 00:00:00'), currentDate, NEW.CreateDate),
-        IF((NEW.DateCreated = '' OR NEW.DateCreated = '0000:00:00 00:00:00'), currentDate, NEW.DateCreated),
-        IF((NEW.CreationDate = '' OR NEW.CreationDate = '0000:00:00 00:00:00'), currentDate, NEW.CreationDate),
-        IF((NEW.DateTimeOriginal = '' OR NEW.DateTimeOriginal = '0000:00:00 00:00:00'), currentDate, NEW.DateTimeOriginal),
-        IF((NEW.FileModifyDate = '' OR NEW.FileModifyDate = '0000:00:00 00:00:00'), currentDate, NEW.FileModifyDate),
-        IF((NEW.MediaCreateDate = '' OR NEW.MediaCreateDate = '0000:00:00 00:00:00'), currentDate, NEW.MediaCreateDate),
-        IF((NEW.MediaModifyDate = '' OR NEW.MediaModifyDate = '0000:00:00 00:00:00'), currentDate, NEW.MediaModifyDate)
-    );
+--     -- Determine the smallest valid date among multiple fields. Use CASE statements to handle invalid date values
+--     -- SET smallestDate = LEAST(
+--     --     COALESCE(NULLIF(NULLIF(NEW.CreateDate, ''), '0000:00:00 00:00:00'), currentDate),
+--     --     COALESCE(NULLIF(NULLIF(NEW.DateCreated, ''), '0000:00:00 00:00:00'), currentDate),
+--     --     COALESCE(NULLIF(NULLIF(NEW.CreationDate, ''), '0000:00:00 00:00:00'), currentDate),
+--     --     COALESCE(NULLIF(NULLIF(NEW.DateTimeOriginal, ''), '0000:00:00 00:00:00'), currentDate),
+--     --     COALESCE(NULLIF(NULLIF(NEW.FileModifyDate, ''), '0000:00:00 00:00:00'), currentDate),
+--     --     COALESCE(NULLIF(NULLIF(NEW.MediaCreateDate, ''), '0000:00:00 00:00:00'), currentDate),
+--     --     COALESCE(NULLIF(NULLIF(NEW.MediaModifyDate, ''), '0000:00:00 00:00:00'), currentDate)
+--     -- );
+
+--     SET smallestDate = NOW();
+
     
-    -- Handle camera type association:
-    -- Check if Make, Model, and LensModel are not NULL or empty
-    IF NEW.Make IS NOT NULL AND NEW.Make <> '' AND NEW.Model IS NOT NULL AND NEW.Model <> '' THEN
-        SELECT camera_id INTO cameraTypeId FROM CameraType
-        WHERE Make = NEW.Make AND Model = NEW.Model
-        -- AND LensModel = NEW.LensModel
-        LIMIT 1;
+--     -- Handle camera type association:
+--     -- Check if Make, Model, and LensModel are not NULL or empty
+--     IF NEW.Make IS NOT NULL AND NEW.Make <> '' AND NEW.Model IS NOT NULL AND NEW.Model <> '' THEN
+--         SELECT camera_id INTO cameraTypeId FROM CameraType
+--         WHERE Make = NEW.Make AND Model = NEW.Model
+--         -- AND LensModel = NEW.LensModel
+--         LIMIT 1;
  
-        IF cameraTypeId IS NULL THEN
-            INSERT INTO CameraType (Make, Model) VALUES (NEW.Make, NEW.Model);
-            SET cameraTypeId = LAST_INSERT_ID();
-        END IF;
-    END IF;
+--         IF cameraTypeId IS NULL THEN
+--             INSERT INTO CameraType (Make, Model) VALUES (NEW.Make, NEW.Model);
+--             SET cameraTypeId = LAST_INSERT_ID();
+--         END IF;
+--     END IF;
 
-    SET mediaType = IF ( (mimeTypePrefix = 'image'), 'Photo', 
-                    IF ( (mimeTypePrefix = 'video'), 
-                    IF ( (NEW.Duration > 5), 'Video', 'Live' ), 'Unknown') );
+--     SET mediaType = IF ( (mimeTypePrefix = 'image'), 'Photo', 
+--                     IF ( (mimeTypePrefix = 'video'), 
+--                     IF ( (NEW.Duration > 5), 'Video', 'Live' ), 'Unknown') );
     
-    -- Generate unique thumbnail name
-    SET thumbnailName = CONCAT(NEW.import_id, LPAD(CONV(NEW.import_id, 10, 36), 8, '0'));
+--     -- Generate unique thumbnail name
+--     SET thumbnailName = CONCAT(NEW.import_id, LPAD(CONV(NEW.import_id, 10, 36), 8, '0'));
 
-    -- Insert into Media table
-    INSERT INTO Media (media_id, FileName, FileType, FileExt, Software, FileSize, CameraType, CreateDate, SourceFile, MIMEType, ThumbPath) 
-        VALUES (NEW.import_id, NEW.FileName, mediaType, NEW.FileType, NEW.Software, NEW.FileSize, cameraTypeId,
-        STR_TO_DATE(smallestDate, '%Y-%m-%d %H:%i:%s'), NEW.SourceFile, NEW.MIMEType,
-        CONCAT('/Thumbnails/', YEAR(smallestDate), '/', DATE_FORMAT(smallestDate, '%M'), '/', thumbnailName, '.webp')
-    );
+--     -- Insert into Media table
+--     INSERT INTO Media (media_id, FileName, FileType, FileExt, Software, FileSize, CameraType, CreateDate, SourceFile, MIMEType, ThumbPath) 
+--         VALUES (NEW.import_id, NEW.FileName, mediaType, NEW.FileType, NEW.Software, NEW.FileSize, cameraTypeId,
+--         STR_TO_DATE(smallestDate, '%Y-%m-%d %H:%i:%s'), NEW.SourceFile, NEW.MIMEType,
+--         CONCAT('/Thumbnails/', YEAR(smallestDate), '/', DATE_FORMAT(smallestDate, '%M'), '/', thumbnailName, '.webp')
+--     );
 
-    -- Reuse this variable as media_id for the last Media inserted
-    -- SET lastInsertMediaID = LAST_INSERT_ID();
+--     -- Reuse this variable as media_id for the last Media inserted
+--     -- SET lastInsertMediaID = LAST_INSERT_ID();
 
-    -- ///////////// NOTE ///////////////////
-    -- The RegisteredUser number needs to be added when the user is created, so we can identify which user uploaded these media.
-    INSERT INTO UploadBy (RegisteredUser, media) VALUES (NEW.RegisteredUser, NEW.import_id);
+--     -- ///////////// NOTE ///////////////////
+--     -- The RegisteredUser number needs to be added when the user is created, so we can identify which user uploaded these media.
+--     INSERT INTO UploadBy (RegisteredUser, media) VALUES (NEW.RegisteredUser, NEW.import_id);
 
-    -- -- Create a thumbnail path and add it to Thumbnail table
-    -- INSERT INTO Thumbnail (media, ThumbPath, isImage) 
-    -- VALUES (lastInsertMediaID, 
-    --   CONCAT('/Thumbnails/', YEAR(smallestDate), '/', DATE_FORMAT(smallestDate, '%M'), '/', NEW.FileName),
-    --   IF ( (mimeTypePrefix = 'image'), 1, 0)
-    -- );
+--     -- -- Create a thumbnail path and add it to Thumbnail table
+--     -- INSERT INTO Thumbnail (media, ThumbPath, isImage) 
+--     -- VALUES (lastInsertMediaID, 
+--     --   CONCAT('/Thumbnails/', YEAR(smallestDate), '/', DATE_FORMAT(smallestDate, '%M'), '/', NEW.FileName),
+--     --   IF ( (mimeTypePrefix = 'image'), 1, 0)
+--     -- );
 
-    -- Insert into Photo, Video, or Live table based on media type
-    CASE 
-        WHEN mediaType = 'Photo' THEN
-            INSERT INTO Photo (media, Orientation, ImageWidth, ImageHeight, Megapixels)
-            VALUES (NEW.import_id, NEW.Orientation, NEW.ImageWidth, NEW.ImageHeight, ROUND(NEW.Megapixels, 1));
+--     -- Insert into Photo, Video, or Live table based on media type
+--     CASE 
+--         WHEN mediaType = 'Photo' THEN
+--             INSERT INTO Photo (media, Orientation, ImageWidth, ImageHeight, Megapixels)
+--             VALUES (NEW.import_id, NEW.Orientation, NEW.ImageWidth, NEW.ImageHeight, ROUND(NEW.Megapixels, 1));
             
-        WHEN mediaType = 'Video' THEN
-            SET durationDisplay = CASE
-                WHEN FLOOR(NEW.Duration / 3600) > 0 THEN CONCAT(FLOOR(NEW.Duration / 3600), ':', LPAD(FLOOR(NEW.Duration / 60) % 60, 2, '0'), ':', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
-                WHEN FLOOR(NEW.Duration / 60) > 0 THEN CONCAT(FLOOR(NEW.Duration / 60), ':', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
-                ELSE CONCAT('0:', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
-            END;
-            INSERT INTO Video (media, Title, Duration, DisplayDuration) 
-            VALUES (NEW.import_id, NEW.Title, NEW.Duration, durationDisplay);
+--         WHEN mediaType = 'Video' THEN
+--             SET durationDisplay = CASE
+--                 WHEN FLOOR(NEW.Duration / 3600) > 0 THEN CONCAT(FLOOR(NEW.Duration / 3600), ':', LPAD(FLOOR(NEW.Duration / 60) % 60, 2, '0'), ':', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
+--                 WHEN FLOOR(NEW.Duration / 60) > 0 THEN CONCAT(FLOOR(NEW.Duration / 60), ':', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
+--                 ELSE CONCAT('0:', LPAD(ROUND(NEW.Duration % 60), 2, '0'))
+--             END;
+--             INSERT INTO Video (media, Title, Duration, DisplayDuration) 
+--             VALUES (NEW.import_id, NEW.Title, NEW.Duration, durationDisplay);
             
-        WHEN mediaType = 'Live' THEN
-            INSERT INTO Live (media, Title, Duration) 
-            VALUES (NEW.import_id, NEW.Title, NEW.Duration);
-    END CASE;
+--         WHEN mediaType = 'Live' THEN
+--             INSERT INTO Live (media, Title, Duration) 
+--             VALUES (NEW.import_id, NEW.Title, NEW.Duration);
+--     END CASE;
 
-    -- Handle GPS data
-    IF NEW.GPSLatitude IS NOT NULL AND NEW.GPSLatitude != '' 
-       AND NEW.GPSLongitude IS NOT NULL AND NEW.GPSLongitude != '' THEN
-        INSERT INTO Location (media, GPSLatitude, GPSLongitude) 
-        VALUES (NEW.import_id, NEW.GPSLatitude, NEW.GPSLongitude );
-    END IF;
+--     -- Handle GPS data
+--     IF NEW.GPSLatitude IS NOT NULL AND NEW.GPSLatitude != '' 
+--        AND NEW.GPSLongitude IS NOT NULL AND NEW.GPSLongitude != '' THEN
+--         INSERT INTO Location (media, GPSLatitude, GPSLongitude) 
+--         VALUES (NEW.import_id, NEW.GPSLatitude, NEW.GPSLongitude );
+--     END IF;
 
-END$$
+-- END$$
 
 /*
     Business Requirement #2: Create View for Medias

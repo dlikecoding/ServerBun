@@ -9,22 +9,27 @@ import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 
 // ===============================
+import { isAuthenticate } from './middleware/validateAuth';
 
 import auth from './routes/auth';
 
 import user from './routes/user';
 import streamApi from './routes/stream';
 import medias from './routes/medias';
-// import media from './routes/media';
 import album from './routes/album';
 import admin from './routes/admin';
-import { isAuthenticate } from './middleware/validateAuth';
+import upload from './routes/upload';
 
 const app = new Hono();
 
-app.use(csrf());
+app.use(
+  csrf({
+    origin: Bun.env.ORIGIN_URL, // For Post method, does not work if does not sspecify Orgin
+  })
+);
 
 // CORS should be called before the route // DEV MODE - NEED TO REMOVE CORS In DEPLOY
+
 if (Bun.env.NODE_ENV === 'dev') {
   app.use(
     '/*',
@@ -58,7 +63,9 @@ app
   .basePath('api/v1')
   .route('/auth', auth)
   .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
+
   .route('/admin', admin)
+  .route('/upload', upload)
   .route('/stream', streamApi)
   .route('/user', user)
   .route('/medias', medias)

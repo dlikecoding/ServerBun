@@ -7,12 +7,12 @@ import { validateSchema } from '../modules/validateSchema';
 
 const auth = new Hono();
 const WEBSITE_TITLE = 'Photos Gallery X';
-
 const LIMIT_NUMBER_REGISTER = 2; // Limit number of user can register for an account
 
 auth.get('/init-register', validateSchema('query', userAuthSchema), async (c) => {
   try {
-    const result = await countSuspendedUsers(); // if userGuest wating status is >= N, return reach limit.
+    const result = await countSuspendedUsers();
+    // if registered user waiting status is >= N, STOP allow new user register.
     if (result.waiting >= LIMIT_NUMBER_REGISTER) return c.json({ error: 'User creation have reached limited.' }, 400);
 
     const { username, email } = c.req.valid('query');
@@ -88,8 +88,7 @@ auth.get('/init-auth', validateSchema('query', userAuthSchema), async (c) => {
   // Reject user have susppended status to login
   if (!userAccount.status) return c.json({ error: `You don't have permission to log in at the moment. Please wait for admin approval` }, 400);
 
-  // Passkeys
-  const userPasskeys = await userPassKeyByEmail(email);
+  const userPasskeys = await userPassKeyByEmail(email); // Passkeys
   if (!userPasskeys) return c.json({ error: 'No passkey created for this email' }, 400);
 
   const options: PublicKeyCredentialRequestOptionsJSON = await generateAuthenticationOptions({

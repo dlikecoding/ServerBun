@@ -1,8 +1,10 @@
 declare module 'bun' {
   interface Env {
     PORT: string;
+
     MAIN_PATH: string;
     THUMB_PATH: string;
+    UPLOAD_PATH: string;
     PHOTO_PATH: string;
 
     ORIGIN_URL: string;
