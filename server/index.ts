@@ -1,5 +1,5 @@
 import app from './app';
-import { createDBMS } from './db/maintain';
+import { createDBMS } from './db/main';
 import { checkInitalized, initalizeSys } from './db/module/system';
 // import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
 

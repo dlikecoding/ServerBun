@@ -4,10 +4,12 @@ import { deleteOldUserSession } from './authHelper/_cookies';
 import { z } from 'zod';
 import { validateSchema } from '../modules/validateSchema';
 import { fetchAllRegisteredUsers, updateAccountStatus } from '../db/module/regUser';
-import { insertMediaToDB } from '../db/maintain';
+import { countFiles, insertMediaToDB, renameAllFiles } from '../db/main';
 import { processMedias } from '../service';
 import { processMediaStatus, updateProcessMediaStatus } from '../db/module/system';
 import { getUserBySession, isAdmin } from '../middleware/validateAuth';
+import { streamText } from 'hono/streaming';
+import { isExist } from '../service/fsHelper';
 
 const admin = new Hono();
 
@@ -17,7 +19,49 @@ const userAuthSchema = z.object({
 
 admin.get('/dashboard', isAdmin, async (c) => {
   const allUsers = await fetchAllRegisteredUsers();
-  return c.json(allUsers, 200);
+  const isExist = await processMediaStatus();
+
+  return c.json({ users: allUsers, sysStatus: isExist }, 200);
+});
+
+admin.get('/import', isAdmin, async (c) => {
+  const userId = getUserBySession(c).userId;
+
+  return streamText(c, async (stream) => {
+    try {
+      stream.onAbort(() => {
+        console.warn('Client aborted the stream!');
+      });
+      await stream.writeln('Processing media files started. Please wait...');
+
+      const isValidDir = isExist(Bun.env.PHOTO_PATH);
+      if (!isValidDir) {
+        await stream.writeln('Error: Directory not found. Please ensure the directory exists');
+        return;
+      }
+
+      const totalFiles = await countFiles(Bun.env.PHOTO_PATH);
+      if (!totalFiles) {
+        await stream.writeln('Warning: No files found in the current directory. Please check if the directory contains media files.');
+        return;
+      }
+
+      const rename = await renameAllFiles(Bun.env.PHOTO_PATH);
+      if (!rename) {
+        await stream.writeln('Error: Failed to rename files. Please check file permissions and the files path are valid.');
+        return;
+      }
+
+      await insertMediaToDB(userId, Bun.env.PHOTO_PATH, stream, totalFiles);
+
+      await processMedias(stream); // create thumbnail and hash keys
+
+      await updateProcessMediaStatus(); // update server status of created media
+      await stream.writeln('✅ Finished Importing Multimedia!');
+    } catch (error) {
+      await stream.writeln(`Error: 500 Internal Server Error`);
+    }
+  });
 });
 
 admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), async (c) => {
@@ -35,31 +79,5 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
     return c.json({ error: 'Failed to fetch Account' }, 500);
   }
 });
-
-admin.get('/import', isAdmin, async (c) => {
-  const isExist = await processMediaStatus();
-  console.log('Staring import processing ...');
-  if (isExist === 1) return c.json('System has already been initialized', 200);
-
-  await updateProcessMediaStatus();
-  c.json('Staring processing ...', 202);
-
-  const userId = getUserBySession(c).userId;
-  const exitCode = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
-  if (exitCode !== 0) return c.json({ error: 'Failed to Import media to account' }, 400);
-  c.json('Imported media to database', 200);
-
-  await processMedias();
-  c.json('Created Thumbnails and Hash have been completed', 200);
-
-  // await backupToDB();
-  return c.json('Finished Importing Multimedia', 200);
-});
-
-// admin.get('/test', async (c) => {
-//   const isInitSys = await processMediaStatus();
-//   console.log(isInitSys === 1);
-//   return c.json('Success', 200);
-// });
 
 export default admin;

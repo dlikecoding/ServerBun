@@ -2,10 +2,11 @@ import path from 'path';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 
-import { createFolder, nameFolderByTime } from '../service/fsHelper';
+import { createFolder, isExist, nameFolderByTime } from '../service/fsHelper';
 import { getUserBySession } from '../middleware/validateAuth';
-import { insertMediaToDB } from '../db/maintain';
+import { countFiles, insertMediaToDB, renameAllFiles } from '../db/main';
 import { processMedias } from '../service';
+import { streamText } from 'hono/streaming';
 
 const GB = 1024 * 1024 * 1024;
 
@@ -24,64 +25,92 @@ upload.post(
   bodyLimit({
     maxSize: MAX_BODY_SIZE,
     onError: (c) => {
-      return c.json({ error: 'overflow :(' }, 413);
+      return c.json({ error: 'Reach file capaciry limited!' }, 413);
     },
   }),
   async (c) => {
     const formData = await c.req.formData();
     const files = formData.getAll('uploadFiles') as File[];
-
-    if (!files.length) {
-      return c.json({ error: 'No files uploaded' }, 400);
-    }
-
-    const writeToDir = path.join(Bun.env.UPLOAD_PATH, nameFolderByTime());
-    await createFolder(writeToDir);
-
-    const savedFiles: { name: string; size: number }[] = [];
-    const invalidFiles: { name: string; error: string }[] = [];
-
-    for (const eachFile of files) {
-      try {
-        if (!validateFileExt(eachFile)) {
-          console.warn(`Blocked unsupported file: ${eachFile.name}`);
-          invalidFiles.push({ name: eachFile.name, error: `Unsupported file type: ${eachFile.type}` });
-          continue;
-        }
-
-        if (eachFile.size > ALLOWED_FILE_SIZE) {
-          console.warn(`Blocked large file: ${eachFile.name} (${eachFile.size} bytes)`);
-          invalidFiles.push({ name: eachFile.name, error: `File too large: ${eachFile.name}` });
-          continue;
-        }
-
-        const filePath = path.join(writeToDir, eachFile.name);
-        // Prevent directory traversal attacks
-        if (!filePath.startsWith(Bun.env.UPLOAD_PATH)) {
-          invalidFiles.push({ name: eachFile.name, error: `Invalid file path: ${eachFile.name}` });
-          continue;
-        }
-
-        await Bun.write(filePath, eachFile); // Write file using Bun.write (efficient, handles streaming)
-
-        savedFiles.push({ name: eachFile.name, size: eachFile.size });
-        console.log(`✅ File saved: ${filePath}`);
-      } catch (err) {
-        console.error(`❌ Error processing file: ${eachFile.name}`, err);
-      }
-    }
-
-    if (!savedFiles.length) return c.json({ error: `Failed to upload`, files: invalidFiles }, 400);
-
     const userId = getUserBySession(c).userId;
 
-    const exitCode = await insertMediaToDB(userId, writeToDir);
-    if (exitCode !== 0) return c.json({ error: 'Failed to Import media to account' }, 500);
+    return streamText(c, async (stream) => {
+      try {
+        stream.onAbort(() => {
+          console.warn('Client aborted the stream!');
+        });
+        await stream.writeln('Started processing medias ...');
 
-    const proceedThumb = await processMedias();
-    if (!proceedThumb) return c.json({ error: 'Failed to create Thumbs & Hash for medias' }, 500);
+        if (!files.length) {
+          await stream.writeln('No files uploaded');
+          return;
+        }
 
-    return c.json({ message: 'Files uploaded successfully', saved: savedFiles, invalid: invalidFiles });
+        const writeToDir = path.join(Bun.env.UPLOAD_PATH, nameFolderByTime());
+        await createFolder(writeToDir);
+
+        const savedFiles: { name: string; size: number }[] = [];
+
+        for (const eachFile of files) {
+          try {
+            if (!validateFileExt(eachFile)) {
+              console.warn(`Blocked unsupported file: ${eachFile.name}`);
+              await stream.writeln(`Unsupported file: ${eachFile.name}. Please upload a valid type.`);
+              return;
+            }
+
+            if (eachFile.size > ALLOWED_FILE_SIZE) {
+              console.warn(`Blocked large file: ${eachFile.name} (${eachFile.size} bytes)`);
+              await stream.writeln(`Error: File '${eachFile.name}' is too large (${eachFile.size} bytes).`);
+              return;
+            }
+
+            const filePath = path.join(writeToDir, eachFile.name);
+            if (!filePath.startsWith(Bun.env.UPLOAD_PATH)) {
+              await stream.writeln(`Error processing '${eachFile.name}'. Please re-upload.`);
+              return;
+            }
+            await Bun.write(filePath, eachFile); // Write file using Bun.write (efficient, handles streaming)
+
+            savedFiles.push({ name: eachFile.name, size: eachFile.size });
+            await stream.writeln(`File Uploaded: ${eachFile.name}`);
+          } catch (err) {
+            await stream.writeln(`Error processing file: ${eachFile.name}`);
+            console.log(`Error processing file: ${eachFile.name} - ${err}`);
+            return;
+          }
+        }
+
+        if (!savedFiles.length) {
+          await stream.writeln('Error: The uploaded files are invalid. Please check file format, size, or try again.');
+          return;
+        }
+
+        const isValidDir = isExist(writeToDir);
+        if (!isValidDir) {
+          await stream.writeln('Error: Directory not found. Please ensure the directory exists');
+          return;
+        }
+
+        const totalFiles = await countFiles(writeToDir);
+        if (!totalFiles) {
+          await stream.writeln('Warning: No files found in the current directory. Please check if the directory contains media files.');
+          return;
+        }
+
+        const rename = await renameAllFiles(writeToDir);
+        if (!rename) {
+          await stream.writeln('Error: Failed to rename files. Please check file permissions and the files path are valid.');
+          return;
+        }
+
+        await insertMediaToDB(userId, writeToDir, stream, totalFiles);
+
+        await processMedias(stream); // create thumbnail and hash keys
+        await stream.writeln('✅ Finished Uploading Medias!');
+      } catch (error) {
+        await stream.writeln(`Error: 500 Internal Server Error`);
+      }
+    });
   }
 );
 
@@ -89,28 +118,5 @@ const validateFileExt = (file: File): Boolean => {
   const ext = path.extname(file.name).toLowerCase();
   return ALLOWED_MIME_TYPES.includes(ext);
 };
-
-// upload.post(
-//   '/',
-//   // bodyLimit({
-//   //   maxSize: MAX_UPLOAD_FILE_SIZE,
-//   //   onError: (c) => {
-//   //     return c.json({ error: 'overflow :(' }, 413);
-//   //   },
-//   // }),
-//   async (c) => {
-//     // const formData = await c.req.formData();
-//     // const files = formData.getAll('file') as File[];
-//     // // // const data = body['file']; //Single File
-//     // // // const data = body['file[]'] // Multiple files
-
-//     console.log('Got request files');
-
-//     // if (body['file'] instanceof File) {
-//     //   console.log(`Got file sized: ${body['file'].size}`);
-//     // }
-//     return c.json('pass :)');
-//   }
-// );
 
 export default upload;

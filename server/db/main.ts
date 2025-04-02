@@ -1,6 +1,7 @@
 import { $ } from 'bun';
 import { type UUID } from 'crypto';
 import { handleMediaInsert, type ImportMedia } from './module/imported';
+import type { StreamingApi } from 'hono/utils/stream';
 
 export const createDBMS = async () => {
   try {
@@ -13,12 +14,26 @@ export const createDBMS = async () => {
   }
 };
 
-export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string) {
-  try {
-    const { stderr: renameErr, exitCode: renameExitCode } =
-      await $`find ${sourcePath} -depth -name '*[^a-zA-Z0-9._/-]*' -exec bash -c 'mv "$0" "$(dirname "$0")/$(basename "$0" | sed "s/[^a-zA-Z0-9._-]/_/g")"' {} \;`;
-    if (renameExitCode !== 0) console.log('Error:', renameErr);
+export const renameAllFiles = async (sourcePath: string): Promise<boolean> => {
+  const { stderr, exitCode } =
+    await $`find ${sourcePath} -depth -name '*[^a-zA-Z0-9._/-]*' -exec bash -c 'mv "$0" "$(dirname "$0")/$(basename "$0" | sed "s/[^a-zA-Z0-9._-]/_/g")"' {} \;`;
+  if (exitCode === 0) return true;
 
+  console.log('Error:', stderr);
+  return false;
+};
+
+export const countFiles = async (sourcePath: string): Promise<number> => {
+  const { stdout, stderr, exitCode } = await $`find ${sourcePath} -type f ! -name '.*' | wc -l`.quiet();
+
+  if (exitCode === 0) return parseInt(stdout.toString().trim(), 10);
+
+  console.log('Error:', stderr);
+  return 0;
+};
+
+export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, stream: StreamingApi, totalFiles: number) {
+  try {
     const command = $`exiftool -r -json -d "%Y-%m-%dT%H:%M:%S" \
     -SourceFile -FileName -FileType -MIMEType \
     -Software -Title -FileSize# -Make -Model -LensModel -Orientation -CreateDate -DateCreated \
@@ -45,13 +60,11 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string) 
 
       jsonString += line.trim();
     }
-
-    console.log(`-----=====INSERTED successfully to the DB!=====-----`);
-
-    return renameExitCode;
+    console.log(`----=====INSERTED ${totalFiles} to the DB successfully!=====-----`);
+    await stream.writeln(`Inserted ${totalFiles} to the database`);
   } catch (err: any) {
-    console.log(`FAILED with code ${err}`);
-    return -1;
+    console.log(`Import FAILED with error: ${err}`);
+    await stream.writeln(`Failed to import media to database`);
   }
 }
 

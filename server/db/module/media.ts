@@ -23,7 +23,7 @@ export interface Media {
 
 // SQL Queries
 const Sql = {
-  LOAD_IMPORTED_MEDIA: 'SELECT media_id, SourceFile, ThumbPath, FileType FROM Media WHERE ThumbPath IS NULL OR HashCode IS NULL',
+  LOAD_IMPORTED_MEDIA: 'SELECT media_id, SourceFile, ThumbPath, FileType, FileName FROM Media WHERE ThumbPath IS NULL OR HashCode IS NULL',
   UPDATE_HASH_THUMB: 'UPDATE Media SET HashCode = ?, ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
 
   // UPDATE_THUMB: 'UPDATE Media SET ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
