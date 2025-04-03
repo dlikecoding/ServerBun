@@ -31,7 +31,8 @@ auth.get('/init-register', validateSchema('query', userAuthSchema), async (c) =>
       },
     });
 
-    await setSecureCookie(c, 'regInfo', { username, email, challenge: options.challenge });
+    const registerInfor = { username, email, challenge: options.challenge };
+    await setSecureCookie(c, 'regInfo', registerInfor);
 
     return c.json(options, 200);
   } catch (err) {
