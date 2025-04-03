@@ -430,26 +430,6 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `Photos`.`Face`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `Photos`.`Face` (
-  `face_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `ai_recognition` INT UNSIGNED NOT NULL,
-  `confidence` DECIMAL(18,17) NOT NULL,
-  `b_box` JSON NOT NULL,
-  PRIMARY KEY (`face_id`),
-  INDEX `PKFK_FACE_AiRECOG_ID_idx` (`ai_recognition` ASC) VISIBLE,
-  CONSTRAINT `PKFK_FACE_AiRECOG_ID0`
-    FOREIGN KEY (`ai_recognition`)
-    REFERENCES `Photos`.`AiRecognition` (`ai_recognition_id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE)
-ENGINE = InnoDB
-DEFAULT CHARACTER SET = utf8mb4
-COLLATE = utf8mb4_0900_ai_ci;
-
-
--- -----------------------------------------------------
 -- Table `Photos`.`Passkeys`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Photos`.`Passkeys` (
