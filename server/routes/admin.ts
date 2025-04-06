@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { deleteOldUserSession } from './authHelper/_cookies';
+import { deleteOldUserSession, IS_IN_PROCESSING } from './authHelper/_cookies';
 
 import { z } from 'zod';
 import { validateSchema } from '../modules/validateSchema';
@@ -25,9 +25,16 @@ admin.get('/dashboard', isAdmin, async (c) => {
 });
 
 admin.get('/import', isAdmin, async (c) => {
-  const userId = getUserBySession(c).userId;
-
   return streamText(c, async (stream) => {
+    if (IS_IN_PROCESSING.status) {
+      await stream.writeln('❌ Server is currently processing data. Please try again later.');
+      return;
+    }
+
+    IS_IN_PROCESSING.status = true;
+
+    const userId = getUserBySession(c).userId;
+
     try {
       stream.onAbort(() => {
         console.warn('Client aborted the stream!');
@@ -58,6 +65,8 @@ admin.get('/import', isAdmin, async (c) => {
 
       await updateProcessMediaStatus(); // update server status of created media
       await stream.writeln('✅ Finished Importing Multimedia!');
+
+      IS_IN_PROCESSING.status = false;
     } catch (error) {
       await stream.writeln(`Error: 500 Internal Server Error`);
     }

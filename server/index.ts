@@ -12,7 +12,7 @@ const server = Bun.serve({
   port: Bun.env.PORT || 3000,
   fetch: app.fetch,
   maxRequestBodySize: MAX_UPLOAD_FILE_SIZE,
-
+  idleTimeout: 30,
   // tls: {
   //   cert: Bun.file('./cert.pem'),
   //   key: Bun.file('./key.pem'),

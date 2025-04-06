@@ -7,6 +7,7 @@ import { getUserBySession } from '../middleware/validateAuth';
 import { countFiles, insertMediaToDB, renameAllFiles } from '../db/main';
 import { processMedias } from '../service';
 import { streamText } from 'hono/streaming';
+import { IS_IN_PROCESSING } from './authHelper/_cookies';
 
 const GB = 1024 * 1024 * 1024;
 
@@ -29,11 +30,17 @@ upload.post(
     },
   }),
   async (c) => {
-    const formData = await c.req.formData();
-    const files = formData.getAll('uploadFiles') as File[];
-    const userId = getUserBySession(c).userId;
-
     return streamText(c, async (stream) => {
+      if (IS_IN_PROCESSING.status) {
+        await stream.writeln('❌ Server is currently processing data. Please try again later.');
+        return;
+      }
+
+      IS_IN_PROCESSING.status = true;
+
+      const formData = await c.req.formData();
+      const files = formData.getAll('uploadFiles') as File[];
+      const userId = getUserBySession(c).userId;
       try {
         stream.onAbort(() => {
           console.warn('Client aborted the stream!');
@@ -107,6 +114,8 @@ upload.post(
 
         await processMedias(stream); // create thumbnail and hash keys
         await stream.writeln('✅ Finished Uploading Medias!');
+
+        IS_IN_PROCESSING.status = false;
       } catch (error) {
         await stream.writeln(`Error: 500 Internal Server Error`);
       }

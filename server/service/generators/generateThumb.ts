@@ -1,6 +1,6 @@
 import { $ } from 'bun';
 
-const SIZE_THUMBNAIL: string = '500x500\\>';
+const SIZE_THUMBNAIL: string = '512x512\\>';
 
 const getDimention = (inputDim: string) => {
   const [w, h] = inputDim.split(' ');
