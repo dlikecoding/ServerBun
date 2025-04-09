@@ -110,9 +110,18 @@ upload.post(
           return;
         }
 
-        await insertMediaToDB(userId, writeToDir, stream, totalFiles);
+        const insertStatus = await insertMediaToDB(userId, writeToDir, stream, totalFiles);
+        if (!insertStatus) {
+          await stream.writeln('Error: Failed to importing medias to database.');
+          return;
+        }
 
-        await processMedias(stream); // create thumbnail and hash keys
+        const processSts = await processMedias(stream); // create thumbnail and hash keys
+        if (!processSts) {
+          await stream.writeln('Error: Failed to create thumb for medias');
+          return;
+        }
+
         await stream.writeln('✅ Finished Uploading Medias!');
 
         IS_IN_PROCESSING.status = false;

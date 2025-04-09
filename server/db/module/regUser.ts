@@ -1,51 +1,17 @@
-import type { FieldPacket, ResultSetHeader } from 'mysql2/promise';
-import { poolPromise } from '..';
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import type { UserType } from '../../routes/authHelper/_cookies';
-
-const Sql = {
-  COUNT_WAITING: `SELECT COUNT(reg_user_id) as waiting FROM RegisteredUser WHERE status = 0`,
-  FIND_BY_EMAIL: `SELECT reg_user_id, user_email, status, role_type FROM RegisteredUser WHERE user_email = ?`,
-  INSERT_USER: `INSERT INTO RegisteredUser (reg_user_id, user_name, user_email, role_type, status) VALUES (?, ?, ?, ?, ?)`,
-  INSERT_PASSKEY: `INSERT INTO Passkeys (cred_id, cred_public_key, RegisteredUser, counter, registered_device, backup_eligible, transports) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-
-  PASSKEY: `SELECT * FROM Passkeys as pks WHERE pks.RegisteredUser = (SELECT reg_user_id FROM RegisteredUser WHERE user_email = (?) LIMIT 1)`,
-
-  USER_ACC_PASSKEY: `SELECT reg.reg_user_id, reg.user_email, reg.user_name, reg.role_type, reg.status, pks.cred_id, pks.cred_public_key, pks.counter, pks.transports FROM RegisteredUser reg 
-                      JOIN Passkeys pks ON reg.reg_user_id = pks.RegisteredUser
-                      WHERE reg.user_email = (?)`,
-
-  UPDATE_STATUS: `UPDATE RegisteredUser SET status = !status WHERE user_email = ?`,
-
-  FETCH_ALL: `SELECT reg_user_id, user_name, user_email, role_type, created_at, status FROM RegisteredUser reg WHERE role_type IS NULL OR role_type = 'user'`,
-
-  // UPDATE_PASSKEY: `UPDATE Passkeys SET counter = ?, last_used = NOW() WHERE cred_id = ? AND RegisteredUser = ?`,
-  // FIND_BY_EMAIL: `SELECT * FROM RegisteredUser as ug LEFT JOIN Passkeys as pks ON reg.reg_user_id = pks.RegisteredUser WHERE user_email = (?)`,
-  // DELETE: `DELETE FROM RegisteredUser WHERE reg_user_id = ?`,
-};
+import { sql } from '..';
 
 const createAdminOrUsers = async (user_name: string, user_email: string) => {
-  const [rows] = await poolPromise.execute(`SELECT reg_user_id FROM RegisteredUser LIMIT 1`);
-  if ((rows as any).length > 0) return await createAccount(user_name, user_email);
+  const result = await sql.begin(async (tx) => {
+    const [isAdminExist] = await tx`SELECT reg_user_id FROM "RegisteredUser" LIMIT 1`;
+    const userId = Bun.randomUUIDv7();
 
-  return await createAccount(user_name, user_email, 'admin', 1);
-};
-
-const createAccount = async (user_name: string, user_email: string, role_type: string = 'user', status: number = 0) => {
-  const connection = await poolPromise.getConnection();
-  const userId = Bun.randomUUIDv7();
-
-  try {
-    await connection.beginTransaction();
-    const result: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.INSERT_USER, [userId, user_name, user_email, role_type, status]);
-    await connection.commit();
-
-    return result[0].affectedRows > 0 ? userId : '';
-  } catch (error) {
-    if (connection) await connection.rollback();
-  } finally {
-    if (connection) connection.release();
-  }
+    await tx`INSERT INTO "RegisteredUser" (reg_user_id, user_name, user_email, role_type, status) 
+              VALUES (${userId}, ${user_name}, ${user_email}, ${!isAdminExist ? 'admin' : 'user'}, ${!isAdminExist})`;
+    return userId;
+  });
+  return result; // User ID
 };
 
 const createPasskey = async (
@@ -58,16 +24,10 @@ const createPasskey = async (
   transports: AuthenticatorTransportFuture[] | undefined
 ) => {
   try {
-    const result: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.INSERT_PASSKEY, [
-      cred_id,
-      cred_public_key,
-      RegisteredUser,
-      counter,
-      registered_device,
-      backup_eligible,
-      transports,
-    ]);
-    return result[0].affectedRows > 0;
+    const [result] = await sql`INSERT INTO "Passkeys" ( cred_id,  cred_public_key,  "RegisteredUser",  counter,  registered_device,  backup_eligible,  transports) 
+    VALUES (${cred_id}, ${cred_public_key}, ${RegisteredUser}, ${counter}, ${registered_device}, ${backup_eligible}, ${JSON.stringify(transports)}::jsonb ) RETURNING *`;
+
+    return result;
   } catch (error) {
     console.log(error);
     return null;
@@ -75,40 +35,34 @@ const createPasskey = async (
 };
 
 const findRegUser = async (user_email: string): Promise<UserType> => {
-  const [rows] = await poolPromise.execute(Sql.FIND_BY_EMAIL, [user_email]);
-  return (rows as any)[0];
+  const [user] = await sql`SELECT reg_user_id, user_email, status, role_type FROM "RegisteredUser" WHERE user_email = ${user_email} LIMIT 1`;
+  return user;
 };
 
 const userPassKeyByEmail = async (user_email: string) => {
-  const [rows] = await poolPromise.execute(Sql.USER_ACC_PASSKEY, [user_email]);
-  if ((rows as any).length === 0) return null;
-  return (rows as any)[0];
+  const [rows] =
+    await sql`SELECT reg.reg_user_id, reg.user_email, reg.user_name, reg.role_type, reg.status, pks.cred_id, pks.cred_public_key, pks.counter, pks.transports FROM "RegisteredUser" reg 
+                      JOIN "Passkeys" pks ON reg.reg_user_id = pks."RegisteredUser"
+                      WHERE reg.user_email = ${user_email}`;
+  return rows;
 };
 
 const countSuspendedUsers = async () => {
-  const [rows] = await poolPromise.execute(Sql.COUNT_WAITING);
-  return (rows as any)[0];
+  const [result] = await sql`SELECT COUNT(reg_user_id) AS count_users FROM "RegisteredUser" WHERE status = false`;
+  return result.count_users;
 };
 
-const fetchAllRegisteredUsers = async () => {
-  const [rows] = await poolPromise.execute(Sql.FETCH_ALL);
-  return rows as any[];
+const fetchAllUsers = async () => {
+  return await sql`SELECT * FROM "RegisteredUser" reg WHERE role_type = 'user'`;
 };
 
-const updateAccountStatus = async (regUserId: string) => {
-  const connection = await poolPromise.getConnection();
-  try {
-    await connection.beginTransaction();
-    const result: [ResultSetHeader, FieldPacket[]] = await poolPromise.execute(Sql.UPDATE_STATUS, [regUserId]);
-    await connection.commit();
-
-    return result[0].affectedRows > 0;
-  } catch (error) {
-    if (connection) await connection.rollback();
-  } finally {
-    if (connection) connection.release();
-  }
+const updateAccountStatus = async (userEmail: string) => {
+  const [result] = await sql`UPDATE "RegisteredUser" SET status = NOT status WHERE user_email = ${userEmail} RETURNING reg_user_id`;
+  return result;
 };
+
+export { createAdminOrUsers, findRegUser, userPassKeyByEmail, createPasskey, countSuspendedUsers, updateAccountStatus, fetchAllUsers };
+
 // const userPKsByEmail = async (user_email: string) => {
 //   const [rows] = await poolPromise.execute(Sql.PASSKEYS, [user_email]);
 //   if ((rows as any).length === 0) return null;
@@ -125,13 +79,4 @@ const updateAccountStatus = async (regUserId: string) => {
 //   return { message: `RegisteredUser with ID ${reg_user_id} deleted` };
 // };
 
-export {
-  createAdminOrUsers,
-  findRegUser,
-  userPassKeyByEmail,
-  createPasskey,
-  countSuspendedUsers,
-  // deleteRegisteredUser,
-  updateAccountStatus,
-  fetchAllRegisteredUsers,
-};
+// deleteRegisteredUser,

@@ -1,15 +1,28 @@
 import { $ } from 'bun';
 import { type UUID } from 'crypto';
-import { handleMediaInsert, type ImportMedia } from './module/imported';
+import { insertImportedToMedia, type ImportMedia } from './module/imported';
 import type { StreamingApi } from 'hono/utils/stream';
+import { sql } from '.';
+import { isExist } from '../service/fsHelper';
 
 export const createDBMS = async () => {
   try {
-    const { exitCode: tbExitCode } = await $`mysql -u $DB_USER -p$DB_PASS < $DB_CREATE`;
-    const { exitCode: triggerExitCode } = await $`mysql -u $DB_USER -p$DB_PASS < $DB_TRIGGERS`;
-    return tbExitCode === 0 && triggerExitCode === 0;
+    const { exitCode: tbExitCode } = await $`PGPASSWORD=$DB_PASS psql -U $DB_USER -d postgres -v name_db='"${Bun.env.DB_NAME}"' -v user_db=${Bun.env.DB_USER} -f $DB_CREATE`;
+
+    if (tbExitCode) return false;
+
+    // Restore to database if backup database exists
+    if (await isExist(Bun.env.DB_BACKUP)) {
+      return await restoreToDB();
+    }
+
+    // Create new databse
+    await sql.file(Bun.env.DB_MODEL);
+    await sql.file(Bun.env.DB_VIEW);
+    await sql.file(Bun.env.DB_TRIGGER);
+
+    return true;
   } catch (error) {
-    console.log('createDBMS:', error);
     return false;
   }
 };
@@ -52,7 +65,8 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, 
         jsonString += '}';
 
         const newMedia: ImportMedia = parseJsonToObject(jsonString);
-        await handleMediaInsert(newMedia, RegisteredUser);
+        const status = await insertImportedToMedia(newMedia, RegisteredUser);
+        if (!status) return false;
 
         jsonString = '{';
         continue;
@@ -62,20 +76,22 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, 
     }
     console.log(`----=====INSERTED ${totalFiles} to the DB successfully!=====-----`);
     await stream.writeln(`Inserted ${totalFiles} to the database`);
+    return true;
   } catch (err: any) {
     console.log(`Import FAILED with error: ${err}`);
     await stream.writeln(`Failed to import media to database`);
+    return false;
   }
 }
 
 export async function backupToDB() {
-  const { stderr, exitCode } = await $`mysqldump -u $DB_USER -p$DB_PASS $DB_NAME > $DB_BACKUP`.nothrow().quiet();
+  const { stderr, exitCode } = await $`PGPASSWORD=$DB_PASS pg_dump -U $DB_USER $DB_NAME > $DB_BACKUP`.quiet();
   exitCode !== 0 ? console.log(`Backup: Non-zero exit code ${stderr}`) : console.log(`BACKUP successfully to the DB!`);
   return exitCode;
 }
 
 export async function restoreToDB() {
-  const { stderr, exitCode } = await $`mysql -u $DB_USER -p$DB_PASS $DB_NAME < $DB_BACKUP`;
+  const { stderr, exitCode } = await $`PGPASSWORD=$DB_PASS psql -U $DB_USER -d $DB_NAME -f $DB_BACKUP`.quiet();
   exitCode !== 0 ? console.log(`Restore: Non-zero exit code ${stderr}`) : console.log(`RESTORE successfully to the DB!`);
   return exitCode;
 }

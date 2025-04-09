@@ -3,7 +3,7 @@ import { deleteOldUserSession, IS_IN_PROCESSING } from './authHelper/_cookies';
 
 import { z } from 'zod';
 import { validateSchema } from '../modules/validateSchema';
-import { fetchAllRegisteredUsers, updateAccountStatus } from '../db/module/regUser';
+import { fetchAllUsers, updateAccountStatus } from '../db/module/regUser';
 import { countFiles, insertMediaToDB, renameAllFiles } from '../db/main';
 import { processMedias } from '../service';
 import { processMediaStatus, updateProcessMediaStatus } from '../db/module/system';
@@ -18,7 +18,7 @@ const userAuthSchema = z.object({
 });
 
 admin.get('/dashboard', isAdmin, async (c) => {
-  const allUsers = await fetchAllRegisteredUsers();
+  const allUsers = await fetchAllUsers();
   const isExist = await processMediaStatus();
 
   return c.json({ users: allUsers, sysStatus: isExist }, 200);
@@ -59,15 +59,24 @@ admin.get('/import', isAdmin, async (c) => {
         return;
       }
 
-      await insertMediaToDB(userId, Bun.env.PHOTO_PATH, stream, totalFiles);
+      const insertStatus = await insertMediaToDB(userId, Bun.env.PHOTO_PATH, stream, totalFiles);
+      if (!insertStatus) {
+        await stream.writeln('Error: Failed to importing medias to database.');
+        return;
+      }
 
-      await processMedias(stream); // create thumbnail and hash keys
+      const processSts = await processMedias(stream); // create thumbnail and hash keys
+      if (!processSts) {
+        await stream.writeln('Error: Failed to create thumb for medias');
+        return;
+      }
 
       await updateProcessMediaStatus(); // update server status of created media
       await stream.writeln('✅ Finished Importing Multimedia!');
 
       IS_IN_PROCESSING.status = false;
     } catch (error) {
+      console.log(error);
       await stream.writeln(`Error: 500 Internal Server Error`);
     }
   });

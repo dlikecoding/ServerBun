@@ -8,17 +8,17 @@ import type { StreamingApi } from 'hono/utils/stream';
 
 const processThumbSHA256 = async (media: any, stream: StreamingApi) => {
   try {
-    const input = path.join(Bun.env.MAIN_PATH, media.SourceFile);
-    const output = path.join(Bun.env.MAIN_PATH, media.ThumbPath);
+    const input = path.join(Bun.env.MAIN_PATH, media.source_file);
+    const output = path.join(Bun.env.MAIN_PATH, media.thumb_path);
 
     await createFolder(output);
-    const { w, h } = await createThumbnail(input, output, media.FileType === 'Photo');
+    const { w, h } = await createThumbnail(input, output, media.file_type === 'Photo');
     const hash = await createHash(output);
 
-    await stream.writeln(`${media.FileName}`);
+    await stream.writeln(`${media.file_name}`);
     if (w && h) await updateHashThumb(media.media_id, hash, w, h);
   } catch (error) {
-    console.error(`Failed processing - Source: ${media.SourceFile} Thumb: ${media.ThumbPath}: ${error}`);
+    console.error(`Failed processing - Source: ${media.source_file} Thumb: ${media.thumb_path}: ${error}`);
   }
 };
 
@@ -28,8 +28,10 @@ export const processMedias = async (stream: StreamingApi) => {
   try {
     await workerQueue(tasks);
     console.log('======= PROCESS THUMBNAIL AND HASH COMPLETED =======');
+    return true;
   } catch (error) {
     await stream.writeln('Error processing Thumbnail');
     console.warn('Error processing Thumbnail', error);
+    return false;
   }
 };
