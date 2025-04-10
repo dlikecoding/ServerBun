@@ -39,37 +39,38 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
     const insertedMedia = await sql.begin(async (tx) => {
       let cameraTypeId: number | null = null;
       if (newMedia.Make && newMedia.Model) {
-        const [isCameraExist] = await tx`SELECT camera_id FROM "CameraType" WHERE make = ${newMedia.Make} AND model = ${newMedia.Model} LIMIT 1`;
+        const [isCameraExist] = await tx`SELECT camera_id FROM multi_schema."CameraType" WHERE make = ${newMedia.Make} AND model = ${newMedia.Model} LIMIT 1`;
         if (isCameraExist) {
           cameraTypeId = isCameraExist.camera_id;
         } else {
-          const [cameraInserted] = await tx`INSERT INTO "CameraType" (make, model) VALUES (${newMedia.Make}, ${newMedia.Model}) RETURNING camera_id`;
+          const [cameraInserted] = await tx`INSERT INTO multi_schema."CameraType" (make, model) VALUES (${newMedia.Make}, ${newMedia.Model}) RETURNING camera_id`;
           cameraTypeId = cameraInserted.camera_id;
         }
       }
 
       const smallestDate = getSmallestDate(newMedia);
       const thumbPath = createThumbPath(smallestDate);
-      const [mediaId] = await tx`INSERT INTO "Media" (file_name, file_type, file_ext, software, file_size, camera_type, create_date, source_file, mime_type, thumb_path) VALUES (
+      const [mediaId] =
+        await tx`INSERT INTO multi_schema."Media" (file_name, file_type, file_ext, software, file_size, camera_type, create_date, source_file, mime_type, thumb_path) VALUES (
         ${newMedia.FileName}, ${mediaType}, ${newMedia.FileType}, ${newMedia.Software}, ${newMedia.FileSize}, ${cameraTypeId}, ${smallestDate}, ${newMedia.SourceFile}, ${newMedia.MIMEType}, ${thumbPath})
         RETURNING media_id`;
 
       const lastMediaId = mediaId.media_id;
 
-      await tx`INSERT INTO "UploadBy" ("RegisteredUser", media) VALUES (${RegisteredUser}, ${lastMediaId})`;
+      await tx`INSERT INTO multi_schema."UploadBy" ("RegisteredUser", media) VALUES (${RegisteredUser}, ${lastMediaId})`;
 
       if (mediaType === 'Photo') {
-        await tx`INSERT INTO "Photo" (media, orientation, image_width, image_height, megapixels) VALUES ( ${lastMediaId}, ${newMedia.Orientation}, ${newMedia.ImageWidth}, ${newMedia.ImageHeight}, ${newMedia.Megapixels})`;
+        await tx`INSERT INTO multi_schema."Photo" (media, orientation, image_width, image_height, megapixels) VALUES ( ${lastMediaId}, ${newMedia.Orientation}, ${newMedia.ImageWidth}, ${newMedia.ImageHeight}, ${newMedia.Megapixels})`;
       } else if (mediaType === 'Video') {
         const durationDisplay = convertDuration(newMedia.Duration!);
-        await tx`INSERT INTO "Video" (media, duration, title, display_duration) VALUES ( ${lastMediaId}, ${newMedia.Duration}, ${newMedia.Title}, ${durationDisplay})`;
+        await tx`INSERT INTO multi_schema."Video" (media, duration, title, display_duration) VALUES ( ${lastMediaId}, ${newMedia.Duration}, ${newMedia.Title}, ${durationDisplay})`;
       } else if (mediaType === 'Live') {
-        await tx`INSERT INTO "Live" (media, duration, title) VALUES ( ${lastMediaId}, ${newMedia.Duration}, ${newMedia.Title})`;
+        await tx`INSERT INTO multi_schema."Live" (media, duration, title) VALUES ( ${lastMediaId}, ${newMedia.Duration}, ${newMedia.Title})`;
       }
 
       // Insert GPS Data
       if (newMedia.GPSLatitude && newMedia.GPSLongitude) {
-        await tx`INSERT INTO "Location" (media, gps_latitude, gps_longitude) VALUES (${lastMediaId}, ${newMedia.GPSLatitude}, ${newMedia.GPSLongitude})`;
+        await tx`INSERT INTO multi_schema."Location" (media, gps_latitude, gps_longitude) VALUES (${lastMediaId}, ${newMedia.GPSLatitude}, ${newMedia.GPSLongitude})`;
       }
       return lastMediaId;
     });

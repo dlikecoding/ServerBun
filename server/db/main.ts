@@ -7,6 +7,7 @@ import { isExist } from '../service/fsHelper';
 
 export const createDBMS = async () => {
   try {
+    // Create new databse
     const { exitCode: tbExitCode } = await $`PGPASSWORD=$DB_PASS psql -U $DB_USER -d postgres -v name_db='"${Bun.env.DB_NAME}"' -v user_db=${Bun.env.DB_USER} -f $DB_CREATE`;
 
     if (tbExitCode) return false;
@@ -16,13 +17,14 @@ export const createDBMS = async () => {
       return await restoreToDB();
     }
 
-    // Create new databse
-    await sql.file(Bun.env.DB_MODEL);
-    await sql.file(Bun.env.DB_VIEW);
-    await sql.file(Bun.env.DB_TRIGGER);
+    await sql.file(Bun.env.DB_MODEL); // Create new schema & tables
+
+    // await sql.file(Bun.env.DB_VIEW);
+    // await sql.file(Bun.env.DB_TRIGGER);
 
     return true;
   } catch (error) {
+    console.log('createDBMS', error);
     return false;
   }
 };
@@ -32,7 +34,7 @@ export const renameAllFiles = async (sourcePath: string): Promise<boolean> => {
     await $`find ${sourcePath} -depth -name '*[^a-zA-Z0-9._/-]*' -exec bash -c 'mv "$0" "$(dirname "$0")/$(basename "$0" | sed "s/[^a-zA-Z0-9._-]/_/g")"' {} \;`;
   if (exitCode === 0) return true;
 
-  console.log('Error:', stderr);
+  console.log('renameAllFiles', stderr);
   return false;
 };
 
@@ -41,7 +43,7 @@ export const countFiles = async (sourcePath: string): Promise<number> => {
 
   if (exitCode === 0) return parseInt(stdout.toString().trim(), 10);
 
-  console.log('Error:', stderr);
+  console.log('countFiles', stderr);
   return 0;
 };
 
@@ -86,13 +88,13 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, 
 
 export async function backupToDB() {
   const { stderr, exitCode } = await $`PGPASSWORD=$DB_PASS pg_dump -U $DB_USER $DB_NAME > $DB_BACKUP`.quiet();
-  exitCode !== 0 ? console.log(`Backup: Non-zero exit code ${stderr}`) : console.log(`BACKUP successfully to the DB!`);
+  exitCode !== 0 ? console.log(`backupToDB ${stderr}`) : console.log(`BACKUP successfully to the DB!`);
   return exitCode;
 }
 
 export async function restoreToDB() {
   const { stderr, exitCode } = await $`PGPASSWORD=$DB_PASS psql -U $DB_USER -d $DB_NAME -f $DB_BACKUP`.quiet();
-  exitCode !== 0 ? console.log(`Restore: Non-zero exit code ${stderr}`) : console.log(`RESTORE successfully to the DB!`);
+  exitCode !== 0 ? console.log(`restoreToDB ${stderr}`) : console.log(`RESTORE successfully to the DB!`);
   return exitCode;
 }
 

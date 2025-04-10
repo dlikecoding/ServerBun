@@ -1,3 +1,4 @@
+CREATE SCHEMA IF NOT EXISTS multi_schema;
 
 -- ENUM definitions
 CREATE TYPE role_type_enum AS ENUM ('user', 'admin');
@@ -7,236 +8,323 @@ CREATE TYPE aimode_enum AS ENUM ('Detect', 'Classify', 'Segment', 'Face');
 CREATE TYPE error_type_enum AS ENUM ('frontend', 'backend', 'database');
 CREATE TYPE registered_device_enum AS ENUM ('singleDevice', 'multiDevice');
 
--- ServerSystem
-DROP TABLE IF EXISTS "ServerSystem";
-CREATE TABLE IF NOT EXISTS "ServerSystem" (
-  system_id UUID PRIMARY KEY,
-  process_medias BOOLEAN DEFAULT FALSE,
-  license_key VARCHAR(512)
+BEGIN;
+
+
+CREATE TABLE IF NOT EXISTS multi_schema."AiClass"
+(
+    class_id serial NOT NULL,
+    class_name character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    created timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    modified timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "AiClass_pkey" PRIMARY KEY (class_id),
+    CONSTRAINT "AiClass_class_name_key" UNIQUE (class_name)
 );
 
-
--- RegisteredUser
-DROP TABLE IF EXISTS "RegisteredUser";
-CREATE TABLE IF NOT EXISTS "RegisteredUser" (
-  reg_user_id UUID PRIMARY KEY,
-  user_email VARCHAR(100) UNIQUE NOT NULL,
-  user_name VARCHAR(45) NOT NULL,
-  role_type role_type_enum NOT NULL DEFAULT 'user',
-  status BOOLEAN NOT NULL DEFAULT FALSE,
-  m2f_isEnable BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS multi_schema."AiRecognition"
+(
+    ai_recognition_id serial NOT NULL,
+    media integer NOT NULL,
+    ai_class integer NOT NULL,
+    ai_mode aimode_enum NOT NULL,
+    CONSTRAINT "AiRecognition_pkey" PRIMARY KEY (ai_recognition_id),
+    CONSTRAINT "AiRecognition_media_ai_class_ai_mode_key" UNIQUE (media, ai_class, ai_mode)
 );
 
--- Passkeys
-DROP TABLE IF EXISTS "Passkeys";
-CREATE TABLE IF NOT EXISTS "Passkeys" (
-  cred_id VARCHAR(50) NOT NULL,
-  cred_public_key BYTEA NOT NULL,
-  "RegisteredUser" UUID NOT NULL REFERENCES "RegisteredUser"(reg_user_id) ON DELETE CASCADE,
-  counter BIGINT NOT NULL,
-  registered_device registered_device_enum NOT NULL,
-  backup_eligible BOOLEAN NOT NULL,
-  backup_status BOOLEAN NOT NULL DEFAULT FALSE,
-  transports JSONB NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_used TIMESTAMP,
-  PRIMARY KEY (cred_id, "RegisteredUser")
+CREATE TABLE IF NOT EXISTS multi_schema."Album"
+(
+    album_id serial NOT NULL,
+    "RegisteredUser" uuid NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    title character varying(50) COLLATE pg_catalog."default",
+    modify_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Album_pkey" PRIMARY KEY (album_id),
+    CONSTRAINT "Album_title_key" UNIQUE (title)
 );
 
--- CameraType
-DROP TABLE IF EXISTS "CameraType";
-CREATE TABLE IF NOT EXISTS "CameraType" (
-  camera_id SERIAL PRIMARY KEY,
-  make VARCHAR(50),
-  model VARCHAR(100),
-  lens_model VARCHAR(200)
+CREATE TABLE IF NOT EXISTS multi_schema."AlbumMedia"
+(
+    album integer NOT NULL,
+    media integer NOT NULL,
+    CONSTRAINT "AlbumMedia_pkey" PRIMARY KEY (album, media)
 );
 
--- Media
-DROP TABLE IF EXISTS "Media";
-CREATE TABLE IF NOT EXISTS "Media" (
-  media_id SERIAL PRIMARY KEY,
-  file_type file_type_enum NOT NULL,
-  file_name TEXT,
-  create_date TIMESTAMP,
-  file_size BIGINT,
-  hash_code VARCHAR(65),
-  hidden BOOLEAN DEFAULT FALSE,
-  favorite BOOLEAN DEFAULT FALSE,
-  deleted BOOLEAN DEFAULT FALSE,
-  deletion_date TIMESTAMP,
-  upload_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  camera_type INT REFERENCES "CameraType"(camera_id),
-  file_ext VARCHAR(50),
-  software VARCHAR(256),
-  source_file TEXT,
-  mime_type VARCHAR(50),
-  thumb_path TEXT,
-  thumb_width SMALLINT,
-  thumb_height SMALLINT
+CREATE TABLE IF NOT EXISTS multi_schema."CameraType"
+(
+    camera_id serial NOT NULL,
+    make character varying(50) COLLATE pg_catalog."default",
+    model character varying(100) COLLATE pg_catalog."default",
+    lens_model character varying(200) COLLATE pg_catalog."default",
+    CONSTRAINT "CameraType_pkey" PRIMARY KEY (camera_id)
 );
 
--- AiClass
-DROP TABLE IF EXISTS "AiClass";
-CREATE TABLE IF NOT EXISTS "AiClass" (
-  class_id SERIAL PRIMARY KEY,
-  class_name VARCHAR(50) UNIQUE NOT NULL,
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS multi_schema."Classify"
+(
+    classify_id serial NOT NULL,
+    ai_recognition integer NOT NULL,
+    confidence numeric(18, 17) NOT NULL,
+    CONSTRAINT "Classify_pkey" PRIMARY KEY (classify_id)
 );
 
--- AiRecognition
-DROP TABLE IF EXISTS "AiRecognition";
-CREATE TABLE IF NOT EXISTS "AiRecognition" (
-  ai_recognition_id SERIAL PRIMARY KEY,
-  media INT NOT NULL REFERENCES "Media"(media_id) ON DELETE CASCADE,
-  ai_class INT NOT NULL REFERENCES "AiClass"(class_id),
-  ai_mode aimode_enum NOT NULL,
-  UNIQUE(media, ai_class, ai_mode)
+CREATE TABLE IF NOT EXISTS multi_schema."ErrorLog"
+(
+    error_log_id serial NOT NULL,
+    error_msg text COLLATE pg_catalog."default" NOT NULL,
+    stack_trace text COLLATE pg_catalog."default",
+    error_type error_type_enum,
+    server_system uuid,
+    mark_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ErrorLog_pkey" PRIMARY KEY (error_log_id)
 );
 
--- Album
-DROP TABLE IF EXISTS "Album";
-CREATE TABLE IF NOT EXISTS "Album" (
-  album_id SERIAL PRIMARY KEY,
-  "RegisteredUser" UUID NOT NULL REFERENCES "RegisteredUser"(reg_user_id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  title VARCHAR(50) UNIQUE,
-  modify_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS multi_schema."Live"
+(
+    media integer NOT NULL,
+    frame_count integer,
+    current_frame smallint,
+    duration integer,
+    title character varying(45) COLLATE pg_catalog."default",
+    CONSTRAINT "Live_pkey" PRIMARY KEY (media)
 );
 
--- AlbumMedia
-DROP TABLE IF EXISTS "AlbumMedia";
-CREATE TABLE IF NOT EXISTS "AlbumMedia" (
-  album INT NOT NULL REFERENCES "Album"(album_id) ON DELETE CASCADE,
-  media INT NOT NULL REFERENCES "Media"(media_id) ON DELETE CASCADE,
-  PRIMARY KEY(album, media)
+CREATE TABLE IF NOT EXISTS multi_schema."Location"
+(
+    media integer NOT NULL,
+    city character varying(50) COLLATE pg_catalog."default",
+    state character varying(50) COLLATE pg_catalog."default",
+    country character varying(50) COLLATE pg_catalog."default",
+    gps_latitude double precision,
+    gps_longitude double precision,
+    CONSTRAINT "Location_pkey" PRIMARY KEY (media)
 );
 
--- Classify
-DROP TABLE IF EXISTS "Classify";
-CREATE TABLE IF NOT EXISTS "Classify" (
-  classify_id SERIAL PRIMARY KEY,
-  ai_recognition INT NOT NULL REFERENCES "AiRecognition"(ai_recognition_id) ON DELETE CASCADE,
-  confidence NUMERIC(18, 17) NOT NULL
+CREATE TABLE IF NOT EXISTS multi_schema."Media"
+(
+    media_id serial NOT NULL,
+    file_type file_type_enum NOT NULL,
+    file_name text COLLATE pg_catalog."default",
+    create_date timestamp without time zone,
+    created_month smallint NOT NULL GENERATED ALWAYS AS (EXTRACT(month FROM create_date)) STORED,
+    create_year smallint NOT NULL GENERATED ALWAYS AS (EXTRACT(year FROM create_date)) STORED,
+    file_size bigint,
+    hash_code character varying(65) COLLATE pg_catalog."default",
+    hidden boolean DEFAULT false,
+    favorite boolean DEFAULT false,
+    deleted boolean DEFAULT false,
+    deletion_date timestamp without time zone,
+    upload_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    camera_type integer,
+    file_ext character varying(50) COLLATE pg_catalog."default",
+    software character varying(256) COLLATE pg_catalog."default",
+    source_file text COLLATE pg_catalog."default",
+    mime_type character varying(50) COLLATE pg_catalog."default",
+    thumb_path text COLLATE pg_catalog."default",
+    thumb_width smallint,
+    thumb_height smallint,
+    CONSTRAINT "Media_pkey" PRIMARY KEY (media_id)
 );
 
--- ErrorLog
-DROP TABLE IF EXISTS "ErrorLog";
-CREATE TABLE IF NOT EXISTS "ErrorLog" (
-  error_log_id SERIAL PRIMARY KEY,
-  error_msg TEXT NOT NULL,
-  stack_trace TEXT,
-  error_type error_type_enum,
-  server_system UUID REFERENCES "ServerSystem"(system_id),
-  logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS multi_schema."Passkeys"
+(
+    cred_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    cred_public_key bytea NOT NULL,
+    "RegisteredUser" uuid NOT NULL,
+    counter bigint NOT NULL,
+    registered_device registered_device_enum NOT NULL,
+    backup_eligible boolean NOT NULL,
+    backup_status boolean NOT NULL DEFAULT false,
+    transports jsonb NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    last_used timestamp without time zone,
+    CONSTRAINT "Passkeys_pkey" PRIMARY KEY (cred_id, "RegisteredUser")
 );
 
--- Live
-DROP TABLE IF EXISTS "Live";
-CREATE TABLE IF NOT EXISTS "Live" (
-  media INT PRIMARY KEY REFERENCES "Media"(media_id) ON DELETE CASCADE,
-  frame_count INT,
-  current_frame SMALLINT,
-  duration INT,
-  title VARCHAR(45)
+CREATE TABLE IF NOT EXISTS multi_schema."Photo"
+(
+    media integer NOT NULL,
+    orientation character varying(45) COLLATE pg_catalog."default",
+    image_width smallint,
+    image_height smallint,
+    megapixels double precision,
+    CONSTRAINT "Photo_pkey" PRIMARY KEY (media)
 );
 
--- Location
-DROP TABLE IF EXISTS "Location";
-CREATE TABLE IF NOT EXISTS "Location" (
-  media INT PRIMARY KEY REFERENCES "Media"(media_id) ON DELETE CASCADE,
-  city VARCHAR(50),
-  state VARCHAR(50),
-  country VARCHAR(50),
-  gps_latitude DOUBLE PRECISION,
-  gps_longitude DOUBLE PRECISION
+CREATE TABLE IF NOT EXISTS multi_schema."RegisteredUser"
+(
+    reg_user_id uuid NOT NULL,
+    user_email character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    user_name character varying(45) COLLATE pg_catalog."default" NOT NULL,
+    role_type role_type_enum NOT NULL DEFAULT 'user'::role_type_enum,
+    status boolean NOT NULL DEFAULT false,
+    m2f_isenable boolean NOT NULL DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    "ServerSystem" uuid NOT NULL,
+    CONSTRAINT "RegisteredUser_pkey" PRIMARY KEY (reg_user_id),
+    CONSTRAINT "RegisteredUser_user_email_key" UNIQUE (user_email)
 );
 
--- Photo
-DROP TABLE IF EXISTS "Photo";
-CREATE TABLE IF NOT EXISTS "Photo" (
-  media INT PRIMARY KEY REFERENCES "Media"(media_id) ON DELETE CASCADE,
-  orientation VARCHAR(45),
-  image_width SMALLINT,
-  image_height SMALLINT,
-  megapixels DOUBLE PRECISION
+CREATE TABLE IF NOT EXISTS multi_schema."ServerSystem"
+(
+    system_id uuid NOT NULL,
+    process_medias boolean NOT NULL DEFAULT false,
+    license_key character varying(512) COLLATE pg_catalog."default",
+    CONSTRAINT "ServerSystem_pkey" PRIMARY KEY (system_id)
 );
 
--- UploadBy
-DROP TABLE IF EXISTS "UploadBy";
-CREATE TABLE IF NOT EXISTS "UploadBy" (
-  "RegisteredUser" UUID NOT NULL REFERENCES "RegisteredUser"(reg_user_id),
-  media INT NOT NULL REFERENCES "Media"(media_id) ON DELETE CASCADE,
-  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY(media, "RegisteredUser")
+CREATE TABLE IF NOT EXISTS multi_schema."UploadBy"
+(
+    "RegisteredUser" uuid NOT NULL,
+    media integer NOT NULL,
+    uploaded_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "UploadBy_pkey" PRIMARY KEY (media, "RegisteredUser")
 );
 
--- UserLog
-DROP TABLE IF EXISTS "UserLog";
-CREATE TABLE IF NOT EXISTS "UserLog" (
-  user_log_id SERIAL PRIMARY KEY,
-  "RegisteredUser" UUID REFERENCES "RegisteredUser"(reg_user_id),
-  user_device VARCHAR(255),
-  last_url_request VARCHAR(200),
-  last_logged_in TIMESTAMP,
-  ip_address VARCHAR(45) NOT NULL,
-  logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS multi_schema."UserLog"
+(
+    user_log_id serial NOT NULL,
+    "RegisteredUser" uuid,
+    user_device character varying(255) COLLATE pg_catalog."default",
+    last_url_request character varying(200) COLLATE pg_catalog."default",
+    last_logged_in timestamp without time zone,
+    ip_address character varying(45) COLLATE pg_catalog."default" NOT NULL,
+    logged_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "UserLog_pkey" PRIMARY KEY (user_log_id)
 );
 
--- Video
-DROP TABLE IF EXISTS "Video";
-CREATE TABLE IF NOT EXISTS "Video" (
-  media INT PRIMARY KEY REFERENCES "Media"(media_id) ON DELETE CASCADE,
-  duration DOUBLE PRECISION,
-  title VARCHAR(255),
-  display_duration VARCHAR(45)
+CREATE TABLE IF NOT EXISTS multi_schema."Video"
+(
+    media integer NOT NULL,
+    duration double precision,
+    title character varying(255) COLLATE pg_catalog."default",
+    display_duration character varying(45) COLLATE pg_catalog."default",
+    CONSTRAINT "Video_pkey" PRIMARY KEY (media)
 );
 
+ALTER TABLE IF EXISTS multi_schema."AiRecognition"
+    ADD CONSTRAINT "AiRecognition_ai_class_fkey" FOREIGN KEY (ai_class)
+    REFERENCES multi_schema."AiClass" (class_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
 
 
+ALTER TABLE IF EXISTS multi_schema."AiRecognition"
+    ADD CONSTRAINT "AiRecognition_media_fkey" FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
 
 
-
--- -- TempAiTags
--- CREATE TABLE IF NOT EXISTS "TempAiTags" (
---   ai_tag_id SERIAL PRIMARY KEY,
---   class_id INT,
---   class_name VARCHAR(50) NOT NULL,
---   b_box JSON,
---   confidence NUMERIC(18, 17) NOT NULL,
---   media_id INT NOT NULL REFERENCES "Media"(media_id),
---   ai_model VARCHAR(10),
---   "System" UUID REFERENCES "ServerSystem"(uuid)
--- );
+ALTER TABLE IF EXISTS multi_schema."Album"
+    ADD CONSTRAINT "Album_RegisteredUser_fkey" FOREIGN KEY ("RegisteredUser")
+    REFERENCES multi_schema."RegisteredUser" (reg_user_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
 
 
-
--- -- Detect
--- CREATE TABLE IF NOT EXISTS "Detect" (
---   detection_id SERIAL PRIMARY KEY,
---   ai_recognition INT NOT NULL REFERENCES "AiRecognition"(ai_recognition_id) ON DELETE CASCADE,
---   confidence NUMERIC(18, 17) NOT NULL,
---   b_box JSON NOT NULL
--- );
-
--- -- Segment
--- CREATE TABLE IF NOT EXISTS "Segment" (
---   segment_id SERIAL PRIMARY KEY,
---   ai_recognition INT NOT NULL REFERENCES "AiRecognition"(ai_recognition_id) ON DELETE CASCADE,
---   confidence NUMERIC(18, 17) NOT NULL,
---   b_box JSON NOT NULL
--- );
+ALTER TABLE IF EXISTS multi_schema."AlbumMedia"
+    ADD CONSTRAINT "AlbumMedia_album_fkey" FOREIGN KEY (album)
+    REFERENCES multi_schema."Album" (album_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
 
 
+ALTER TABLE IF EXISTS multi_schema."AlbumMedia"
+    ADD CONSTRAINT "AlbumMedia_media_fkey" FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
 
--- -- AIModel
--- CREATE TABLE IF NOT EXISTS "AIModel" (
---   ai_model_id SERIAL PRIMARY KEY,
---   source_path TEXT NOT NULL,
---   model ai_model_enum NOT NULL,
---   cmd TEXT NOT NULL,
---   description VARCHAR(100),
---   server_system UUID NOT NULL REFERENCES "ServerSystem"(system_id)
--- );
+
+ALTER TABLE IF EXISTS multi_schema."Classify"
+    ADD CONSTRAINT "Classify_ai_recognition_fkey" FOREIGN KEY (ai_recognition)
+    REFERENCES multi_schema."AiRecognition" (ai_recognition_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+
+
+ALTER TABLE IF EXISTS multi_schema."ErrorLog"
+    ADD CONSTRAINT "ErrorLog_server_system_fkey" FOREIGN KEY (server_system)
+    REFERENCES multi_schema."ServerSystem" (system_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS multi_schema."Live"
+    ADD CONSTRAINT "Live_media_fkey" FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS "Live_pkey"
+    ON multi_schema."Live"(media);
+
+
+ALTER TABLE IF EXISTS multi_schema."Location"
+    ADD CONSTRAINT "Location_media_fkey" FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS "Location_pkey"
+    ON multi_schema."Location"(media);
+
+
+ALTER TABLE IF EXISTS multi_schema."Media"
+    ADD CONSTRAINT "Media_camera_type_fkey" FOREIGN KEY (camera_type)
+    REFERENCES multi_schema."CameraType" (camera_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS multi_schema."Passkeys"
+    ADD CONSTRAINT "Passkeys_RegisteredUser_fkey" FOREIGN KEY ("RegisteredUser")
+    REFERENCES multi_schema."RegisteredUser" (reg_user_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+
+
+ALTER TABLE IF EXISTS multi_schema."Photo"
+    ADD CONSTRAINT "Photo_media_fkey" FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS "Photo_pkey"
+    ON multi_schema."Photo"(media);
+
+
+ALTER TABLE IF EXISTS multi_schema."RegisteredUser"
+    ADD CONSTRAINT "Server_RegisteredUser_fk" FOREIGN KEY ("ServerSystem")
+    REFERENCES multi_schema."ServerSystem" (system_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS multi_schema."UploadBy"
+    ADD CONSTRAINT "UploadBy_RegisteredUser_fkey" FOREIGN KEY ("RegisteredUser")
+    REFERENCES multi_schema."RegisteredUser" (reg_user_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS multi_schema."UploadBy"
+    ADD CONSTRAINT "UploadBy_media_fkey" FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+
+
+ALTER TABLE IF EXISTS multi_schema."UserLog"
+    ADD CONSTRAINT "UserLog_RegisteredUser_fkey" FOREIGN KEY ("RegisteredUser")
+    REFERENCES multi_schema."RegisteredUser" (reg_user_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS multi_schema."Video"
+    ADD CONSTRAINT "Video_media_fkey" FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS "Video_pkey"
+    ON multi_schema."Video"(media);
+
+END;
