@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     file_type file_type_enum NOT NULL,
     file_name text COLLATE pg_catalog."default",
     create_date timestamp without time zone,
-    created_month smallint NOT NULL GENERATED ALWAYS AS (EXTRACT(month FROM create_date)) STORED,
+    create_month smallint NOT NULL GENERATED ALWAYS AS (EXTRACT(month FROM create_date)) STORED,
     create_year smallint NOT NULL GENERATED ALWAYS AS (EXTRACT(year FROM create_date)) STORED,
     file_size bigint,
     hash_code character varying(65) COLLATE pg_catalog."default",

@@ -57,6 +57,7 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, 
     sed 's|${Bun.env.MAIN_PATH}||g'`.lines();
 
     let jsonString = '{';
+    let count = 1;
 
     for await (let line of command) {
       if (!line) continue;
@@ -68,7 +69,9 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, 
 
         const newMedia: ImportMedia = parseJsonToObject(jsonString);
         const status = await insertImportedToMedia(newMedia, RegisteredUser);
+
         if (!status) return false;
+        await stream.writeln(`Processing ${count++}/${totalFiles} ...`);
 
         jsonString = '{';
         continue;

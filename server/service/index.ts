@@ -18,7 +18,7 @@ const processThumbSHA256 = async (media: any, stream: StreamingApi) => {
     await stream.writeln(`${media.file_name}`);
     if (w && h) await updateHashThumb(media.media_id, hash, w, h);
   } catch (error) {
-    console.error(`Failed processing - Source: ${media.source_file} Thumb: ${media.thumb_path}: ${error}`);
+    console.error(`processThumbSHA256 - Source: ${media.source_file}: ${error}`);
   }
 };
 
@@ -31,7 +31,7 @@ export const processMedias = async (stream: StreamingApi) => {
     return true;
   } catch (error) {
     await stream.writeln('Error processing Thumbnail');
-    console.warn('Error processing Thumbnail', error);
+    console.error('processMedias worker', error);
     return false;
   }
 };

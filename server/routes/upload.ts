@@ -127,6 +127,7 @@ upload.post(
         IS_IN_PROCESSING.status = false;
       } catch (error) {
         await stream.writeln(`Error: 500 Internal Server Error`);
+        console.error('upload.post', error);
       }
     });
   }

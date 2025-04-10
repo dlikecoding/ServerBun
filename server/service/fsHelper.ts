@@ -5,7 +5,7 @@ const isExist = async (path: string) => {
   return await fs.exists(path);
 };
 
-const createFolder = async (dePath: string, isRecursive: boolean = true) => {
+export const createFolder = async (dePath: string, isRecursive: boolean = true) => {
   try {
     if (path.extname(dePath)) {
       dePath = path.dirname(dePath);
@@ -13,23 +13,22 @@ const createFolder = async (dePath: string, isRecursive: boolean = true) => {
     if (await isExist(dePath)) return;
 
     await fs.mkdir(dePath, { recursive: isRecursive });
-    console.log('Successfully create FOLDER!');
   } catch (error: any) {
     console.log('createFolder: ', `Error: ${dePath}, ${error.message}`);
   }
 };
 
-const removeFilesUploadDir = async (dePath: string) => {
-  try {
-    if (!(await isExist(dePath))) return;
-    await fs.rm(dePath, { recursive: true, force: true });
-  } catch (error: any) {
-    // recordErrorInDB(
-    //     'removeFilesUploadDir: ',
-    //     `Error: ${dePath}, ${error.message}`
-    // );
-  }
-};
+// const removeFilesUploadDir = async (dePath: string) => {
+//   try {
+//     if (!(await isExist(dePath))) return;
+//     await fs.rm(dePath, { recursive: true, force: true });
+//   } catch (error: any) {
+//     // recordErrorInDB(
+//     //     'removeFilesUploadDir: ',
+//     //     `Error: ${dePath}, ${error.message}`
+//     // );
+//   }
+// };
 
 const isDirEmpty = async (dePath: string) => {
   try {
@@ -106,4 +105,4 @@ const nameFolderByTime = (): string => {
 
   return `${year}-${month}-${day}_${hour}-${minute}-${second}`;
 };
-export { createFolder, removeFilesUploadDir, isDirEmpty, removeEmptyDirectories, convertFileSize, diskCapacity, isExist, nameFolderByTime };
+export { isDirEmpty, removeEmptyDirectories, convertFileSize, diskCapacity, isExist, nameFolderByTime };

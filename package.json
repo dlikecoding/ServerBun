@@ -5,8 +5,8 @@
   "scripts": {
     "start": "bun run server/index.ts",
     "dev": "bun run --watch server/index.ts",
-    "startdb": "brew services start mysql",
-    "stopdb": "brew services stop mysql",
+    "startdb": "brew services start postgresql@17",
+    "stopdb": "brew services stop postgresql@17",
     "buildS": "bun build server/index.ts --outdir=../serverBunX --target=bun && cp -r ./server/dbms ./server/ai_models ../serverBunX",
     "format": "bun prettier . --write"
   },

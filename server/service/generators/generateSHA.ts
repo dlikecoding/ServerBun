@@ -11,6 +11,6 @@ export const createHash = async (input: string): Promise<any> => {
 
     return hasher.digest('hex');
   } catch (error) {
-    console.error(`Error processing ${input}: ${error}`);
+    console.error(`createHash ${input}: ${error}`);
   }
 };
