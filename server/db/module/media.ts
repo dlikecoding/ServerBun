@@ -101,23 +101,15 @@ export const fetchAlbums = async () => {
 };
 
 export const fetchAddToAlbum = async (mediaIds: number[], albumId: number) => {
-  try {
-    const insertIds = mediaIds.map((id) => ({
-      album: albumId,
-      media: id,
-    }));
-    return await sql`INSERT INTO "multi_schema"."AlbumMedia" ${sql(insertIds)} ON CONFLICT DO NOTHING`;
-  } catch (error) {
-    console.error('fetchAddToAlbum ', error);
-  }
+  const insertIds = mediaIds.map((id) => ({
+    album: albumId,
+    media: id,
+  }));
+  return await sql`INSERT INTO "multi_schema"."AlbumMedia" ${sql(insertIds)} ON CONFLICT DO NOTHING`;
 };
 
 export const fetchRemoveFromAlbum = async (mediaIds: number[], albumId: number) => {
-  try {
-    return await sql`DELETE FROM "multi_schema"."AlbumMedia" WHERE album = ${albumId} AND media IN ${sql(mediaIds)}`;
-  } catch (error) {
-    console.error('fetchRemoveFromAlbum ', error);
-  }
+  return await sql`DELETE FROM "multi_schema"."AlbumMedia" WHERE album = ${albumId} AND media IN ${sql(mediaIds)}`;
 };
 
 export const fetchMediaCount = async () => {

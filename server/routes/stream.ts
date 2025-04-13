@@ -70,7 +70,7 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
 
     return c.json(result); //{ data: fetchMedia, meta: { page: parsedPageNumber, pageSize: PAGE_SIZE } }
   } catch (err) {
-    console.error('Unexpected error:', err);
+    console.error('Unexpected loading medias:', err);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
@@ -138,4 +138,16 @@ export default streamApi;
 //   duplicate?: number | null;
 
 //   albumId?: number | null;
+// };
+
+// export type MediaType = {
+//   media_id: string;
+//   source_file: string;
+//   thumb_path: string;
+//   favorite: boolean;
+//   file_type: 'Video' | 'Live' | 'Photo';
+//   duration?: string;
+//   mime_type?: string;
+//   file_size: number;
+//   create_date: string;
 // };
