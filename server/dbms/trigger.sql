@@ -1,34 +1,61 @@
 -- ====================================================================================
--- Trigger function to update DeletionDate in Media table when Deleted changes
-DROP FUNCTION IF EXISTS media_before_update() CASCADE;
-
-CREATE FUNCTION media_before_update()
-RETURNS TRIGGER AS $$
+-- Trigger function to automaticly delete album when media is deleted in Media table
+CREATE OR REPLACE FUNCTION multi_schema.auto_delete_album_if_empty()
+RETURNS trigger AS $$
 BEGIN
-    -- Set DeletionDate to CURRENT_TIMESTAMP if Deleted changes to 1, otherwise set to NULL
-    IF OLD.Deleted IS DISTINCT FROM NEW.Deleted THEN
-        IF NEW.Deleted = 1 THEN
-            NEW.DeletionDate := CURRENT_TIMESTAMP;
-        ELSE
-            NEW.DeletionDate := NULL;
-        END IF;
-
-        IF NEW.Favorite = 1 THEN
-            NEW.Favorite := 0;
-        END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM "multi_schema"."AlbumMedia"
+        WHERE "album" = OLD."album"
+    ) THEN 
+        DELETE FROM "multi_schema"."Album"
+        WHERE "album_id" = OLD."album";
     END IF;
 
-    RETURN NEW;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
--- Create the trigger
-DROP TRIGGER IF EXISTS media_before_update_trigger ON "Media";
-
-CREATE TRIGGER media_before_update_trigger
-BEFORE UPDATE ON "Media"
+CREATE OR REPLACE TRIGGER delete_empty_album_after_delete_media
+AFTER DELETE ON multi_schema."AlbumMedia"
 FOR EACH ROW
-EXECUTE FUNCTION media_before_update();
+EXECUTE FUNCTION "multi_schema".auto_delete_album_if_empty();
+
+-- =========================== END ===================================================
+
+
+
+
+-- -- ====================================================================================
+-- -- Trigger function to update DeletionDate in Media table when Deleted changes
+-- DROP FUNCTION IF EXISTS media_before_update() CASCADE;
+
+-- CREATE FUNCTION media_before_update()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     -- Set DeletionDate to CURRENT_TIMESTAMP if Deleted changes to 1, otherwise set to NULL
+--     IF OLD.Deleted IS DISTINCT FROM NEW.Deleted THEN
+--         IF NEW.Deleted = 1 THEN
+--             NEW.DeletionDate := CURRENT_TIMESTAMP;
+--         ELSE
+--             NEW.DeletionDate := NULL;
+--         END IF;
+
+--         IF NEW.Favorite = 1 THEN
+--             NEW.Favorite := 0;
+--         END IF;
+--     END IF;
+
+--     RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+-- -- Create the trigger
+-- DROP TRIGGER IF EXISTS media_before_update_trigger ON "Media";
+
+-- CREATE TRIGGER media_before_update_trigger
+-- BEFORE UPDATE ON "Media"
+-- FOR EACH ROW
+-- EXECUTE FUNCTION media_before_update();
 
 
 
@@ -137,94 +164,6 @@ BEGIN
         SUM(CASE WHEN "Hidden" = 1 AND "Deleted" = 0 THEN 1 ELSE 0 END) AS "Hidden",
         SUM(CASE WHEN "Deleted" = 1 THEN 1 ELSE 0 END) AS "Recently Deleted"
     FROM "Media";
-END;
-$$ LANGUAGE plpgsql;
-
-
-
--- ==============================================================================
--- Find each media for every year in database
-
-DROP FUNCTION IF EXISTS "GetMediaEachYear"();
-
-CREATE OR REPLACE FUNCTION "GetMediaEachYear"()
-RETURNS TABLE (
-    media_id INTEGER,
-    "ThumbPath" TEXT,
-    "FileType" TEXT,
-    "TimeFormat" INTEGER
-) AS $$
-BEGIN
-    RETURN QUERY
-    WITH ranked_media AS (
-        SELECT 
-            media_id,
-            "FileType",
-            "ThumbPath",
-            EXTRACT(YEAR FROM "CreateDate")::INTEGER AS createAtYear,
-            ROW_NUMBER() OVER (
-                PARTITION BY EXTRACT(YEAR FROM "CreateDate") 
-                ORDER BY "CreateDate"
-            ) AS rn
-        FROM "PhotoView"
-        WHERE "isHidden" = 0 AND "isDeleted" = 0
-    )
-    SELECT 
-        media_id,
-        "ThumbPath",
-        "FileType",
-        createAtYear AS "TimeFormat"
-    FROM ranked_media
-    WHERE rn = 1
-    ORDER BY createAtYear DESC;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- ==============================================================================
--- Find each media for each year in every month in database
-DROP FUNCTION IF EXISTS "GetMediaByYear"(INTEGER);
-
-CREATE OR REPLACE FUNCTION "GetMediaByYear"(inputYear INTEGER)
-RETURNS TABLE (
-    media_id INTEGER,
-    "ThumbPath" TEXT,
-    "FileType" TEXT,
-    createAtYear INTEGER,
-    createAtMonth INTEGER,
-    createAtDate INTEGER,
-    "TimeFormat" TEXT
-) AS $$
-BEGIN
-    RETURN QUERY
-    WITH ranked_media AS (
-        SELECT 
-            media_id,
-            "FileType",
-            "ThumbPath",
-            "CreateDate",
-            EXTRACT(YEAR FROM "CreateDate")::INT AS createAtYear,
-            EXTRACT(MONTH FROM "CreateDate")::INT AS createAtMonth,
-            EXTRACT(DAY FROM "CreateDate")::INT AS createAtDate,
-            ROW_NUMBER() OVER (
-                PARTITION BY EXTRACT(YEAR FROM "CreateDate"), EXTRACT(MONTH FROM "CreateDate")
-                ORDER BY "CreateDate"
-            ) AS rn
-        FROM "PhotoView"
-        WHERE (inputYear = 0 OR inputYear = EXTRACT(YEAR FROM "CreateDate")::INT)
-          AND "isHidden" = 0 AND "isDeleted" = 0
-    )
-    SELECT 
-        media_id, 
-        "ThumbPath", 
-        "FileType", 
-        createAtYear, 
-        createAtMonth, 
-        createAtDate,
-        TO_CHAR("CreateDate", 'Month') || ' ' || createAtYear AS "TimeFormat"
-    FROM ranked_media
-    WHERE rn = 1
-    ORDER BY createAtYear DESC, createAtMonth DESC;
 END;
 $$ LANGUAGE plpgsql;
 

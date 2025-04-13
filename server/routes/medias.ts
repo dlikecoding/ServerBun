@@ -1,57 +1,35 @@
 import { Hono } from 'hono';
 
 import { z } from 'zod'; // To create a schema to validate post req
-import { deleteMedias, fetchCameraType, fetchMediaCount, fetchMediaEachYear, fetchMediaOfEachMonth, updateMedias } from '../db/module/media';
+import { deleteMedias, fetchCameraType, fetchMediaCount, groupMonthsByYear, updateMedias } from '../db/module/media';
 import { validateSchema } from '../modules/validateSchema';
 
 const medias = new Hono();
 
-// Make sure all of id is numbers
-// medias.get('/:id{[0-9]+}', (c) => {
-//   return c.json({ homepage: 'YOU ARE HOME' });
-// });
-
-const yearSchema = z.object({
-  year: z.coerce
-    .number()
-    .min(0)
-    .max(9999)
-    // (/^(\d{4}|0)$/, 'Invalid year format') // Matches 0 or 4 digits
-    .optional(),
-});
-
 const updateSchema = z.object({
   mediaIds: z.array(z.coerce.number()),
-  updateKey: z.enum(['Favorite', 'Deleted', 'Hidden']), // If updateKey is not in Favorite, Deleted, Hidden ... return error
-  updateValue: z.boolean(),
+  updateKey: z.enum(['favorite', 'deleted', 'hidden']), // If updateKey is not in Favorite, Deleted, Hidden ... return error
+  updateValue: z.coerce.number().min(0).max(1),
 });
 
 const deleteSchema = z.object({
   mediasToDel: z.array(z.coerce.number()),
 });
 
-medias.get('/', validateSchema('query', yearSchema), async (c) => {
-  const { year } = c.req.valid('query');
-
+medias.get('/', async (c) => {
   try {
-    const yearInt = parseInt(year, 10);
-
-    // In the case year = 0 or 2020, it will fect all months or all months within 2020 // otherwise, fetch all years.
-    const mediaData = !isNaN(yearInt) ? await fetchMediaOfEachMonth(yearInt) : await fetchMediaEachYear();
-
-    return c.json(mediaData, 200);
+    return c.json(await groupMonthsByYear(), 200);
   } catch (error) {
-    return c.json({ error: 'Failed to fetch media' }, 500);
+    console.error('medias.get: await groupMonthsByYear()', error);
+    return c.json({ error: 'Failed to fetch media of each month' }, 500);
   }
 });
 
 medias.get('/statistic', async (c) => {
   try {
-    const result = await fetchMediaCount();
-
-    return c.json(result, 200);
+    return c.json(await fetchMediaCount(), 200);
   } catch (error) {
-    console.error('Error fetching media:', error);
+    console.error('Error fetching statistic:', error);
     return c.json({ error: 'Failed to fetch media' }, 500);
   }
 });
@@ -60,26 +38,38 @@ medias.get('/devices', async (c) => {
   try {
     return c.json(await fetchCameraType(), 200);
   } catch (error) {
-    console.error('Error fetching media:', error);
+    console.error('Error fetching devices:', error);
     return c.json({ error: 'Failed to fetch media' }, 500);
   }
 });
 
 medias.put('/', validateSchema('json', updateSchema), async (c) => {
-  const { mediaIds, updateKey, updateValue } = c.req.valid('json');
-  const result = await updateMedias(mediaIds, updateKey, updateValue);
-
-  if (result) return c.json('Success', 204);
-  return c.json({ error: 'Failed to fetch media' }, 500);
+  try {
+    const { mediaIds, updateKey, updateValue } = c.req.valid('json');
+    const result = await updateMedias(mediaIds, updateKey, updateValue ? true : false);
+    if (result) return c.json('Success', 202);
+    return c.json({ error: 'Failed to update media' }, 403);
+  } catch (error) {
+    return c.json({ error: 'Server error' }, 500);
+  }
 });
 
 medias.delete('/', validateSchema('json', deleteSchema), async (c) => {
   const { mediasToDel } = c.req.valid('json');
 
   const result = await deleteMedias(mediasToDel);
-  if (result) return c.json('Success', 204);
+  if (result) return c.json('Success', 202);
 
-  return c.json({ error: 'Failed to fetch media' }, 500);
+  return c.json({ error: 'Failed to delete medias' }, 500);
 });
 
 export default medias;
+
+// Make sure all of id is numbers
+// medias.get('/:id{[0-9]+}', (c) => {
+//   return c.json({ homepage: 'YOU ARE HOME' });
+// });
+
+// const yearSchema = z.object({
+//   year: z.coerce.number().min(0).max(9999).optional(),
+// });

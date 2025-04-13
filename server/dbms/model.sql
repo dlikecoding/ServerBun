@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS multi_schema."AiClass"
 CREATE TABLE IF NOT EXISTS multi_schema."AiRecognition"
 (
     ai_recognition_id serial NOT NULL,
-    media integer NOT NULL,
-    ai_class integer NOT NULL,
+    media serial NOT NULL,
+    ai_class serial NOT NULL,
     ai_mode aimode_enum NOT NULL,
     CONSTRAINT "AiRecognition_pkey" PRIMARY KEY (ai_recognition_id),
     CONSTRAINT "AiRecognition_media_ai_class_ai_mode_key" UNIQUE (media, ai_class, ai_mode)
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."AiRecognition"
 
 CREATE TABLE IF NOT EXISTS multi_schema."Album"
 (
-    album_id serial NOT NULL,
+    album_id smallserial NOT NULL,
     "RegisteredUser" uuid NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     title character varying(50) COLLATE pg_catalog."default",
@@ -44,14 +44,14 @@ CREATE TABLE IF NOT EXISTS multi_schema."Album"
 
 CREATE TABLE IF NOT EXISTS multi_schema."AlbumMedia"
 (
-    album integer NOT NULL,
-    media integer NOT NULL,
+    album smallserial NOT NULL,
+    media serial NOT NULL,
     CONSTRAINT "AlbumMedia_pkey" PRIMARY KEY (album, media)
 );
 
 CREATE TABLE IF NOT EXISTS multi_schema."CameraType"
 (
-    camera_id serial NOT NULL,
+    camera_id smallserial NOT NULL,
     make character varying(50) COLLATE pg_catalog."default",
     model character varying(100) COLLATE pg_catalog."default",
     lens_model character varying(200) COLLATE pg_catalog."default",
@@ -79,17 +79,17 @@ CREATE TABLE IF NOT EXISTS multi_schema."ErrorLog"
 
 CREATE TABLE IF NOT EXISTS multi_schema."Live"
 (
-    media integer NOT NULL,
-    frame_count integer,
-    current_frame smallint,
-    duration integer,
+    media serial NOT NULL,
+    frame_count serial,
+    current_frame smallserial,
+    duration smallserial,
     title character varying(45) COLLATE pg_catalog."default",
     CONSTRAINT "Live_pkey" PRIMARY KEY (media)
 );
 
 CREATE TABLE IF NOT EXISTS multi_schema."Location"
 (
-    media integer NOT NULL,
+    media serial NOT NULL,
     city character varying(50) COLLATE pg_catalog."default",
     state character varying(50) COLLATE pg_catalog."default",
     country character varying(50) COLLATE pg_catalog."default",
@@ -104,20 +104,20 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     file_type file_type_enum NOT NULL,
     file_name text COLLATE pg_catalog."default",
     create_date timestamp without time zone,
-    create_month smallint NOT NULL GENERATED ALWAYS AS (EXTRACT(month FROM create_date)) STORED,
-    create_year smallint NOT NULL GENERATED ALWAYS AS (EXTRACT(year FROM create_date)) STORED,
-    file_size bigint,
+    create_month smallserial NOT NULL GENERATED ALWAYS AS (EXTRACT(month FROM create_date)) STORED,
+    create_year smallserial NOT NULL GENERATED ALWAYS AS (EXTRACT(year FROM create_date)) STORED,
+    file_size bigserial,
     hash_code character varying(65) COLLATE pg_catalog."default",
     hidden boolean DEFAULT false,
     favorite boolean DEFAULT false,
     deleted boolean DEFAULT false,
     deletion_date timestamp without time zone,
     upload_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    camera_type integer,
-    file_ext character varying(50) COLLATE pg_catalog."default",
+    camera_type smallserial,
+    file_ext character varying(10) COLLATE pg_catalog."default",
     software character varying(256) COLLATE pg_catalog."default",
     source_file text COLLATE pg_catalog."default",
-    mime_type character varying(50) COLLATE pg_catalog."default",
+    mime_type character varying(15) COLLATE pg_catalog."default",
     thumb_path text COLLATE pg_catalog."default",
     thumb_width smallint,
     thumb_height smallint,
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."Passkeys"
     cred_id character varying(50) COLLATE pg_catalog."default" NOT NULL,
     cred_public_key bytea NOT NULL,
     "RegisteredUser" uuid NOT NULL,
-    counter bigint NOT NULL,
+    counter smallserial NOT NULL,
     registered_device registered_device_enum NOT NULL,
     backup_eligible boolean NOT NULL,
     backup_status boolean NOT NULL DEFAULT false,
@@ -141,10 +141,10 @@ CREATE TABLE IF NOT EXISTS multi_schema."Passkeys"
 
 CREATE TABLE IF NOT EXISTS multi_schema."Photo"
 (
-    media integer NOT NULL,
+    media serial NOT NULL,
     orientation character varying(45) COLLATE pg_catalog."default",
-    image_width smallint,
-    image_height smallint,
+    image_width smallserial,
+    image_height smallserial,
     megapixels double precision,
     CONSTRAINT "Photo_pkey" PRIMARY KEY (media)
 );
@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."ServerSystem"
 CREATE TABLE IF NOT EXISTS multi_schema."UploadBy"
 (
     "RegisteredUser" uuid NOT NULL,
-    media integer NOT NULL,
+    media serial NOT NULL,
     uploaded_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "UploadBy_pkey" PRIMARY KEY (media, "RegisteredUser")
 );
@@ -193,10 +193,10 @@ CREATE TABLE IF NOT EXISTS multi_schema."UserLog"
 
 CREATE TABLE IF NOT EXISTS multi_schema."Video"
 (
-    media integer NOT NULL,
+    media serial NOT NULL,
     duration double precision,
     title character varying(255) COLLATE pg_catalog."default",
-    display_duration character varying(45) COLLATE pg_catalog."default",
+    display_duration character varying(10) COLLATE pg_catalog."default",
     CONSTRAINT "Video_pkey" PRIMARY KEY (media)
 );
 
