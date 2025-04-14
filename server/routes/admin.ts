@@ -68,7 +68,7 @@ admin.get('/import', isAdmin, async (c) => {
         return;
       }
 
-      const insertStatus = await insertMediaToDB(userId, Bun.env.PHOTO_PATH, stream, totalFiles);
+      const insertStatus = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
       if (!insertStatus) {
         await stream.writeln('Error: Failed to importing medias to database.');
         IS_IN_PROCESSING.status = true;

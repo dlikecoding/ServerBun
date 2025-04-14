@@ -1,9 +1,9 @@
 import { $ } from 'bun';
 import { type UUID } from 'crypto';
 import { insertImportedToMedia, type ImportMedia } from './module/imported';
-import type { StreamingApi } from 'hono/utils/stream';
 import { sql } from '.';
 import { isExist } from '../service/fsHelper';
+import { insertErrorLog } from './module/system';
 
 export const createDBMS = async () => {
   try {
@@ -23,6 +23,7 @@ export const createDBMS = async () => {
     return true;
   } catch (error) {
     console.log('createDBMS', error);
+    await insertErrorLog('db/main.ts', 'createDBMS', error);
     return false;
   }
 };
@@ -32,7 +33,7 @@ export const renameAllFiles = async (sourcePath: string): Promise<boolean> => {
     await $`find ${sourcePath} -depth -name '*[^a-zA-Z0-9._/-]*' -exec bash -c 'mv "$0" "$(dirname "$0")/$(basename "$0" | sed "s/[^a-zA-Z0-9._-]/_/g")"' {} \;`;
   if (exitCode === 0) return true;
 
-  console.log('renameAllFiles', stderr);
+  await insertErrorLog('db/main.ts', 'renameAllFiles', stderr);
   return false;
 };
 
@@ -40,12 +41,11 @@ export const countFiles = async (sourcePath: string): Promise<number> => {
   const { stdout, stderr, exitCode } = await $`find ${sourcePath} -type f ! -name '.*' | wc -l`.quiet();
 
   if (exitCode === 0) return parseInt(stdout.toString().trim(), 10);
-
-  console.log('countFiles', stderr);
+  await insertErrorLog('db/main.ts', 'countFiles', stderr);
   return 0;
 };
 
-export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, stream: StreamingApi, totalFiles: number) {
+export const insertMediaToDB = async (RegisteredUser: UUID, sourcePath: string) => {
   try {
     const command = $`exiftool -r -json -d "%Y-%m-%dT%H:%M:%S" \
     -SourceFile -FileName -FileType -MIMEType \
@@ -55,7 +55,6 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, 
     sed 's|${Bun.env.MAIN_PATH}||g'`.lines();
 
     let jsonString = '{';
-    let count = 1;
 
     for await (let line of command) {
       if (!line) continue;
@@ -69,7 +68,6 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, 
         const status = await insertImportedToMedia(newMedia, RegisteredUser);
 
         if (!status) return false;
-        await stream.writeln(`Processing ${count++}/${totalFiles} ...`);
 
         jsonString = '{';
         continue;
@@ -77,27 +75,26 @@ export async function insertMediaToDB(RegisteredUser: UUID, sourcePath: string, 
 
       jsonString += line.trim();
     }
-    console.log(`----=====INSERTED ${totalFiles} to the DB successfully!=====-----`);
-    await stream.writeln(`Inserted ${totalFiles} to the database`);
+
     return true;
-  } catch (err: any) {
-    console.log(`Import FAILED with error: ${err}`);
-    await stream.writeln(`Failed to import media to database`);
+  } catch (error: any) {
+    await insertErrorLog('db/main.ts', 'insertMediaToDB', error);
+    console.log(`Import FAILED with error: ${error}`);
     return false;
   }
-}
+};
 
-export async function backupToDB() {
+export const backupToDB = async () => {
   const { stderr, exitCode } = await $`PGPASSWORD=$DB_PASS pg_dump -U $DB_USER $DB_NAME > $DB_BACKUP`.quiet();
-  exitCode !== 0 ? console.log(`backupToDB ${stderr}`) : console.log(`BACKUP successfully to the DB!`);
+  exitCode !== 0 ? await insertErrorLog('db/main.ts', `backupToDB`, stderr) : console.log(`BACKUP successfully to the DB!`);
   return exitCode;
-}
+};
 
-export async function restoreToDB() {
+export const restoreToDB = async () => {
   const { stderr, exitCode } = await $`PGPASSWORD=$DB_PASS psql -U $DB_USER -d $DB_NAME -f $DB_BACKUP`.quiet();
-  exitCode !== 0 ? console.log(`restoreToDB ${stderr}`) : console.log(`RESTORE successfully to the DB!`);
+  exitCode !== 0 ? await insertErrorLog('db/main.ts', `restoreToDB`, stderr) : console.log(`RESTORE successfully to the DB!`);
   return exitCode;
-}
+};
 
 const parseJsonToObject = (input: string) => {
   const jsonObj = JSON.parse(input);

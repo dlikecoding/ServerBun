@@ -120,7 +120,7 @@ upload.post(
           return;
         }
 
-        const insertStatus = await insertMediaToDB(userId, writeToDir, stream, totalFiles);
+        const insertStatus = await insertMediaToDB(userId, writeToDir);
         if (!insertStatus) {
           await stream.writeln('Error: Failed to importing medias to database.');
           IS_IN_PROCESSING.status = true;
