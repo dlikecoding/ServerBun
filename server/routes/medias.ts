@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 
 import { z } from 'zod'; // To create a schema to validate post req
-import { deleteMedias, fetchCameraType, fetchMediaCount, groupMonthsByYear, updateMedias } from '../db/module/media';
+import { deleteMedias, fetchCameraType, groupMonthsByYear, updateMedias } from '../db/module/media';
 import { validateSchema } from '../modules/validateSchema';
+import { insertErrorLog } from '../db/module/system';
 
 const medias = new Hono();
 
@@ -21,16 +22,8 @@ medias.get('/', async (c) => {
     return c.json(await groupMonthsByYear(), 200);
   } catch (error) {
     console.error('medias.get: await groupMonthsByYear()', error);
+    await insertErrorLog('routes/medias.ts', 'get/', error);
     return c.json({ error: 'Failed to fetch media of each month' }, 500);
-  }
-});
-
-medias.get('/statistic', async (c) => {
-  try {
-    return c.json(await fetchMediaCount(), 200);
-  } catch (error) {
-    console.error('Error fetching statistic:', error);
-    return c.json({ error: 'Failed to fetch media' }, 500);
   }
 });
 
@@ -39,6 +32,7 @@ medias.get('/devices', async (c) => {
     return c.json(await fetchCameraType(), 200);
   } catch (error) {
     console.error('Error fetching devices:', error);
+    await insertErrorLog('routes/medias.ts', 'devices', error);
     return c.json({ error: 'Failed to fetch media' }, 500);
   }
 });
@@ -50,6 +44,7 @@ medias.put('/', validateSchema('json', updateSchema), async (c) => {
     if (result) return c.json('Success', 202);
     return c.json({ error: 'Failed to update media' }, 403);
   } catch (error) {
+    await insertErrorLog('routes/medias.ts', 'put/', error);
     return c.json({ error: 'Server error' }, 500);
   }
 });

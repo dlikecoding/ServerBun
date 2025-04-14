@@ -3,35 +3,24 @@ import type { UUID } from 'crypto';
 import { $ } from 'bun';
 
 import { sql } from '..';
-
-// SQL Queries
-// const Sql = {
-//   // LOAD_IMPORTED_MEDIA: 'SELECT media_id, SourceFile, ThumbPath, FileType, FileName FROM Media WHERE ThumbPath IS NULL OR HashCode IS NULL',
-//   // UPDATE_HASH_THUMB: 'UPDATE Media SET HashCode = ?, ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
-//   // UPDATE_THUMB: 'UPDATE Media SET ThumbWidth = ?, ThumbHeight = ? WHERE media_id = ?',
-//   // UPDATE_HASH: 'UPDATE Media SET HashCode = (?) WHERE media_id = ?',
-//   // FETCH_CAMERATYPE: 'SELECT * FROM CameraType',
-//   // FETCH_MEDIA_EACH_YEAR: 'CALL GetMediaEachYear()',
-//   // FETCH_MEDIA_EACH_MONTH: 'CALL GetMediaByYear(?)',
-//   // STREAM_MEDIA: 'CALL StreamSearchMedias(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-//   // FETCH_MEDIA_STATISTICS: 'CALL GetMediaStatistics()',
-//   // GET_ALBUMS: 'CALL GetAlbumsAndCount()',
-//   // ADD_TO_ALBUMS: 'INSERT IGNORE INTO AlbumMedia (album, media) SELECT (?), media_id FROM Media WHERE media_id IN (?)',
-//   // CREATE_ALBUM: 'INSERT INTO Album (RegisteredUser, title) VALUES (?, ?)',
-//   // FIND_MEDIA_TO_DEL: 'SELECT media_id, SourceFile, ThumbPath FROM Media WHERE media_id IN (?)',
-//   // DELETE_MEDIAS: 'DELETE FROM Media WHERE media_id IN (?)',
-//   // MARK_FAVORITES: "UPDATE Media SET Favorite = ? WHERE media_id IN (?)",
-//   // MARK_DELETED: "UPDATE Media SET DeletedStatus = 1 WHERE media_id = ?",
-//   // LOAD_MEDIA_HASH: "SELECT media_id, SourceFile, ThumbPath, FileType FROM Media WHERE HashCode = ?`,
-//   // CREATE_DB: `CREATE DATABASE IF NOT EXISTS Photos`,
-// };
+import { insertErrorLog } from './system';
 
 export const importedMedias = async () => {
   return await sql`SELECT media_id, source_file, thumb_path, file_type, file_name FROM multi_schema."Media" WHERE thumb_path IS NULL OR hash_code IS NULL`;
 };
 
 export const updateHashThumb = async (media_id: number, hashCode: string, thumbWidth: string, thumbHeight: string) => {
-  return await sql`UPDATE multi_schema."Media" SET hash_code = ${hashCode}, thumb_width = ${thumbWidth}, thumb_height = ${thumbHeight} WHERE media_id = ${media_id}`;
+  return await sql.begin(async (tx) => {
+    const [dupMedia] = await tx`SELECT media_id, hash_code FROM multi_schema."Media" WHERE hash_code = ${hashCode} AND media_id <> ${media_id} LIMIT 1`;
+
+    if (dupMedia) {
+      await tx`INSERT INTO "multi_schema"."Duplicate" (media, hash_code) VALUES
+            (${dupMedia.media_id}, ${dupMedia.hash_code}),
+            (${media_id}, ${hashCode})
+            ON CONFLICT DO NOTHING`;
+    }
+    return await tx`UPDATE multi_schema."Media" SET hash_code = ${hashCode}, thumb_width = ${thumbWidth}, thumb_height = ${thumbHeight} WHERE media_id = ${media_id}`;
+  });
 };
 
 export const fetchCameraType = async () => {
@@ -77,6 +66,7 @@ export const deleteMedias = async (mediaIds: number[]) => {
 
     return mediaDeleted.length === mediaIds.length;
   } catch (error) {
+    await insertErrorLog('db/module/media.ts', 'deleteMedias', error);
     console.error('deleteMedias', error);
   }
 };
@@ -113,15 +103,13 @@ export const fetchRemoveFromAlbum = async (mediaIds: number[], albumId: number) 
 };
 
 export const fetchMediaCount = async () => {
-  // TODO need to implement count duplicate
   const mediaCount = sql`
     SELECT 
-        SUM(CASE WHEN "favorite" = TRUE AND "hidden" = FALSE AND "deleted" = FALSE THEN 1 ELSE 0 END) AS "Favorite",
-        SUM(CASE WHEN "hidden" = TRUE AND "deleted" = FALSE THEN 1 ELSE 0 END) AS "Hidden",
-        SUM(CASE WHEN "deleted" = TRUE THEN 1 ELSE 0 END) AS "Recently Deleted",
-        SUM(CASE WHEN "create_date" IS NOT NULL THEN 1 ELSE 0 END) AS "Duplicate"
+      SUM(CASE WHEN "favorite" = TRUE AND "hidden" = FALSE AND "deleted" = FALSE THEN 1 ELSE 0 END) AS "Favorite",
+      SUM(CASE WHEN "hidden" = TRUE AND "deleted" = FALSE THEN 1 ELSE 0 END) AS "Hidden",
+      SUM(CASE WHEN "deleted" = TRUE THEN 1 ELSE 0 END) AS "Recently Deleted",
+      ( SELECT COUNT("media") FROM "multi_schema"."Duplicate") AS "Duplicate"
     FROM "multi_schema"."Media"`;
-
   return mediaCount;
 };
 

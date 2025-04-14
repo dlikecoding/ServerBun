@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { validateSchema } from '../modules/validateSchema';
 import { sql } from '../db';
+import { insertErrorLog } from '../db/module/system';
 
 const PAGE_SIZE = 250; // Max size per page
 
@@ -44,7 +45,7 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
     const limitOffset = sql`LIMIT ${PAGE_SIZE} OFFSET ${pageNumber * PAGE_SIZE}`;
 
     const getMedias = sql`
-      SELECT media_id, thumb_path, source_file, create_month, create_year, 
+      SELECT media_id, thumb_path, source_file, create_month, create_year, video_duration,
               mime_type, file_type, favorite, file_size, upload_at, create_date
       FROM multi_schema."Media"
       WHERE 1=1 ${isYear} ${isDevice} ${isType}
@@ -60,7 +61,11 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
         ${orderBy}
         ${limitOffset}`;
     } else if (duplicate) {
-      // TODO do something to find duplicate
+      result = await sql`
+        SELECT md.* FROM "multi_schema"."Duplicate" AS dup
+        JOIN (${getMedias}) as md ON md."media_id" = dup.media
+        ORDER BY hash_code
+        ${limitOffset}`;
     } else {
       result = await sql`${getMedias}
       ${orderBy}
@@ -69,8 +74,9 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
     }
 
     return c.json(result); //{ data: fetchMedia, meta: { page: parsedPageNumber, pageSize: PAGE_SIZE } }
-  } catch (err) {
-    console.error('Unexpected loading medias:', err);
+  } catch (error) {
+    console.error('Unexpected loading medias:', error);
+    await insertErrorLog('routes/stream.ts', 'streamApis', error);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 });

@@ -1,5 +1,8 @@
 import type { UUID } from 'crypto';
 import { sql } from '..';
+import { insertErrorLog } from './system';
+
+const DURATION_OF_SHORT = 5; // Short video which has duration < 5s
 
 export interface ImportMedia {
   SourceFile: string;
@@ -27,6 +30,7 @@ export interface ImportMedia {
   FileModifyDate: string | null;
   MediaCreateDate: string | null;
   MediaModifyDate: string | null;
+
   GPSLatitude: string | null;
   GPSLongitude: string | null;
 }
@@ -49,23 +53,32 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
       }
 
       const smallestDate = getSmallestDate(newMedia);
-      const thumbPath = createThumbPath(smallestDate);
-      const [mediaId] =
-        await tx`INSERT INTO multi_schema."Media" (file_name, file_type, file_ext, software, file_size, camera_type, create_date, source_file, mime_type, thumb_path) VALUES (
-        ${newMedia.FileName}, ${mediaType}, ${newMedia.FileType}, ${newMedia.Software}, ${newMedia.FileSize}, ${cameraTypeId}, ${smallestDate}, ${newMedia.SourceFile}, ${newMedia.MIMEType}, ${thumbPath})
-        RETURNING media_id`;
+      const durationDisplay = convertDuration(newMedia.Duration!);
 
+      const mediaToInsert = {
+        file_name: newMedia.FileName,
+        file_type: mediaType,
+        file_ext: newMedia.FileType,
+        software: newMedia.Software,
+        file_size: newMedia.FileSize,
+        camera_type: cameraTypeId,
+        create_date: smallestDate,
+        source_file: newMedia.SourceFile,
+        mime_type: newMedia.MIMEType,
+        thumb_path: createThumbPath(smallestDate),
+        video_duration: durationDisplay,
+      };
+
+      const [mediaId] = await tx`INSERT INTO multi_schema."Media" ${sql(mediaToInsert)} RETURNING media_id`;
       const lastMediaId = mediaId.media_id;
 
       await tx`INSERT INTO multi_schema."UploadBy" ("RegisteredUser", media) VALUES (${RegisteredUser}, ${lastMediaId})`;
 
       if (mediaType === 'Photo') {
         await tx`INSERT INTO multi_schema."Photo" (media, orientation, image_width, image_height, megapixels) VALUES ( ${lastMediaId}, ${newMedia.Orientation}, ${newMedia.ImageWidth}, ${newMedia.ImageHeight}, ${newMedia.Megapixels})`;
-      } else if (mediaType === 'Video') {
-        const durationDisplay = convertDuration(newMedia.Duration!);
-        await tx`INSERT INTO multi_schema."Video" (media, duration, title, display_duration) VALUES ( ${lastMediaId}, ${newMedia.Duration}, ${newMedia.Title}, ${durationDisplay})`;
-      } else if (mediaType === 'Live') {
-        await tx`INSERT INTO multi_schema."Live" (media, duration, title) VALUES ( ${lastMediaId}, ${newMedia.Duration}, ${newMedia.Title})`;
+      } else {
+        const insertVid = { media: lastMediaId, duration: newMedia.Duration, title: newMedia.Title };
+        mediaType === 'Video' ? await tx`INSERT INTO multi_schema."Video" ${sql(insertVid)}` : await tx`INSERT INTO multi_schema."Live" ${sql(insertVid)}`;
       }
 
       // Insert GPS Data
@@ -76,7 +89,8 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
     });
     return insertedMedia ? true : false;
   } catch (error) {
-    console.log(error);
+    console.log('insertImportedToMedia', error);
+    await insertErrorLog('system.ts', 'initializeSystem', error);
     return false;
   }
 };
@@ -101,7 +115,7 @@ const getSmallestDate = (newMedia: ImportMedia): Date => {
 const fileType = (MIMEType: string, duration?: number) => {
   const prefix = MIMEType.split('/')[0];
   if (prefix === 'image') return 'Photo';
-  if (prefix === 'video') return duration && duration > 5 ? 'Video' : 'Live';
+  if (prefix === 'video') return duration && duration > DURATION_OF_SHORT ? 'Video' : 'Live';
   return 'Unknown';
 };
 
@@ -110,7 +124,7 @@ const createThumbPath = (inputDate: Date) => {
 };
 
 const convertDuration = (inputSecond: number) => {
-  if (!inputSecond) return ``;
+  if (!inputSecond) return null;
   const hours = Math.floor(inputSecond / 3600);
   const minutes = Math.floor((inputSecond % 3600) / 60);
   const seconds = Math.round(inputSecond % 60);

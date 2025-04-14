@@ -18,9 +18,7 @@ export const createDBMS = async () => {
     }
 
     await sql.file(Bun.env.DB_MODEL); // Create new schema & tables
-
-    // await sql.file(Bun.env.DB_VIEW);
-    // await sql.file(Bun.env.DB_TRIGGER);
+    await sql.file(Bun.env.DB_TRIGGER);
 
     return true;
   } catch (error) {
