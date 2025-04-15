@@ -40,7 +40,7 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
     const isDeleted = deleted ? sql`AND deleted = TRUE ` : sql`AND deleted = FALSE `;
 
     const sortOrders = sortOrder ? sql` ASC ` : sql` DESC `;
-    const orderBy = sortKey ? sql`ORDER BY ${sql(sortKey)} ${sortOrders} ` : sql`ORDER BY create_date ${sortOrders} `;
+    const orderBy = sortKey ? sql`ORDER BY ${sql(sortKey)} ${sortOrders}, media_id ASC ` : sql`ORDER BY create_date ${sortOrders}, media_id ASC`;
 
     const limitOffset = sql`LIMIT ${PAGE_SIZE} OFFSET ${pageNumber * PAGE_SIZE}`;
 
@@ -64,7 +64,7 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
       result = await sql`
         SELECT md.* FROM "multi_schema"."Duplicate" AS dup
         JOIN (${getMedias}) as md ON md."media_id" = dup.media
-        ORDER BY hash_code
+        ORDER BY hash_code, media_id ASC
         ${limitOffset}`;
     } else {
       result = await sql`${getMedias}
