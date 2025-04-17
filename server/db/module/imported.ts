@@ -120,7 +120,11 @@ const fileType = (MIMEType: string, duration?: number) => {
 };
 
 const createThumbPath = (inputDate: Date) => {
-  return `/Thumbnails/${inputDate.getFullYear()}/${inputDate.toLocaleString('default', { month: 'long' })}/${Bun.randomUUIDv7()}.webp`;
+  const length = 9;
+  const randomId = Math.random()
+    .toString(36)
+    .substring(2, 2 + length);
+  return `/Thumbnails/${inputDate.getFullYear()}/${inputDate.toLocaleString('default', { month: 'long' })}/${randomId}.webp`;
 };
 
 const convertDuration = (inputSecond: number) => {

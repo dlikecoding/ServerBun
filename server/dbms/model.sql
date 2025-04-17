@@ -113,14 +113,14 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     deletion_date timestamp without time zone,
     upload_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     camera_type smallint,
-    file_ext character varying(10) COLLATE pg_catalog."default",
+    file_ext character varying(20) COLLATE pg_catalog."default",
     software character varying(256) COLLATE pg_catalog."default",
     source_file text COLLATE pg_catalog."default",
     mime_type character varying(15) COLLATE pg_catalog."default",
     thumb_path text COLLATE pg_catalog."default",
     thumb_width smallint,
     thumb_height smallint,
-    video_duration character varying(10),
+    video_duration character varying(20),
     CONSTRAINT "Media_pkey" PRIMARY KEY (media_id)
 );
 
