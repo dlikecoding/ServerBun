@@ -7,11 +7,10 @@ import { getUserBySession } from '../middleware/validateAuth';
 import { countFiles, insertMediaToDB, renameAllFiles } from '../db/main';
 import { processMedias } from '../service';
 import { streamText } from 'hono/streaming';
-import { IS_IN_PROCESSING } from './authHelper/_cookies';
 
 const GB = 1024 * 1024 * 1024;
 
-const MAX_BODY_SIZE = 5 * GB; // limit total files size in bytes
+export const MAX_BODY_SIZE = 5 * GB; // limit total files size in bytes
 const ALLOWED_FILE_SIZE = 1 * GB; // limit per file in bytes
 const ALLOWED_MIME_TYPES = ['.webp', '.jpg', '.gif', '.mov', '.mp4', '.heif', '.heic', '.jpeg', '.png'];
 
@@ -31,12 +30,10 @@ upload.post(
   }),
   async (c) => {
     return streamText(c, async (stream) => {
-      if (IS_IN_PROCESSING.status) {
-        await stream.writeln('❌ Server is currently processing data. Please try again later.');
-        return;
-      }
-
-      IS_IN_PROCESSING.status = true;
+      // if (IS_IN_PROCESSING.status) {
+      //   await stream.writeln('❌ Server is currently processing data. Please try again later.');
+      //   return;
+      // }
 
       const formData = await c.req.formData();
       const files = formData.getAll('uploadFiles') as File[];
@@ -44,13 +41,11 @@ upload.post(
       try {
         stream.onAbort(() => {
           console.warn('Client aborted the stream!');
-          IS_IN_PROCESSING.status = true;
         });
-        await stream.writeln('Started processing medias ...');
+        await stream.writeln('⏳ Started processing medias ...');
 
         if (!files.length) {
-          await stream.writeln('No files uploaded');
-          IS_IN_PROCESSING.status = true;
+          await stream.writeln('❌ No files uploaded');
           return;
         }
 
@@ -63,83 +58,70 @@ upload.post(
           try {
             if (!validateFileExt(eachFile)) {
               console.warn(`Blocked unsupported file: ${eachFile.name}`);
-              await stream.writeln(`Unsupported file: ${eachFile.name}. Please upload a valid type.`);
-              IS_IN_PROCESSING.status = true;
+              await stream.writeln(`❌ Unsupported file: ${eachFile.name}. Please upload a valid type.`);
               return;
             }
 
             if (eachFile.size > ALLOWED_FILE_SIZE) {
               console.warn(`Blocked large file: ${eachFile.name} (${eachFile.size} bytes)`);
-              await stream.writeln(`Error: File '${eachFile.name}' is too large (${eachFile.size} bytes).`);
-              IS_IN_PROCESSING.status = true;
+              await stream.writeln(`❌ File '${eachFile.name}' is too large (${eachFile.size} bytes).`);
               return;
             }
 
             const filePath = path.join(writeToDir, eachFile.name);
             if (!filePath.startsWith(Bun.env.UPLOAD_PATH)) {
-              await stream.writeln(`Error processing '${eachFile.name}'. Please re-upload.`);
-              IS_IN_PROCESSING.status = true;
+              await stream.writeln(`❌ Error processing '${eachFile.name}'. Please re-upload.`);
               return;
             }
             await Bun.write(filePath, eachFile); // Write file using Bun.write (efficient, handles streaming)
 
             savedFiles.push({ name: eachFile.name, size: eachFile.size });
-            await stream.writeln(`File Uploaded: ${eachFile.name}`);
+            await stream.writeln(`File Uploaded 📲: ${eachFile.name}`);
           } catch (err) {
-            await stream.writeln(`Error processing file: ${eachFile.name}`);
+            await stream.writeln(`❌ Error processing file: ${eachFile.name}`);
             console.log(`Error processing file: ${eachFile.name} - ${err}`);
-            IS_IN_PROCESSING.status = true;
             return;
           }
         }
 
         if (!savedFiles.length) {
-          await stream.writeln('Error: The uploaded files are invalid. Please check file format, size, or try again.');
-          IS_IN_PROCESSING.status = true;
+          await stream.writeln('❌ The uploaded files are invalid. Please check file format, size, or try again.');
           return;
         }
 
         const isValidDir = isExist(writeToDir);
         if (!isValidDir) {
-          await stream.writeln('Error: Directory not found. Please ensure the directory exists');
-          IS_IN_PROCESSING.status = true;
+          await stream.writeln('❌ Directory not found. Please ensure the directory exists');
           return;
         }
 
         const totalFiles = await countFiles(writeToDir);
         if (!totalFiles) {
           await stream.writeln('Warning: No files found in the current directory. Please check if the directory contains media files.');
-          IS_IN_PROCESSING.status = true;
           return;
         }
 
         const rename = await renameAllFiles(writeToDir);
         if (!rename) {
-          await stream.writeln('Error: Failed to rename files. Please check file permissions and the files path are valid.');
-          IS_IN_PROCESSING.status = true;
+          await stream.writeln('❌ Failed to rename files. Please check file permissions and the files path are valid.');
           return;
         }
 
         const insertStatus = await insertMediaToDB(userId, writeToDir);
         if (!insertStatus) {
-          await stream.writeln('Error: Failed to importing medias to database.');
-          IS_IN_PROCESSING.status = true;
+          await stream.writeln('❌ Failed to importing medias to database.');
           return;
         }
 
         const processSts = await processMedias(stream); // create thumbnail and hash keys
         if (!processSts) {
-          await stream.writeln('Error: Failed to create thumb for medias');
-          IS_IN_PROCESSING.status = true;
+          await stream.writeln('❌ Failed to create thumb for medias');
           return;
         }
 
         await stream.writeln('✅ Finished Uploading Medias!');
-
-        IS_IN_PROCESSING.status = false;
       } catch (error) {
-        await stream.writeln(`Error: 500 Internal Server Error`);
-        IS_IN_PROCESSING.status = true;
+        await stream.writeln(`❌ 500 Internal Server Error`);
         console.error('upload.post', error);
       }
     });

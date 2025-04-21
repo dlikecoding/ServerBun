@@ -1,20 +1,56 @@
-import mysql, { type PoolOptions } from 'mysql2/promise';
+import { SQL } from 'bun';
 
-const access: PoolOptions = {
-  host: Bun.env.DB_HOST,
-  user: Bun.env.DB_USER,
-  password: Bun.env.DB_PASS,
-  database: Bun.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  maxIdle: 5, // max idle connections, the default value is the same as `connectionLimit`
-  idleTimeout: 60000, // idle connections timeout, in milliseconds, the default value 60000
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
-};
+export const sql = new SQL({
+  url: Bun.env.DB_URL, // Required
 
-export const poolPromise = mysql.createPool(access);
+  // Connection pool settings
+  maxLifetime: 0, // Connection lifetime in seconds (0 = forever)
+  connectionTimeout: 30, // Timeout when establishing new connections
+  max: 10, // Maximum connections in pool
+  idleTimeout: 60, // Close idle connections after seconds
 
-// export const poolPromise = pool.promise();
-// export const connectionPromise = await poolPromise.getConnection();
+  // tls: true, // SSL/TLS options
+
+  // Callbacks
+  // onconnect: (client) => {
+  //   console.log('Connected to database', client);
+  // },
+  // onclose: (client) => {
+  //   console.log('Connection closed', client);
+  // },
+});
+
+// await using sqlUnix = new SQL({
+//   path: Bun.env.DB_UNIX,
+
+//   username: Bun.env.DB_USER,
+//   // port: Bun.env.DB_PORT,
+//   password: Bun.env.DB_PASS,
+//   database: Bun.env.DB_NAME,
+// });
+
+// // Create table
+// await sql`
+//   CREATE TABLE IF NOT EXISTS articles (
+//     id SERIAL PRIMARY KEY,
+//     title TEXT,
+//     content TEXT
+//   )
+// `.simple();
+
+// // Search function
+// async function searchArticles(searchTerm: string) {
+//   const results = await sql`
+//     SELECT *
+//     FROM articles
+//     WHERE
+//       to_tsvector('english', title) @@ to_tsquery('english', ${searchTerm})
+//       OR
+//       to_tsvector('english', content) @@ to_tsquery('english', ${searchTerm})
+//   `;
+//   return results;
+// }
+
+// // Usage
+// const searchResults = await searchArticles('database');
+// console.log(searchResults);

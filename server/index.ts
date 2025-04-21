@@ -1,9 +1,9 @@
 import app from './app';
 import { createDBMS } from './db/main';
 import { checkInitialized, initializeSystem } from './db/module/system';
+import { MAX_BODY_SIZE } from './routes/upload';
 // import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
 
-export const MAX_UPLOAD_FILE_SIZE: number = 2 * 1024 * 1024 * 1024; // 2 GB
 export const isNotDevMode: boolean = Bun.env.NODE_ENV !== 'dev';
 
 const server = Bun.serve({
@@ -11,8 +11,8 @@ const server = Bun.serve({
 
   port: Bun.env.PORT,
   fetch: app.fetch,
-  maxRequestBodySize: MAX_UPLOAD_FILE_SIZE,
-  idleTimeout: 30,
+  maxRequestBodySize: MAX_BODY_SIZE,
+  idleTimeout: 5,
   // tls: {
   //   cert: Bun.file('./cert.pem'),
   //   key: Bun.file('./key.pem'),

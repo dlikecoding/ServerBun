@@ -6,7 +6,7 @@ import { isNotDevMode } from '../..';
 
 export const SESSION_KEY = 'auth_token';
 export const SET_USER_SESSION = 'user_session_id';
-export const IS_IN_PROCESSING = { status: false }; // Process upload or Reindex from one client at a time to avoid server overhead
+// export const IS_IN_PROCESSING = { status: false }; // Process upload or Reindex from one client at a time to avoid server overhead
 
 export interface UserType {
   userId: UUID;

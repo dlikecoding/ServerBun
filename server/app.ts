@@ -1,35 +1,29 @@
 import { serveStatic } from 'hono/bun';
-// import { getConnInfo } from 'hono/bun';
-
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { csrf } from 'hono/csrf';
 import { logger } from 'hono/logger';
-// import { compress } from 'hono/compress';
 import { secureHeaders } from 'hono/secure-headers';
 
 // ===============================
-import { isAuthenticate } from './middleware/validateAuth';
+import { isAuthenticate, logUserInDB } from './middleware/validateAuth';
 
 import auth from './routes/auth';
 
 import user from './routes/user';
-import streamApi from './routes/stream';
-import medias from './routes/medias';
 import album from './routes/album';
 import admin from './routes/admin';
 import upload from './routes/upload';
+import search from './routes/search';
+import medias from './routes/medias';
+import photoView from './routes/stream';
 
 const app = new Hono();
 
-app.use(
-  csrf({
-    origin: Bun.env.ORIGIN_URL, // For Post method, does not work if does not sspecify Orgin
-  })
-);
+/////////// IMPORTANT Security allow connection //////////////////////////////
+app.use('*', logger());
 
 // CORS should be called before the route // DEV MODE - NEED TO REMOVE CORS In DEPLOY
-
 if (Bun.env.NODE_ENV === 'dev') {
   app.use(
     '/*',
@@ -44,29 +38,25 @@ if (Bun.env.NODE_ENV === 'dev') {
   );
 }
 
+app.use(
+  csrf({
+    origin: Bun.env.ORIGIN_URL, // For Post method, does not work if does not sspecify Orgin
+  })
+);
+
 app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-headers#secure-headers-middleware
-// https://hono.dev/docs/middleware/builtin/compress
-// app.use(compress()); // Request must send with "Accept-Encoding" in Header
-
-/////////// IMPORTANT Security allow connection //////////////////////////////
-app.use('*', logger());
-// app.use('*', async (c, next) => {
-//   const info = getConnInfo(c); // info is `ConnInfo`
-
-//   // Can refuse access for certain IP address.
-//   console.log(`Your remote address is ${info.remote.address}`);
-
-//   return await next();
-// });
-
+app.use('*', logUserInDB);
 app
   .basePath('api/v1')
+  .use(logUserInDB)
+
   .route('/auth', auth)
   .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
 
+  .route('/search', search)
   .route('/admin', admin)
   .route('/upload', upload)
-  .route('/stream', streamApi)
+  .route('/stream', photoView)
   .route('/user', user)
   .route('/medias', medias)
   .route('/album', album);
@@ -82,34 +72,6 @@ export default app;
 
 // export type ApiRoutes = typeof apiRoutes;
 
-// const logRequestDetails = async (ctx: any) => {
-//   const { req } = ctx;
-
-//   const method = req.method;
-//   const url = req.url;
-//   const headers = req.header;
-//   const queryParams = req.query; // Query parameters
-//   const body = req.method !== 'GET' ? await req.body() : undefined;
-
-//   // Collect relevant information
-//   const requestDetails = {
-//     method,
-//     url,
-//     headers: JSON.stringify(headers),
-//     queryParams,
-//     body: body ? JSON.stringify(body) : 'N/A', // Only log body for non-GET requests
-//   };
-
-//   // Log the collected information (you could replace this with a more sophisticated logger)
-//   console.log('Request received:', requestDetails);
-// };
-
-// Middleware to log incoming requests
-// app.use('*', async (ctx, next) => {
-//   await logRequestDetails(ctx); // Log the details before proceeding with the request
-//   return next();
-// });
-
 // // use bcrypt
 // const bcryptHash = await Bun.password.hash(password, {
 //   algorithm: 'bcrypt',
@@ -119,38 +81,6 @@ export default app;
 // console.log(bcryptHash);
 // const isMatch = await Bun.password.verify(password, argonHash); // => true
 // console.log(isMatch);
-
-// app.use(
-//   basicAuth({
-//     verifyUser: (username, password, c) => {
-//       return username === 'user' && password === 'hono';
-//     },
-//   })
-// );
-
-// app.get("/", c => {
-//     return c.json({"msg": "Mainpage"});
-// })
-
-// medias.get('/', (c) => {
-//   // const info = getConnInfo(c);
-//   // console.log(c.req.header());
-//   // console.log(info);
-//   return c.json({ homepage: 'YOU ARE HOME' });
-// });
-
-/////////// IMPORTANT Manage login //////////////////////////////
-// app.route('api/v1/auth', auth);
-// app.use(isAuthenticate);
-// app.use('*', async (c, next) => {
-//   const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, 'auth_token');
-//   if (sessionId && sessionStore.has(sessionId)) return await next();
-//   return c.text('Unauthorized access', 401);
-// });
-
-// app.get('/Thumbnails/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-// app.get('/importPhotos/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-// app.get('/StoreUpload/*', isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
 
 /////////////////////////////////
 

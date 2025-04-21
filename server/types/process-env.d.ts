@@ -16,11 +16,8 @@ declare global {
 
       SECRET_KEY: string;
 
-      DB_HOST: string;
-      DB_USER: string;
-      DB_PASS: string;
-      DB_NAME: string;
-      DB_PORT: number;
+      DB_URL: string;
+      // DB_UNIX: string;
 
       DB_CREATE: string;
       DB_MODEL: string;

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { deleteOldUserSession, IS_IN_PROCESSING } from './authHelper/_cookies';
+import { deleteOldUserSession } from './authHelper/_cookies';
 
 import { z } from 'zod';
 import { validateSchema } from '../modules/validateSchema';
@@ -31,64 +31,53 @@ admin.get('/dashboard', isAdmin, async (c) => {
 
 admin.get('/import', isAdmin, async (c) => {
   return streamText(c, async (stream) => {
-    if (IS_IN_PROCESSING.status) {
-      await stream.writeln('❌ Server is currently processing data. Please try again later.');
-      return;
-    }
-
-    IS_IN_PROCESSING.status = true;
+    // if (IS_IN_PROCESSING.status) {
+    //   await stream.writeln('❌ Server is currently processing data. Please try again later.');
+    //   return;
+    // }
 
     const userId = getUserBySession(c).userId;
 
     try {
       stream.onAbort(() => {
         console.warn('Client aborted the stream!');
-        IS_IN_PROCESSING.status = true;
       });
       await stream.writeln('Processing media files started. Please wait...');
 
       const isValidDir = isExist(Bun.env.PHOTO_PATH);
       if (!isValidDir) {
         await stream.writeln('Error: Directory not found. Please ensure the directory exists');
-        IS_IN_PROCESSING.status = true;
         return;
       }
 
       const totalFiles = await countFiles(Bun.env.PHOTO_PATH);
       if (!totalFiles) {
         await stream.writeln('Warning: No files found in the current directory. Please check if the directory contains media files.');
-        IS_IN_PROCESSING.status = true;
         return;
       }
 
       const rename = await renameAllFiles(Bun.env.PHOTO_PATH);
       if (!rename) {
         await stream.writeln('Error: Failed to rename files. Please check file permissions and the files path are valid.');
-        IS_IN_PROCESSING.status = true;
         return;
       }
 
       const insertStatus = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
       if (!insertStatus) {
         await stream.writeln('Error: Failed to importing medias to database.');
-        IS_IN_PROCESSING.status = true;
         return;
       }
 
       const processSts = await processMedias(stream); // create thumbnail and hash keys
       if (!processSts) {
         await stream.writeln('Error: Failed to create thumb for medias');
-        IS_IN_PROCESSING.status = true;
         return;
       }
 
       await updateProcessMediaStatus(); // update server status of created media
       await stream.writeln('✅ Finished Importing Multimedia!');
-
-      IS_IN_PROCESSING.status = false;
     } catch (error) {
       await stream.writeln(`Error: 500 Internal Server Error`);
-      IS_IN_PROCESSING.status = true;
       console.log(error);
       await insertErrorLog('admin.ts', 'import', error);
     }

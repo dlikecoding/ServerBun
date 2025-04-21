@@ -13,9 +13,9 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS multi_schema."AiClass"
 (
     class_id serial NOT NULL,
-    class_name character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    class_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    title_pretty character varying(100) DEFAULT GENERATED ALWAYS AS (INITCAP(REPLACE(class_name, '_', ' '))) STORED,
     created timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    modified timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "AiClass_pkey" PRIMARY KEY (class_id),
     CONSTRAINT "AiClass_class_name_key" UNIQUE (class_name)
 );
@@ -113,14 +113,14 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     deletion_date timestamp without time zone,
     upload_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     camera_type smallint,
-    file_ext character varying(20) COLLATE pg_catalog."default",
+    file_ext character varying(15),
     software character varying(256) COLLATE pg_catalog."default",
     source_file text COLLATE pg_catalog."default",
     mime_type character varying(15) COLLATE pg_catalog."default",
     thumb_path text COLLATE pg_catalog."default",
     thumb_width smallint,
     thumb_height smallint,
-    video_duration character varying(20),
+    video_duration character varying(15),
     CONSTRAINT "Media_pkey" PRIMARY KEY (media_id)
 );
 
