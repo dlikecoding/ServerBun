@@ -45,10 +45,10 @@ app.use(
 );
 
 app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-headers#secure-headers-middleware
-app.use('*', logUserInDB);
+
 app
   .basePath('api/v1')
-  .use(logUserInDB)
+  // .use(logUserInDB)
 
   .route('/auth', auth)
   .use(isAuthenticate) // Apply authentication only to API routes after '/auth'

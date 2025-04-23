@@ -31,11 +31,6 @@ admin.get('/dashboard', isAdmin, async (c) => {
 
 admin.get('/import', isAdmin, async (c) => {
   return streamText(c, async (stream) => {
-    // if (IS_IN_PROCESSING.status) {
-    //   await stream.writeln('❌ Server is currently processing data. Please try again later.');
-    //   return;
-    // }
-
     const userId = getUserBySession(c).userId;
 
     try {
@@ -46,38 +41,38 @@ admin.get('/import', isAdmin, async (c) => {
 
       const isValidDir = isExist(Bun.env.PHOTO_PATH);
       if (!isValidDir) {
-        await stream.writeln('Error: Directory not found. Please ensure the directory exists');
+        await stream.writeln('❌ Directory not found. Please ensure the directory exists');
         return;
       }
 
       const totalFiles = await countFiles(Bun.env.PHOTO_PATH);
       if (!totalFiles) {
-        await stream.writeln('Warning: No files found in the current directory. Please check if the directory contains media files.');
+        await stream.writeln('❌ No files found in the current directory. Please check if the directory contains media files.');
         return;
       }
 
       const rename = await renameAllFiles(Bun.env.PHOTO_PATH);
       if (!rename) {
-        await stream.writeln('Error: Failed to rename files. Please check file permissions and the files path are valid.');
+        await stream.writeln('❌ Failed to rename files. Please check file permissions and the files path are valid.');
         return;
       }
 
       const insertStatus = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
       if (!insertStatus) {
-        await stream.writeln('Error: Failed to importing medias to database.');
+        await stream.writeln('❌ Failed to importing medias to database.');
         return;
       }
 
       const processSts = await processMedias(stream); // create thumbnail and hash keys
       if (!processSts) {
-        await stream.writeln('Error: Failed to create thumb for medias');
+        await stream.writeln('❌ Failed to create thumb for medias');
         return;
       }
 
       await updateProcessMediaStatus(); // update server status of created media
       await stream.writeln('✅ Finished Importing Multimedia!');
     } catch (error) {
-      await stream.writeln(`Error: 500 Internal Server Error`);
+      await stream.writeln(`❌ 500 Internal Server Error`);
       console.log(error);
       await insertErrorLog('admin.ts', 'import', error);
     }
@@ -102,3 +97,8 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
 });
 
 export default admin;
+
+// if (IS_IN_PROCESSING.status) {
+//   await stream.writeln('❌ Server is currently processing data. Please try again later.');
+//   return;
+// }

@@ -30,11 +30,6 @@ upload.post(
   }),
   async (c) => {
     return streamText(c, async (stream) => {
-      // if (IS_IN_PROCESSING.status) {
-      //   await stream.writeln('❌ Server is currently processing data. Please try again later.');
-      //   return;
-      // }
-
       const formData = await c.req.formData();
       const files = formData.getAll('uploadFiles') as File[];
       const userId = getUserBySession(c).userId;

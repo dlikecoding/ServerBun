@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."AiClass"
 (
     class_id serial NOT NULL,
     class_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
-    title_pretty character varying(100) DEFAULT GENERATED ALWAYS AS (INITCAP(REPLACE(class_name, '_', ' '))) STORED,
+    title_pretty character varying(100) GENERATED ALWAYS AS (INITCAP(REPLACE(class_name, '_', ' '))) STORED,
     created timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "AiClass_pkey" PRIMARY KEY (class_id),
     CONSTRAINT "AiClass_class_name_key" UNIQUE (class_name)

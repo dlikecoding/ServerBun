@@ -4,6 +4,7 @@ import { createFolder } from './fsHelper';
 import { createHash } from './generators/generateSHA';
 import { importedMedias, updateHashThumb } from '../db/module/media';
 import { workerQueue } from './workers';
+import { insertErrorLog } from '../db/module/system';
 import type { StreamingApi } from 'hono/utils/stream';
 
 const processThumbSHA256 = async (media: any, stream: StreamingApi) => {
@@ -19,6 +20,7 @@ const processThumbSHA256 = async (media: any, stream: StreamingApi) => {
     if (w && h) await updateHashThumb(media.media_id, hash, w, h);
   } catch (error) {
     console.error(`processThumbSHA256 - Source: ${media.source_file}: ${error}`);
+    await insertErrorLog('service/index.ts', `processThumbSHA256 - ${media.source_file}`, error);
   }
 };
 
@@ -30,8 +32,8 @@ export const processMedias = async (stream: StreamingApi) => {
     console.log('======= PROCESS THUMBNAIL AND HASH COMPLETED =======');
     return true;
   } catch (error) {
-    await stream.writeln('Error processing Thumbnail');
     console.error('processMedias worker', error);
+    await insertErrorLog('service/index.ts', 'processMedias', error);
     return false;
   }
 };
