@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."AiRecognition"
     media integer NOT NULL,
     ai_class integer NOT NULL,
     ai_mode aimode_enum NOT NULL,
+    confidence numeric(18, 17) NOT NULL,
     CONSTRAINT "AiRecognition_pkey" PRIMARY KEY (ai_recognition_id),
     CONSTRAINT "AiRecognition_media_ai_class_ai_mode_key" UNIQUE (media, ai_class, ai_mode)
 );
