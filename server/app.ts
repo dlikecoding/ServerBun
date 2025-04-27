@@ -17,6 +17,9 @@ import upload from './routes/upload';
 import search from './routes/search';
 import medias from './routes/medias';
 import photoView from './routes/stream';
+///////////////////////////////////////////////////
+import test from './routes/testAPI';
+/////////////////////////////////////////////
 
 const app = new Hono();
 
@@ -49,7 +52,7 @@ app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-hea
 app
   .basePath('api/v1')
   // .use(logUserInDB)
-
+  .route('/test', test)
   .route('/auth', auth)
   .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
 

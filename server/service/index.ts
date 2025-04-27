@@ -20,7 +20,7 @@ const processThumbSHA256 = async (media: any, stream: StreamingApi) => {
     if (w && h) await updateHashThumb(media.media_id, hash, w, h);
   } catch (error) {
     console.error(`processThumbSHA256 - Source: ${media.source_file}: ${error}`);
-    await insertErrorLog('service/index.ts', `processThumbSHA256 - ${media.source_file}`, error);
+    await insertErrorLog('service/index.ts', 'processThumbSHA256', `error - ${media.source_file}`);
   }
 };
 

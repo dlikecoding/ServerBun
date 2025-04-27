@@ -55,11 +55,11 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
   return c.json(result, 200);
 });
 
+export default search;
+
 // search.post('/', async (c) => {
 //   return c.json('YOU ARE SEARCHING', 200);
 // });
-
-export default search;
 
 // // This function will continuously read from the stream
 // async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>) {

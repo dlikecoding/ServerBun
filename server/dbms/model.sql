@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."ErrorLog"
     error_log_id serial NOT NULL,
     file_error character varying(20) COLLATE pg_catalog."default" NOT NULL,
     stack_trace text COLLATE pg_catalog."default",
-    func_occur character varying(25),
+    func_occur character varying(100),
     server_system uuid,
     mark_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ErrorLog_pkey" PRIMARY KEY (error_log_id)

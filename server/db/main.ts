@@ -8,7 +8,7 @@ import { insertErrorLog } from './module/system';
 export const createDBMS = async () => {
   try {
     // Create new databse
-    const { exitCode: tbExitCode } = await $`PGPASSWORD=$DB_PASS psql -U $DB_USER -d postgres -v name_db='"${Bun.env.DB_NAME}"' -v user_db=${Bun.env.DB_USER} -f $DB_CREATE`;
+    const { exitCode: tbExitCode } = await $`PGPASSWORD=$DB_PASS psql -U $DB_USER -d postgres -v name_db=$DB_NAME -v user_db=$DB_USER -f $DB_CREATE`;
 
     if (tbExitCode) return false;
 
