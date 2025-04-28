@@ -15,13 +15,14 @@ const querySchema = z.object({
 
 search.get('/', validateSchema('query', querySchema), async (c) => {
   const { keyword } = c.req.valid('query');
-  console.log('keyword', keyword);
+  // console.log('keyword', keyword);
   if (!keyword) {
-    const searchCounts = sql`SELECT COUNT(media_id) FROM multi_schema."Media"`;
+    const searchCounts = sql`
+      SELECT COUNT(media_id) FROM multi_schema."Media"`;
 
     const searchResults = sql`
-    SELECT media_id, thumb_path, source_file, video_duration, file_type, favorite
-    FROM multi_schema."Media" LIMIT 9`;
+      SELECT media_id, thumb_path, source_file, video_duration, file_type, favorite
+      FROM multi_schema."Media" LIMIT 9`;
     const result = {
       count: await searchCounts,
       data: await searchResults,
@@ -33,19 +34,19 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
   const searchTerm = `%${keyword}%`;
 
   const searchCounts = sql`
-  SELECT COUNT(media), album_id, title
-    FROM multi_schema."Album" AS al
-    JOIN multi_schema."AlbumMedia" AS am ON am.album = al.album_id
-    WHERE title::text ILIKE ${searchTerm}
-    GROUP BY album_id LIMIT 4`;
+    SELECT COUNT(media), album_id, title
+      FROM multi_schema."Album" AS al
+      JOIN multi_schema."AlbumMedia" AS am ON am.album = al.album_id
+      WHERE title::text ILIKE ${searchTerm}
+      GROUP BY album_id LIMIT 4`;
 
   const searchResults = sql`
-  SELECT media_id, thumb_path, source_file, video_duration, file_type, favorite
-    FROM multi_schema."Album" AS al
-    JOIN multi_schema."AlbumMedia" AS am ON am.album = al.album_id
-    JOIN multi_schema."Media" AS md ON md.media_id = am.media
-    WHERE title::text ILIKE ${searchTerm}
-    LIMIT 9`;
+    SELECT media_id, thumb_path, source_file, video_duration, file_type, favorite
+      FROM multi_schema."Album" AS al
+      JOIN multi_schema."AlbumMedia" AS am ON am.album = al.album_id
+      JOIN multi_schema."Media" AS md ON md.media_id = am.media
+      WHERE title::text ILIKE ${searchTerm}
+      LIMIT 9`;
 
   const result = {
     count: await searchCounts,
