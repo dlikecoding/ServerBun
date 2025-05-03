@@ -2,7 +2,7 @@ import { $ } from 'bun';
 import { type UUID } from 'crypto';
 import { insertImportedToMedia, type ImportMedia } from './module/imported';
 import { sql } from '.';
-import { isExist } from '../service/fsHelper';
+import { isExist } from '../service/helper';
 import { insertErrorLog } from './module/system';
 
 export const createDBMS = async () => {

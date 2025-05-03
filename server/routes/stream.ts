@@ -20,6 +20,13 @@ const querySchema = z.object({
   sortKey: z.enum(['file_size', 'create_date', 'upload_at']).optional(),
   sortOrder: z.coerce.number().min(0).max(1).default(0).optional(),
 
+  searchKey: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-zA-Z0-9 -]+$/, 'Only letters, numbers, spaces, underscores, and hyphens are allowed')
+    .optional(),
+
   favorite: z.coerce.number().min(0).max(1).optional(),
   hidden: z.coerce.number().min(0).max(1).optional(),
   deleted: z.coerce.number().min(0).max(1).optional(),
@@ -30,7 +37,7 @@ const querySchema = z.object({
 
 streamApi.get('/', validateSchema('query', querySchema), async (c) => {
   try {
-    const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder, favorite, hidden, deleted, duplicate, albumId } = c.req.valid('query');
+    const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder, searchKey, favorite, hidden, deleted, duplicate, albumId } = c.req.valid('query');
 
     const isYear = year && month ? sql`AND create_year = ${year} AND create_month = ${month} ` : sql``;
     const isDevice = filterDevice ? sql`AND camera_type = ${filterDevice} ` : sql``;
@@ -65,6 +72,15 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
         SELECT md.* FROM "multi_schema"."Duplicate" AS dup
         JOIN (${getMedias}) as md ON md."media_id" = dup.media
         ORDER BY hash_code, media_id ASC
+        ${limitOffset}`;
+    } else if (searchKey) {
+      result = await sql`
+        SELECT md.* FROM (
+            SELECT media_id FROM multi_schema."Media"
+            WHERE caption_search @@ plainto_tsquery('english', ${searchKey}::text)
+        ) as search_medias
+        JOIN (${getMedias}) as md ON md."media_id" = search_medias.media_id
+        ${orderBy}
         ${limitOffset}`;
     } else {
       result = await sql`${getMedias}

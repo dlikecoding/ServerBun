@@ -1,7 +1,8 @@
 import app from './app';
 import { createDBMS } from './db/main';
 import { checkInitialized, initializeSystem } from './db/module/system';
-import { MAX_BODY_SIZE } from './routes/upload';
+import { MAX_BODY_SIZE } from './middleware/validateFiles';
+
 // import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
 
 export const isNotDevMode: boolean = Bun.env.NODE_ENV !== 'dev';

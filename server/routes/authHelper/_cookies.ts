@@ -16,12 +16,6 @@ export interface UserType {
   status: string;
 }
 
-declare module 'hono' {
-  interface ContextVariableMap {
-    user_session_id: string;
-  }
-}
-
 export const sessionStore = new Map(); // In-memory session store
 
 export const userAuthSchema = z.object({

@@ -1,6 +1,7 @@
 import type { UUID } from 'crypto';
 import { sql } from '..';
 import { insertErrorLog } from './system';
+import { createRandomId } from '../../service/helper';
 
 const DURATION_OF_SHORT = 5; // Short video which has duration < 5s
 
@@ -131,10 +132,7 @@ const fileType = (MIMEType: string, duration?: number) => {
 };
 
 const createThumbPath = (inputDate: Date) => {
-  const length = 9;
-  const randomId = Math.random()
-    .toString(36)
-    .substring(2, 2 + length);
+  const randomId = createRandomId(9);
   return `/Thumbnails/${inputDate.getFullYear()}/${inputDate.toLocaleString('default', { month: 'long' })}/${randomId}.webp`;
 };
 

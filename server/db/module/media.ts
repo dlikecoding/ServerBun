@@ -5,11 +5,17 @@ import { $ } from 'bun';
 import { sql } from '..';
 import { insertErrorLog } from './system';
 
-export const importedMedias = async () => {
+export const importedMediasThumbHash = async () => {
   return await sql`
     SELECT media_id, source_file, thumb_path, file_type, file_name 
     FROM multi_schema."Media" 
     WHERE thumb_path IS NULL OR hash_code IS NULL`;
+};
+
+export const importedMediasCaption = async () => {
+  return await sql`
+    SELECT media_id, thumb_path FROM multi_schema."Media"
+    WHERE caption IS NULL ORDER BY media_id`;
 };
 
 export const updateHashThumb = async (media_id: number, hashCode: string, thumbWidth: string, thumbHeight: string) => {
@@ -45,6 +51,12 @@ export const updateMedias = async (mediaIds: number[], updateKey: string, update
     UPDATE multi_schema."Media" SET ${sql(updateKey)} = ${updateValue} 
     WHERE media_id IN ${sql(mediaIds)}`;
   return result.count === mediaIds.length;
+};
+
+export const updateMediaCaption = async (mediaId: number, caption: string) => {
+  return await sql`
+    UPDATE multi_schema."Media" SET caption = ${caption} 
+    WHERE media_id = ${mediaId}`;
 };
 
 export const groupMonthsByYear = async () => {
@@ -134,8 +146,8 @@ export const fetchMediaCount = async () => {
     SELECT 
       SUM(CASE WHEN "favorite" = TRUE AND "hidden" = FALSE AND "deleted" = FALSE THEN 1 ELSE 0 END) AS "Favorite",
       SUM(CASE WHEN "hidden" = TRUE AND "deleted" = FALSE THEN 1 ELSE 0 END) AS "Hidden",
-      SUM(CASE WHEN "deleted" = TRUE THEN 1 ELSE 0 END) AS "Recently Deleted",
-      ( SELECT COUNT("media") FROM "multi_schema"."Duplicate") AS "Duplicate"
+      ( SELECT COUNT("media") FROM "multi_schema"."Duplicate") AS "Duplicate",
+      SUM(CASE WHEN "deleted" = TRUE THEN 1 ELSE 0 END) AS "Recently Deleted"
     FROM "multi_schema"."Media"`;
   return mediaCount;
 };

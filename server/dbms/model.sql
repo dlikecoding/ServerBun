@@ -122,6 +122,8 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     thumb_width smallint,
     thumb_height smallint,
     video_duration character varying(15),
+    caption text,
+    caption_search tsvector GENERATED ALWAYS AS (to_tsvector('english', caption)) STORED,
     CONSTRAINT "Media_pkey" PRIMARY KEY (media_id)
 );
 
