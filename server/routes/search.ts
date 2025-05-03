@@ -24,35 +24,22 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
       SELECT media_id, thumb_path, source_file, video_duration, file_type, favorite
       FROM multi_schema."Media" LIMIT 9`;
     const result = {
-      count: await searchCounts,
+      count: (await searchCounts)[0].count,
       data: await searchResults,
     };
     return c.json(result, 200);
   }
 
-  // This need to be fixed and improve
-  const searchTerm = `%${keyword}%`;
-
-  const searchCounts = sql`
-    SELECT COUNT(media), album_id, title
-      FROM multi_schema."Album" AS al
-      JOIN multi_schema."AlbumMedia" AS am ON am.album = al.album_id
-      WHERE title::text ILIKE ${searchTerm}
-      GROUP BY album_id LIMIT 4`;
-
-  const searchResults = sql`
-    SELECT media_id, thumb_path, source_file, video_duration, file_type, favorite
-      FROM multi_schema."Album" AS al
-      JOIN multi_schema."AlbumMedia" AS am ON am.album = al.album_id
-      JOIN multi_schema."Media" AS md ON md.media_id = am.media
-      WHERE title::text ILIKE ${searchTerm}
-      LIMIT 9`;
+  const searchResults = await sql`
+    SELECT media_id, caption, thumb_path, source_file, video_duration, file_type, favorite
+      FROM multi_schema."Media"
+      WHERE caption_search @@ plainto_tsquery('english', ${keyword}::text)
+      LIMIT 15`;
 
   const result = {
-    count: await searchCounts,
-    data: await searchResults,
+    count: searchResults.count,
+    data: searchResults,
   };
-
   return c.json(result, 200);
 });
 

@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import path from 'path';
 
-const isExist = async (path: string) => {
+export const isExist = async (path: string) => {
   return await fs.exists(path);
 };
 
@@ -89,11 +89,17 @@ const diskCapacity = async (pathToCheck: string): Promise<any> => {
   }
 };
 
+export const createRandomId = (length: number) => {
+  return Math.random()
+    .toString(36)
+    .substring(2, 2 + length);
+};
+
 const formatDate = (component: number): string => {
   return String(component).padStart(2, '0');
 };
 
-const nameFolderByTime = (): string => {
+export const nameFolderByTime = (): string => {
   const currentDate = new Date();
 
   const year = currentDate.getFullYear();
@@ -105,4 +111,4 @@ const nameFolderByTime = (): string => {
 
   return `${year}-${month}-${day}_${hour}-${minute}-${second}`;
 };
-export { isDirEmpty, removeEmptyDirectories, convertFileSize, diskCapacity, isExist, nameFolderByTime };
+// export { isDirEmpty, removeEmptyDirectories, convertFileSize, diskCapacity, isExist };

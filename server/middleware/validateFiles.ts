@@ -1,6 +1,6 @@
 import path from 'path';
 import { createMiddleware } from 'hono/factory';
-import { createFolder, createRandomId, nameFolderByTime } from '../service/fsHelper';
+import { createFolder, createRandomId, nameFolderByTime } from '../service/helper';
 
 const GB = 1024 * 1024 * 1024;
 
