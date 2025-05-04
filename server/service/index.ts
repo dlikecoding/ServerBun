@@ -1,13 +1,14 @@
 import path from 'path';
-import { createThumbnail } from './generators/generateThumb';
+import type { StreamingApi } from 'hono/utils/stream';
+
+import { workerQueue } from './workers';
 import { createFolder } from './helper';
 import { createHash } from './generators/generateSHA';
-import { importedMediasCaption, importedMediasThumbHash, updateHashThumb } from '../db/module/media';
-import { workerQueue } from './workers';
-import { insertErrorLog } from '../db/module/system';
-import type { StreamingApi } from 'hono/utils/stream';
-import { markTaskEnd, markTaskStart } from '../middleware/isRuningTask';
+import { createThumbnail } from './generators/generateThumb';
 import { createCaption } from './generators/generateCaption';
+
+import { importedMediasCaption, importedMediasThumbHash, updateHashThumb } from '../db/module/media';
+import { insertErrorLog } from '../db/module/system';
 
 const thumbAndHashGenerate = async (media: any, stream: StreamingApi) => {
   try {
@@ -28,8 +29,8 @@ const thumbAndHashGenerate = async (media: any, stream: StreamingApi) => {
 
 export const processMedias = async (stream: StreamingApi) => {
   const loadedmedias = await importedMediasThumbHash();
-  const tasks = loadedmedias.map((media: any) => () => thumbAndHashGenerate(media, stream));
   try {
+    const tasks = loadedmedias.map((media: any) => () => thumbAndHashGenerate(media, stream));
     await workerQueue(tasks);
     console.log('======= PROCESS THUMBNAIL AND HASH COMPLETED =======');
 
@@ -44,16 +45,12 @@ export const processMedias = async (stream: StreamingApi) => {
 export const processCaptioning = async () => {
   // Create BLOCK call for not over load server while processing caption for medias
   try {
-    markTaskStart('captioning');
-
     const mediasForCaption = await importedMediasCaption();
     await createCaption(mediasForCaption);
 
-    console.log('======= PROCESS CAPTION HAS BEEN COMPLETED =======');
+    console.log('******* PROCESS CAPTION HAS BEEN COMPLETED *******');
   } catch (error) {
     console.error('processCaptioning', error);
     await insertErrorLog('service/index.ts', 'processCaptioning', error);
-  } finally {
-    markTaskEnd('captioning');
   }
 };

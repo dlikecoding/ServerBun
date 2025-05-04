@@ -1,6 +1,6 @@
 import path from 'path';
 import { createMiddleware } from 'hono/factory';
-import { createFolder, createRandomId, nameFolderByTime } from '../service/helper';
+import { createFolder, nameFolderByTime } from '../service/helper';
 
 const GB = 1024 * 1024 * 1024;
 
@@ -18,7 +18,10 @@ export interface ValidResult {
 
 export const validateFiles = createMiddleware(async (c, next) => {
   const formData = await c.req.formData();
+  if (!formData.has('uploadFiles')) return c.json({ error: '❌ Bad request. Form Data invalid.' }, 400);
+
   const files = formData.getAll('uploadFiles') as File[];
+  if (!files.length) return c.json({ error: '❌ Bad request. No files uploaded.' }, 400);
 
   let validFiles = 0;
 
@@ -31,8 +34,8 @@ export const validateFiles = createMiddleware(async (c, next) => {
 
     if (!extValid || !sizeValid) continue;
 
-    const fileName = `${createRandomId(12)}.${fileExt(file)}`; // Create a new file name with extension for each file
-    const filePath = path.join(writeToDir, fileName);
+    // const fileName = `${createRandomId(12)}.${fileExt(file)}`; // Create a new file name with extension for each file
+    const filePath = path.join(writeToDir, file.name);
 
     await Bun.write(filePath, file); // Write file using Bun.write (efficient, handles streaming)
     validFiles++;

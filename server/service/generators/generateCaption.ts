@@ -46,7 +46,7 @@ const sendTask = async (task: object, childProc: Bun.Subprocess<'pipe', 'pipe', 
 };
 
 export const createCaption = async (medias: any[]): Promise<any> => {
-  const pythonFilePath = './server/service/transformers/image_captioning.py';
+  const pythonFilePath = 'models/ai_model/image_captioning.py';
 
   const childProc = Bun.spawn(['python3', pythonFilePath], {
     stdout: 'pipe',
