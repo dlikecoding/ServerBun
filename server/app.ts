@@ -19,6 +19,7 @@ import medias from './routes/medias';
 import photoView from './routes/stream';
 ///////////////////////////////////////////////////
 import test from './routes/testAPI';
+import { isNotDevMode } from '.';
 /////////////////////////////////////////////
 
 const app = new Hono();
@@ -27,11 +28,11 @@ const app = new Hono();
 app.use('*', logger());
 
 // CORS should be called before the route // DEV MODE - NEED TO REMOVE CORS In DEPLOY
-if (Bun.env.NODE_ENV === 'dev') {
+if (!isNotDevMode) {
   app.use(
     '/*',
     cors({
-      origin: 'http://localhost:7979',
+      origin: Bun.env.ORIGIN_URL,
       allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
       allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
       exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],

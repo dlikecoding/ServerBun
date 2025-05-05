@@ -1,15 +1,17 @@
 import { Hono } from 'hono';
+import { streamText } from 'hono/streaming';
 import { deleteOldUserSession } from './authHelper/_cookies';
-
 import { z } from 'zod';
+
 import { validateSchema } from '../modules/validateSchema';
+
 import { fetchAllUsers, updateAccountStatus } from '../db/module/regUser';
-import { countFiles, insertMediaToDB, renameAllFiles } from '../db/main';
-import { processMedias } from '../service';
 import { insertErrorLog, processMediaStatus, updateProcessMediaStatus } from '../db/module/system';
 import { getUserBySession, isAdmin } from '../middleware/validateAuth';
-import { streamText } from 'hono/streaming';
-import { isExist } from '../service/fsHelper';
+
+import { markTaskEnd, markTaskStart, taskImportStatusMiddleware } from '../middleware/isRuningTask';
+import { streamingImportMedia } from './importHelper/_imports';
+import { processCaptioning } from '../service';
 
 const admin = new Hono();
 
@@ -17,64 +19,68 @@ const userAuthSchema = z.object({
   userEmail: z.string().email(),
 });
 
+const sourcePathSchema = z
+  .string()
+  .min(1, 'Path must not be empty')
+  .max(256, 'Path too long')
+  .regex(/^\/(mnt|media)(\/[a-zA-Z0-9_-]+)*\/?$/, 'Path must be under /mnt or /media and contain valid characters or dash/underscore')
+  .refine((p) => !p.includes('..'), {
+    message: 'Path must not contain parent directory traversal',
+  });
+
+const isAiModeSchema = z.object({
+  aimode: z.coerce.number().min(0).max(1).default(0).optional(),
+  sourcePath: sourcePathSchema.optional(),
+});
+
 admin.get('/dashboard', isAdmin, async (c) => {
   try {
     const allUsers = await fetchAllUsers();
-    const isExist = await processMediaStatus();
+    const isMainImportExist = await processMediaStatus();
 
-    return c.json({ users: allUsers, sysStatus: isExist }, 200);
+    return c.json({ users: allUsers, sysStatus: isMainImportExist }, 200);
   } catch (error) {
     await insertErrorLog('admin.ts', 'dashboard', error);
     return c.json({ error: 'Failed to fetch users' }, 500);
   }
 });
 
-admin.get('/import', isAdmin, async (c) => {
+admin.post('/import', isAdmin, taskImportStatusMiddleware, validateSchema('json', isAiModeSchema), async (c) => {
   return streamText(c, async (stream) => {
     const userId = getUserBySession(c).userId;
+    const { sourcePath, aimode } = c.req.valid('json');
+
+    const isMainImportExist = await processMediaStatus();
+
+    const processPath = !isMainImportExist ? Bun.env.PHOTO_PATH : sourcePath;
+    // /*TODO*/ If process file in provided path, should transfer to the main directory. and start process in there
+    // For now, just return when user had imported media in main
+    if (isMainImportExist) return;
+    ////////////////////////////////////////////////////////
 
     try {
-      stream.onAbort(() => {
-        console.warn('Client aborted the stream!');
-      });
-      await stream.writeln('Processing media files started. Please wait...');
+      markTaskStart('importing');
+      await stream.writeln('⏳ Processing media files started. Please wait...');
 
-      const isValidDir = isExist(Bun.env.PHOTO_PATH);
-      if (!isValidDir) {
-        await stream.writeln('❌ Directory not found. Please ensure the directory exists');
-        return;
-      }
-
-      const totalFiles = await countFiles(Bun.env.PHOTO_PATH);
-      if (!totalFiles) {
-        await stream.writeln('❌ No files found in the current directory. Please check if the directory contains media files.');
-        return;
-      }
-
-      const rename = await renameAllFiles(Bun.env.PHOTO_PATH);
-      if (!rename) {
-        await stream.writeln('❌ Failed to rename files. Please check file permissions and the files path are valid.');
-        return;
-      }
-
-      const insertStatus = await insertMediaToDB(userId, Bun.env.PHOTO_PATH);
-      if (!insertStatus) {
-        await stream.writeln('❌ Failed to importing medias to database.');
-        return;
-      }
-
-      const processSts = await processMedias(stream); // create thumbnail and hash keys
-      if (!processSts) {
-        await stream.writeln('❌ Failed to create thumb for medias');
-        return;
-      }
+      const importing = await streamingImportMedia(stream, userId, processPath);
+      if (!importing) return;
 
       await updateProcessMediaStatus(); // update server status of created media
       await stream.writeln('✅ Finished Importing Multimedia!');
+      await stream.close();
+
+      if (!aimode) return; //Finished Importing
+
+      // Generate captions for medias in the background
+      return await processCaptioning();
     } catch (error) {
-      await stream.writeln(`❌ 500 Internal Server Error`);
       console.log(error);
-      await insertErrorLog('admin.ts', 'import', error);
+
+      await stream.writeln(`❌ 500 Internal Server Error`);
+      await insertErrorLog('admin.ts', 'admin.post/import', error);
+    } finally {
+      if (!stream.closed) await stream.close();
+      markTaskEnd('importing');
     }
   });
 });

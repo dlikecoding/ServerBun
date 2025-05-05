@@ -2,11 +2,10 @@ import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
 import type { Context } from 'hono';
 import crypto, { type UUID } from 'crypto';
 import { z } from 'zod';
-import { isNotDevMode } from '../..';
+import { isNotDevMode, isProduction } from '../..';
 
 export const SESSION_KEY = 'auth_token';
 export const SET_USER_SESSION = 'user_session_id';
-// export const IS_IN_PROCESSING = { status: false }; // Process upload or Reindex from one client at a time to avoid server overhead
 
 export interface UserType {
   userId: UUID;
@@ -31,7 +30,7 @@ export const setSecureCookie = async (c: Context, name: string, value: object) =
     httpOnly: true,
     maxAge: 15, // Only 15s
     sameSite: isNotDevMode ? 'Strict' : 'Lax',
-    secure: isNotDevMode,
+    secure: isProduction,
   });
 };
 
@@ -55,7 +54,7 @@ export const createAuthSession = async (c: Context, user: UserType) => {
     path: '/',
     maxAge: 24 * 60 * 60, // 1 day expiration
     sameSite: isNotDevMode ? 'Strict' : 'Lax',
-    secure: isNotDevMode,
+    secure: isProduction,
   });
 };
 

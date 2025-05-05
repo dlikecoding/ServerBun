@@ -6,7 +6,7 @@ import { MAX_BODY_SIZE } from './middleware/validateFiles';
 // import { backupToDB, createDBMS, insertMediaToDB, restoreToDB } from './db/maintain';
 
 export const isNotDevMode: boolean = Bun.env.NODE_ENV !== 'dev';
-
+export const isProduction: boolean = Bun.env.NODE_ENV === 'production';
 const server = Bun.serve({
   development: !isNotDevMode,
 

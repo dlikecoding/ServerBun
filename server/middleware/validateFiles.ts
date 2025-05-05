@@ -18,8 +18,6 @@ export interface ValidResult {
 
 export const validateFiles = createMiddleware(async (c, next) => {
   const formData = await c.req.formData();
-  if (!formData.has('uploadFiles')) return c.json({ error: '❌ Bad request. Form Data invalid.' }, 400);
-
   const files = formData.getAll('uploadFiles') as File[];
   if (!files.length) return c.json({ error: '❌ Bad request. No files uploaded.' }, 400);
 

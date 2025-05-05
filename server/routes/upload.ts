@@ -2,22 +2,27 @@ import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 
 import { getUserBySession } from '../middleware/validateAuth';
-import { insertMediaToDB, renameAllFiles } from '../db/main';
-import { processCaptioning, processMedias } from '../service';
+import { processCaptioning } from '../service';
 import { streamText } from 'hono/streaming';
 
 import { MAX_BODY_SIZE, VALIDATED_RESULT, validateFiles, type ValidResult } from '../middleware/validateFiles';
-import { taskStatusMiddleware } from '../middleware/isRuningTask';
+import { markTaskEnd, markTaskStart, taskImportStatusMiddleware } from '../middleware/isRuningTask';
+import { insertErrorLog } from '../db/module/system';
+import { streamingImportMedia } from './importHelper/_imports';
+import { z } from 'zod';
+import { validateSchema } from '../modules/validateSchema';
 
 const upload = new Hono();
 
-upload.get('/', (c) => {
-  return c.json({ uploadpage: 'YOU ARE upload' });
+const isAiModeSchema = z.object({
+  aimode: z.coerce.number().min(0).max(1).default(0),
 });
 
 upload.post(
   '/',
-  taskStatusMiddleware('captioning'),
+  taskImportStatusMiddleware,
+  validateSchema('json', isAiModeSchema),
+
   bodyLimit({
     maxSize: MAX_BODY_SIZE,
     onError: (c) => {
@@ -31,28 +36,11 @@ upload.post(
       const { totalFile, validatedFiles, safeFileDir } = c.get(VALIDATED_RESULT) as ValidResult;
 
       try {
-        stream.onAbort(() => console.warn('Client aborted the stream!'));
+        markTaskStart('importing');
         await stream.writeln('⏳ Started processing uploaded medias ...');
 
-        await stream.writeln('📥 Sanitizing uploaded files ...');
-        const rename = await renameAllFiles(safeFileDir);
-        if (!rename) {
-          await stream.writeln('❌ Failed to rename files. Please check file permissions and the files path are valid.');
-          return;
-        }
-
-        await stream.writeln('⏳ Importing uploaded files to system...');
-        const insertStatus = await insertMediaToDB(userId, safeFileDir);
-        if (!insertStatus) {
-          await stream.writeln('❌ Failed to importing medias to database.');
-          return;
-        }
-
-        const processSts = await processMedias(stream); // create thumbnail and hash keys
-        if (!processSts) {
-          await stream.writeln('❌ Failed to create thumb for medias');
-          return;
-        }
+        const importing = await streamingImportMedia(stream, userId, safeFileDir);
+        if (!importing) return;
 
         await stream.writeln(`✅ Finished Uploading: ${validatedFiles}/${totalFile} files!`);
         await stream.close();
@@ -61,9 +49,11 @@ upload.post(
         return await processCaptioning();
       } catch (error) {
         await stream.writeln(`❌ 500 Internal Server Error`);
-        console.error('upload.post', error);
+        // console.log('upload.post:', error);
+        await insertErrorLog('upload.ts', 'upload.post', error);
       } finally {
         if (!stream.closed) await stream.close();
+        markTaskEnd('importing');
       }
     });
   }
