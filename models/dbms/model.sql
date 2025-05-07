@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."AiClass"
 (
     class_id serial NOT NULL,
     class_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
-    title_pretty character varying(100) GENERATED ALWAYS AS (INITCAP(REPLACE(class_name, '_', ' '))) STORED,
+    title_pretty character varying(100) COLLATE pg_catalog."default" GENERATED ALWAYS AS (initcap(replace((class_name)::text, '_'::text, ' '::text))) STORED,
     created timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "AiClass_pkey" PRIMARY KEY (class_id),
     CONSTRAINT "AiClass_class_name_key" UNIQUE (class_name)
@@ -66,12 +66,22 @@ CREATE TABLE IF NOT EXISTS multi_schema."Classify"
     CONSTRAINT "Classify_pkey" PRIMARY KEY (classify_id)
 );
 
+CREATE TABLE IF NOT EXISTS multi_schema."Duplicate"
+(
+    media integer NOT NULL,
+    hash_code character varying(65) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT "Duplicate_pkey" PRIMARY KEY (media)
+);
+
+COMMENT ON TABLE multi_schema."Duplicate"
+    IS 'Check for all of media had the same hash code';
+
 CREATE TABLE IF NOT EXISTS multi_schema."ErrorLog"
 (
     error_log_id serial NOT NULL,
     file_error character varying(20) COLLATE pg_catalog."default" NOT NULL,
     stack_trace text COLLATE pg_catalog."default",
-    func_occur character varying(100),
+    func_occur character varying(100) COLLATE pg_catalog."default",
     server_system uuid,
     mark_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ErrorLog_pkey" PRIMARY KEY (error_log_id)
@@ -114,16 +124,16 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     deletion_date timestamp without time zone,
     upload_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     camera_type smallint,
-    file_ext character varying(15),
+    file_ext character varying(15) COLLATE pg_catalog."default",
     software character varying(256) COLLATE pg_catalog."default",
     source_file text COLLATE pg_catalog."default",
     mime_type character varying(15) COLLATE pg_catalog."default",
     thumb_path text COLLATE pg_catalog."default",
     thumb_width smallint,
     thumb_height smallint,
-    video_duration character varying(15),
-    caption text,
-    caption_search tsvector GENERATED ALWAYS AS (to_tsvector('english', caption)) STORED,
+    video_duration character varying(15) COLLATE pg_catalog."default",
+    caption text COLLATE pg_catalog."default",
+    caption_search tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, caption)) STORED,
     CONSTRAINT "Media_pkey" PRIMARY KEY (media_id)
 );
 
@@ -201,16 +211,6 @@ CREATE TABLE IF NOT EXISTS multi_schema."Video"
     CONSTRAINT "Video_pkey" PRIMARY KEY (media)
 );
 
-CREATE TABLE IF NOT EXISTS multi_schema."Duplicate"
-(
-    media integer NOT NULL,
-    hash_code character varying(65),
-    PRIMARY KEY (media)
-);
-
-COMMENT ON TABLE multi_schema."Duplicate"
-    IS 'Check for all of media had the same hash code';
-
 ALTER TABLE IF EXISTS multi_schema."AiRecognition"
     ADD CONSTRAINT "AiRecognition_ai_class_fkey" FOREIGN KEY (ai_class)
     REFERENCES multi_schema."AiClass" (class_id) MATCH SIMPLE
@@ -251,6 +251,16 @@ ALTER TABLE IF EXISTS multi_schema."Classify"
     REFERENCES multi_schema."AiRecognition" (ai_recognition_id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE;
+
+
+ALTER TABLE IF EXISTS multi_schema."Duplicate"
+    ADD CONSTRAINT media_duplicate_fk FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE
+    NOT VALID;
+CREATE INDEX IF NOT EXISTS "Duplicate_pkey"
+    ON multi_schema."Duplicate"(media);
 
 
 ALTER TABLE IF EXISTS multi_schema."ErrorLog"
@@ -338,12 +348,8 @@ ALTER TABLE IF EXISTS multi_schema."Video"
 CREATE INDEX IF NOT EXISTS "Video_pkey"
     ON multi_schema."Video"(media);
 
-
-ALTER TABLE IF EXISTS multi_schema."Duplicate"
-    ADD CONSTRAINT media_duplicate_fk FOREIGN KEY (media)
-    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE
-    NOT VALID;
-
 END;
+
+
+---------------------------------------------------------------------------------
+CREATE INDEX idx_media_caption ON multi_schema."Media" USING GIN (caption_search);

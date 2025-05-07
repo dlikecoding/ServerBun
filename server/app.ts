@@ -28,7 +28,7 @@ const app = new Hono();
 app.use('*', logger());
 
 // CORS should be called before the route // DEV MODE - NEED TO REMOVE CORS In DEPLOY
-if (!isNotDevMode) {
+if (Bun.env.NODE_ENV === 'dev') {
   app.use(
     '/*',
     cors({
