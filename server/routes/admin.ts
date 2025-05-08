@@ -21,16 +21,16 @@ const userAuthSchema = z.object({
 
 const sourcePathSchema = z
   .string()
-  .min(1, 'Path must not be empty')
   .max(256, 'Path too long')
-  .regex(/^\/(mnt|media)(\/[a-zA-Z0-9_-]+)*\/?$/, 'Path must be under /mnt or /media and contain valid characters or dash/underscore')
-  .refine((p) => !p.includes('..'), {
-    message: 'Path must not contain parent directory traversal',
-  });
+  // .regex(/^\/(mnt|media)(\/[a-zA-Z0-9_-]+)*\/?$/, 'Path must be under /mnt or /media and contain valid characters or dash/underscore')
+  // .refine((p) => !p.includes('..'), {
+  //   message: 'Path must not contain parent directory traversal',
+  // })
+  .optional();
 
 const isAiModeSchema = z.object({
   aimode: z.coerce.number().min(0).max(1).default(0).optional(),
-  sourcePath: sourcePathSchema.optional(),
+  sourcePath: sourcePathSchema,
 });
 
 admin.get('/dashboard', isAdmin, async (c) => {
