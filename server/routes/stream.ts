@@ -77,7 +77,8 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
       result = await sql`
         SELECT md.* FROM (
             SELECT media_id FROM multi_schema."Media"
-            WHERE caption_search @@ plainto_tsquery('english', ${searchKey}::text)
+            WHERE caption_eng_tsv @@ (
+              websearch_to_tsquery ('english', ${searchKey}::text) || websearch_to_tsquery ('simple', ${searchKey}::text))
         ) as search_medias
         JOIN (${getMedias}) as md ON md."media_id" = search_medias.media_id
         ${orderBy}
@@ -85,8 +86,7 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
     } else {
       result = await sql`${getMedias}
       ${orderBy}
-      ${limitOffset}
-    `;
+      ${limitOffset}`;
     }
 
     return c.json(result); //{ data: fetchMedia, meta: { page: parsedPageNumber, pageSize: PAGE_SIZE } }
