@@ -19,7 +19,7 @@ import medias from './routes/medias';
 import photoView from './routes/stream';
 ///////////////////////////////////////////////////
 import test from './routes/testAPI';
-import { isNotDevMode } from '.';
+import { getDirName, isNotDevMode } from './init_sys';
 /////////////////////////////////////////////
 
 const app = new Hono();
@@ -28,7 +28,7 @@ const app = new Hono();
 app.use('*', logger());
 
 // CORS should be called before the route // DEV MODE - NEED TO REMOVE CORS In DEPLOY
-if (Bun.env.NODE_ENV === 'dev') {
+if (!isNotDevMode) {
   app.use(
     '/*',
     cors({
@@ -66,7 +66,12 @@ app
   .route('/album', album);
 
 // Catch-all for protected API routes
-app.on('GET', ['/Thumbnails/*', '/importPhotos/*', '/StoreUpload/*'], isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+app.on(
+  'GET',
+  [`/${getDirName(Bun.env.THUMB_PATH)}/*`, `/${getDirName(Bun.env.PHOTO_PATH)}/*`, `/${getDirName(Bun.env.UPLOAD_PATH)}/*`],
+  isAuthenticate,
+  serveStatic({ root: Bun.env.MAIN_PATH })
+);
 
 // Serve static files first (without authentication)
 app.get('*', serveStatic({ root: './dist' }));

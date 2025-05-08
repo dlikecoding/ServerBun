@@ -9,7 +9,8 @@ export const importedMediasThumbHash = async () => {
   return await sql`
     SELECT media_id, source_file, thumb_path, file_type, file_name 
     FROM multi_schema."Media" 
-    WHERE thumb_path IS NULL OR hash_code IS NULL`;
+    WHERE thumb_path IS NULL OR hash_code IS NULL
+    ORDER BY media_id`;
 };
 
 export const importedMediasCaption = async () => {

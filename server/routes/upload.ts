@@ -37,7 +37,6 @@ upload.post(
 
       try {
         markTaskStart('importing');
-        await stream.writeln('⏳ Started processing uploaded medias ...');
 
         const importing = await streamingImportMedia(stream, userId, safeFileDir);
         if (!importing) return;

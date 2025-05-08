@@ -10,7 +10,7 @@ import { insertErrorLog, processMediaStatus, updateProcessMediaStatus } from '..
 import { getUserBySession, isAdmin } from '../middleware/validateAuth';
 
 import { markTaskEnd, markTaskStart, taskImportStatusMiddleware } from '../middleware/isRuningTask';
-import { streamingImportMedia } from './importHelper/_imports';
+import { prepareExternalImporting, streamingImportMedia } from './importHelper/_imports';
 import { processCaptioning } from '../service';
 
 const admin = new Hono();
@@ -22,10 +22,10 @@ const userAuthSchema = z.object({
 const sourcePathSchema = z
   .string()
   .max(256, 'Path too long')
-  // .regex(/^\/(mnt|media)(\/[a-zA-Z0-9_-]+)*\/?$/, 'Path must be under /mnt or /media and contain valid characters or dash/underscore')
-  // .refine((p) => !p.includes('..'), {
-  //   message: 'Path must not contain parent directory traversal',
-  // })
+  .regex(/^\/(Volumes|home)(\/[a-zA-Z0-9_-]+)*\/?$/, 'Path must be under /Volumes or /home and contain valid characters')
+  .refine((p) => !p.includes('..'), {
+    message: 'Path must not contain parent directory traversal',
+  })
   .optional();
 
 const isAiModeSchema = z.object({
@@ -49,18 +49,12 @@ admin.post('/import', isAdmin, taskImportStatusMiddleware, validateSchema('json'
   return streamText(c, async (stream) => {
     const userId = getUserBySession(c).userId;
     const { sourcePath, aimode } = c.req.valid('json');
-
-    const isMainImportExist = await processMediaStatus();
-
-    const processPath = !isMainImportExist ? Bun.env.PHOTO_PATH : sourcePath;
-    // /*TODO*/ If process file in provided path, should transfer to the main directory. and start process in there
-    // For now, just return when user had imported media in main
-    if (isMainImportExist) return;
-    ////////////////////////////////////////////////////////
-
     try {
+      const processPath = sourcePath ? await prepareExternalImporting(sourcePath, stream) : Bun.env.PHOTO_PATH;
+      if (!processPath) return;
+
       markTaskStart('importing');
-      await stream.writeln('⏳ Processing media files started. Please wait...');
+      // await stream.writeln('⏳ Processing media files started. Please wait...');
 
       const importing = await streamingImportMedia(stream, userId, processPath);
       if (!importing) return;

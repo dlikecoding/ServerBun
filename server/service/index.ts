@@ -10,7 +10,7 @@ import { createCaption } from './generators/generateCaption';
 import { importedMediasCaption, importedMediasThumbHash, updateHashThumb } from '../db/module/media';
 import { insertErrorLog } from '../db/module/system';
 
-const thumbAndHashGenerate = async (media: any, stream: StreamingApi) => {
+const thumbAndHashGenerate = async (media: any) => {
   try {
     const input = path.join(Bun.env.MAIN_PATH, media.source_file);
     const output = path.join(Bun.env.MAIN_PATH, media.thumb_path);
@@ -19,7 +19,6 @@ const thumbAndHashGenerate = async (media: any, stream: StreamingApi) => {
     const { w, h } = await createThumbnail(input, output, media.file_type === 'Photo');
     const hash = await createHash(output);
 
-    await stream.writeln(`${media.file_name}`);
     if (w && h) await updateHashThumb(media.media_id, hash, w, h);
   } catch (error) {
     console.error(`thumbAndHashGenerate - Source: ${media.source_file}: ${error}`);
@@ -27,17 +26,24 @@ const thumbAndHashGenerate = async (media: any, stream: StreamingApi) => {
   }
 };
 
-export const processMedias = async (stream: StreamingApi) => {
+export const preprocessMedia = async (stream: StreamingApi) => {
   const loadedmedias = await importedMediasThumbHash();
+
+  let completedCount = 1;
   try {
-    const tasks = loadedmedias.map((media: any) => () => thumbAndHashGenerate(media, stream));
+    const tasks = loadedmedias.map(
+      (media: any) => () =>
+        thumbAndHashGenerate(media).finally(() => {
+          stream.writeln(`Digesting: ${completedCount++}/${loadedmedias.length}`);
+        })
+    );
     await workerQueue(tasks);
     console.log('======= PROCESS THUMBNAIL AND HASH COMPLETED =======');
 
     return true;
   } catch (error) {
-    console.error('processMedias worker', error);
-    await insertErrorLog('service/index.ts', 'processMedias', error);
+    console.error('preprocessMedia worker', error);
+    await insertErrorLog('service/index.ts', 'preprocessMedia', error);
     return false;
   }
 };

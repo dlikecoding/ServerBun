@@ -4,6 +4,7 @@ import { insertImportedToMedia, type ImportMedia } from './module/imported';
 import { sql } from '.';
 import { isExist } from '../service/helper';
 import { insertErrorLog } from './module/system';
+import type { StreamingApi } from 'hono/utils/stream';
 
 export const createDBMS = async () => {
   try {
@@ -29,25 +30,14 @@ export const createDBMS = async () => {
   }
 };
 
-export const renameAllFiles = async (sourcePath: string): Promise<boolean> => {
-  const { stderr, exitCode } =
-    await $`find ${sourcePath} -depth -name '*[^a-zA-Z0-9._/-]*' -exec bash -c 'mv "$0" "$(dirname "$0")/$(basename "$0" | sed "s/[^a-zA-Z0-9._-]/_/g")"' {} \;`;
-  if (exitCode === 0) return true;
-
-  await insertErrorLog('db/main.ts', 'renameAllFiles', stderr);
-  return false;
-};
-
-export const countFiles = async (sourcePath: string): Promise<number> => {
-  const { stdout, stderr, exitCode } = await $`find ${sourcePath} -type f ! -name '.*' | wc -l`.quiet();
-
-  if (exitCode === 0) return parseInt(stdout.toString().trim(), 10);
-  await insertErrorLog('db/main.ts', 'countFiles', stderr);
-  return 0;
-};
-
-export const insertMediaToDB = async (RegisteredUser: UUID, sourcePath: string) => {
+export const insertMediaToDB = async (RegisteredUser: UUID, sourcePath: string, stream: StreamingApi): Promise<boolean> => {
   try {
+    await stream.writeln('📥 Sanitizing files ...');
+    if (!(await isExist(sourcePath))) {
+      await stream.writeln('❌ Directory not found. Please ensure the directory exists');
+      return false;
+    }
+
     const command = $`exiftool -r -json -d "%Y-%m-%dT%H:%M:%S" \
     -SourceFile -FileName -FileType -MIMEType \
     -Software -Title -FileSize# -Make -Model -LensModel -Orientation -CreateDate -DateCreated \
@@ -56,6 +46,7 @@ export const insertMediaToDB = async (RegisteredUser: UUID, sourcePath: string) 
     sed 's|${Bun.env.MAIN_PATH}||g'`.lines();
 
     let jsonString = '{';
+    let count = 1;
 
     for await (let line of command) {
       if (!line) continue;
@@ -67,6 +58,8 @@ export const insertMediaToDB = async (RegisteredUser: UUID, sourcePath: string) 
 
         const newMedia: ImportMedia = parseJsonToObject(jsonString);
         const status = await insertImportedToMedia(newMedia, RegisteredUser);
+
+        await stream.writeln(`🗂️ 🚀 Importing/Uploading files to system: ${count++}`);
 
         if (!status) return false;
 
@@ -80,7 +73,7 @@ export const insertMediaToDB = async (RegisteredUser: UUID, sourcePath: string) 
     return true;
   } catch (error: any) {
     await insertErrorLog('db/main.ts', 'insertMediaToDB', error);
-    console.log(`Import FAILED with error: ${error}`);
+    console.log(`insertMediaToDB: ${error}`);
     return false;
   }
 };

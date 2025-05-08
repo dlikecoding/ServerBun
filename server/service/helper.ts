@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import path from 'path';
+import { insertErrorLog } from '../db/module/system';
 
 export const isExist = async (path: string) => {
   return await fs.exists(path);
@@ -18,75 +19,12 @@ export const createFolder = async (dePath: string, isRecursive: boolean = true) 
   }
 };
 
-// const removeFilesUploadDir = async (dePath: string) => {
-//   try {
-//     if (!(await isExist(dePath))) return;
-//     await fs.rm(dePath, { recursive: true, force: true });
-//   } catch (error: any) {
-//     // recordErrorInDB(
-//     //     'removeFilesUploadDir: ',
-//     //     `Error: ${dePath}, ${error.message}`
-//     // );
-//   }
-// };
-
-const isDirEmpty = async (dePath: string) => {
-  try {
-    const files = await fs.readdir(dePath);
-    if (files.length === 0) {
-      console.log(`Source directory "${dePath}" is EMPTY.`);
-      return true;
-    }
-    return false;
-  } catch (error: any) {
-    console.log(error);
-    // recordErrorInDB('isDirEmpty: ', `Error: ${dePath}, ${error.message}`);
-  }
-};
-
-const removeEmptyDirectories = async (dir: string): Promise<void> => {
-  try {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-
-      if (entry.isDirectory()) {
-        await removeEmptyDirectories(fullPath);
-
-        if (await isDirEmpty(fullPath)) {
-          await fs.rmdir(fullPath);
-          console.log(`Removed empty directory: ${fullPath}`);
-        }
-      }
-    }
-  } catch (error: any) {
-    // recordErrorInDB(
-    //     'removeEmptyDirectories: ',
-    //     `Error: ${dir}, ${error.message}`
-    // );
-  }
-};
-
-const convertFileSize = (bytes: number): string => {
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  if (bytes === 0) return '0 Byte';
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-
-  return Math.round(100 * (bytes / Math.pow(1024, i))) / 100 + ' ' + sizes[i];
-};
-
-const diskCapacity = async (pathToCheck: string): Promise<any> => {
-  try {
-    const capacity = await fs.statfs(pathToCheck);
-    return {
-      total: capacity.bsize * capacity.blocks,
-      used: (capacity!.blocks - capacity!.bfree) * capacity!.bsize,
-      free: capacity!.bsize * capacity!.bfree,
-    };
-  } catch (error) {
-    // return recordErrorInDB('diskCapacity', `Error: ${error}`);
-  }
+export const moveUnsupportFile = async (oldPath: string, newPath: string): Promise<void> => {
+  await createFolder(Bun.env.UNSUPPORT_PATH, false);
+  await fs.rename(oldPath, newPath).catch(async (error) => {
+    console.error('moveUnsupportFile', error);
+    await insertErrorLog('service/helper.ts', 'moveUnsupportFile', error);
+  });
 };
 
 export const createRandomId = (length: number) => {
@@ -111,4 +49,76 @@ export const nameFolderByTime = (): string => {
 
   return `${year}-${month}-${day}_${hour}-${minute}-${second}`;
 };
+
+// const removeFilesUploadDir = async (dePath: string) => {
+//   try {
+//     if (!(await isExist(dePath))) return;
+//     await fs.rm(dePath, { recursive: true, force: true });
+//   } catch (error: any) {
+//     // recordErrorInDB(
+//     //     'removeFilesUploadDir: ',
+//     //     `Error: ${dePath}, ${error.message}`
+//     // );
+//   }
+// };
+
+// const isDirEmpty = async (dePath: string) => {
+//   try {
+//     const files = await fs.readdir(dePath);
+//     if (files.length === 0) {
+//       console.log(`Source directory "${dePath}" is EMPTY.`);
+//       return true;
+//     }
+//     return false;
+//   } catch (error: any) {
+//     console.log(error);
+//     // recordErrorInDB('isDirEmpty: ', `Error: ${dePath}, ${error.message}`);
+//   }
+// };
+
+// const removeEmptyDirectories = async (dir: string): Promise<void> => {
+//   try {
+//     const entries = await fs.readdir(dir, { withFileTypes: true });
+
+//     for (const entry of entries) {
+//       const fullPath = path.join(dir, entry.name);
+
+//       if (entry.isDirectory()) {
+//         await removeEmptyDirectories(fullPath);
+
+//         if (await isDirEmpty(fullPath)) {
+//           await fs.rmdir(fullPath);
+//           console.log(`Removed empty directory: ${fullPath}`);
+//         }
+//       }
+//     }
+//   } catch (error: any) {
+//     // recordErrorInDB(
+//     //     'removeEmptyDirectories: ',
+//     //     `Error: ${dir}, ${error.message}`
+//     // );
+//   }
+// };
+
+// const convertFileSize = (bytes: number): string => {
+//   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+//   if (bytes === 0) return '0 Byte';
+//   const i = Math.floor(Math.log(bytes) / Math.log(1024));
+
+//   return Math.round(100 * (bytes / Math.pow(1024, i))) / 100 + ' ' + sizes[i];
+// };
+
+// const diskCapacity = async (pathToCheck: string): Promise<any> => {
+//   try {
+//     const capacity = await fs.statfs(pathToCheck);
+//     return {
+//       total: capacity.bsize * capacity.blocks,
+//       used: (capacity!.blocks - capacity!.bfree) * capacity!.bsize,
+//       free: capacity!.bsize * capacity!.bfree,
+//     };
+//   } catch (error) {
+//     // return recordErrorInDB('diskCapacity', `Error: ${error}`);
+//   }
+// };
+
 // export { isDirEmpty, removeEmptyDirectories, convertFileSize, diskCapacity, isExist };

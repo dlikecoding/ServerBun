@@ -2,7 +2,7 @@ import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
 import type { Context } from 'hono';
 import crypto, { type UUID } from 'crypto';
 import { z } from 'zod';
-import { isNotDevMode, isProduction } from '../..';
+import { isNotDevMode, isProduction } from '../../init_sys';
 
 export const SESSION_KEY = 'auth_token';
 export const SET_USER_SESSION = 'user_session_id';

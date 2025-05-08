@@ -1,7 +1,9 @@
 import type { UUID } from 'crypto';
 import { sql } from '..';
 import { insertErrorLog } from './system';
-import { createRandomId } from '../../service/helper';
+import { createRandomId, moveUnsupportFile } from '../../service/helper';
+import path, { basename, dirname } from 'path';
+import { rename } from 'fs/promises';
 
 const DURATION_OF_SHORT = 5; // Short video which has duration < 5s
 
@@ -36,10 +38,27 @@ export interface ImportMedia {
   GPSLongitude: string | null;
 }
 
+/**
+ * @param newMedia - The media object to be inserted, containing metadata and file reference.
+ * @param RegisteredUser
+ * @returns Promise<boolean> -
+ *    - true indicates that the file is either:
+ *         1. Unsupported (e.g. invalid format, corrupted, etc.), or
+ *         2. Successfully handled, and the process should continue with the next file.
+ *    - false indicates an unrecoverable failure occurred, halting further processing.
+ */
 export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUser: UUID) => {
   try {
+    const sourceFilePath = await renameIfInvalid(newMedia.SourceFile);
+    if (!sourceFilePath) return true; // SKIP - Continue process the next file
+
     const mediaType = fileType(newMedia.MIMEType, newMedia.Duration); // Determine media type
-    if (mediaType === 'Unknown') return;
+    if (mediaType === 'Unknown') {
+      const source = path.join(Bun.env.MAIN_PATH, newMedia.SourceFile);
+      const des = path.join(Bun.env.UNSUPPORT_PATH, newMedia.FileName);
+      await moveUnsupportFile(source, des);
+      return true; // SKIP - Continue process the next file
+    }
 
     const insertedMedia = await sql.begin(async (tx) => {
       let cameraTypeId: number | null = null;
@@ -67,7 +86,7 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
         file_size: newMedia.FileSize,
         camera_type: cameraTypeId,
         create_date: smallestDate,
-        source_file: newMedia.SourceFile,
+        source_file: sourceFilePath,
         mime_type: newMedia.MIMEType,
         thumb_path: createThumbPath(smallestDate),
         video_duration: durationDisplay,
@@ -102,7 +121,7 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
     return insertedMedia ? true : false;
   } catch (error) {
     console.log('insertImportedToMedia', error);
-    await insertErrorLog('system.ts', 'initializeSystem', error);
+    await insertErrorLog('db/module/imported.ts', 'insertImportedToMedia', error);
     return false;
   }
 };
@@ -147,4 +166,26 @@ const convertDuration = (inputSecond: number) => {
   const formattedSeconds = seconds < 10 ? `0${seconds}` : `${seconds}`;
 
   return `${formattedHours}${formattedMinutes}:${formattedSeconds}`;
+};
+
+const sanitizeFileName = (name: string): string => {
+  return name.replace(/[^\w.-]/g, '_');
+};
+
+const renameIfInvalid = async (filePath: string): Promise<string> => {
+  try {
+    const name = basename(filePath);
+    const dir = dirname(filePath);
+    const cleanName = sanitizeFileName(name);
+
+    if (cleanName === name) return filePath;
+
+    const newPath = path.join(dir, cleanName);
+    await rename(filePath, newPath);
+    return newPath;
+  } catch (error) {
+    await insertErrorLog('db/module/imported.ts', 'renameIfInvalid', error);
+    console.log('renameIfInvalid', error);
+    return '';
+  }
 };

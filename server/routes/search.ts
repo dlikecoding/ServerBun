@@ -38,8 +38,8 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
   const lastWord = keywords.split(' ').at(-1);
   const suggestCount = sql`
     SELECT sw.word, sw.ndoc FROM multi_schema.suggest_words AS sw
-      WHERE multi_schema.similarity(sw.word, ${lastWord}::text) > 0.3
-      ORDER BY multi_schema.similarity(sw.word, ${lastWord}::text) DESC
+      WHERE similarity(sw.word, ${lastWord}::text) > 0.3
+      ORDER BY similarity(sw.word, ${lastWord}::text) DESC
       LIMIT 5`;
 
   const searchResults = sql`

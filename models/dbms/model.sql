@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     thumb_height smallint,
     video_duration character varying(15) COLLATE pg_catalog."default",
     caption text COLLATE pg_catalog."default",
-    caption_eng_tvs tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, caption)) STORED,
+    caption_eng_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, caption)) STORED,
     caption_simple_tsv tsvector GENERATED ALWAYS AS (to_tsvector('multi_schema.simple_config'::regconfig, caption)) STORED,
     CONSTRAINT "Media_pkey" PRIMARY KEY (media_id)
 );

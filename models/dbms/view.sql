@@ -1,5 +1,5 @@
 -- Create index for caption_eng_tsv to speed up search
-CREATE INDEX IF NOT EXISTS idx_media_caption ON multi_schema."Media" USING GIN (caption_eng_tvs);
+CREATE INDEX IF NOT EXISTS idx_media_caption ON multi_schema."Media" USING GIN (caption_eng_tsv);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS multi_schema.suggest_words AS
 SELECT word, ndoc FROM ts_stat(

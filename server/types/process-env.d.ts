@@ -10,6 +10,7 @@ declare global {
       THUMB_PATH: string;
       UPLOAD_PATH: string;
       PHOTO_PATH: string;
+      UNSUPPORT_PATH: string;
 
       ORIGIN_URL: string;
       DOMAIN_NAME: string;
