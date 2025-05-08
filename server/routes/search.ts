@@ -2,43 +2,58 @@ import { Hono } from 'hono';
 import { sql } from '../db';
 import { validateSchema } from '../modules/validateSchema';
 import { z } from 'zod';
+import { refreshView } from '../db/module/search';
 
 const search = new Hono();
 
-const spceialChars = /[^a-zA-Z0-9\s]/;
+const specialChars = /[^a-zA-Z0-9 ]/;
 const querySchema = z.object({
-  keyword: z
+  keywords: z
     .string()
-    // .trim().min(0).max(20).optional(),
-    .refine((input) => !spceialChars.test(input)),
+    .trim()
+    .max(25)
+    .refine((input) => !specialChars.test(input), {
+      message: 'Keywords contain invalid characters',
+    })
+    .optional(),
+});
+
+search.get('/refreshView', async (c) => {
+  await refreshView();
+  return c.json({ status: 'success' }, 200);
 });
 
 search.get('/', validateSchema('query', querySchema), async (c) => {
-  const { keyword } = c.req.valid('query');
-  // console.log('keyword', keyword);
-  if (!keyword) {
-    const searchCounts = sql`
-      SELECT COUNT(media_id) FROM multi_schema."Media"`;
+  const { keywords } = c.req.valid('query');
 
+  if (!keywords) {
     const searchResults = sql`
-      SELECT media_id, thumb_path, source_file, video_duration, file_type, favorite
+      SELECT media_id, thumb_path, source_file, video_duration, file_type, favorite, COUNT(*) OVER() AS total_count
       FROM multi_schema."Media" LIMIT 9`;
-    const result = {
-      count: (await searchCounts)[0].count,
-      data: await searchResults,
-    };
+
+    const result = { suggestCount: [], data: await searchResults };
     return c.json(result, 200);
   }
 
-  const searchResults = await sql`
-    SELECT media_id, caption, thumb_path, source_file, video_duration, file_type, favorite
-      FROM multi_schema."Media"
-      WHERE caption_search @@ plainto_tsquery('english', ${keyword}::text)
-      LIMIT 15`;
+  const lastWord = keywords.split(' ').at(-1);
+  const suggestCount = sql`
+    SELECT sw.word, sw.ndoc FROM multi_schema.suggest_words AS sw
+      WHERE multi_schema.similarity(sw.word, ${lastWord}::text) > 0.3
+      ORDER BY multi_schema.similarity(sw.word, ${lastWord}::text) DESC
+      LIMIT 5`;
 
+  const searchResults = sql`
+    SELECT media_id, caption, thumb_path, source_file, video_duration, file_type, favorite, COUNT(*) OVER() AS total_count
+      FROM multi_schema."Media"
+      WHERE caption_eng_tsv @@ (
+        websearch_to_tsquery (${keywords}::text) 
+        || websearch_to_tsquery ('simple', ${keywords}::text))
+      LIMIT 9`;
+
+  const [wordCount, searchResult] = await Promise.all([suggestCount, searchResults]);
   const result = {
-    count: searchResults.count,
-    data: searchResults,
+    suggestCount: wordCount,
+    data: searchResult,
   };
   return c.json(result, 200);
 });

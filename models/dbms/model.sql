@@ -1,11 +1,27 @@
 CREATE SCHEMA IF NOT EXISTS multi_schema;
 
+-- Create custom simple dictionary
+CREATE TEXT SEARCH DICTIONARY multi_schema.simple_fullword (
+    TEMPLATE = simple,
+    STOPWORDS = english
+);
+CREATE TEXT SEARCH CONFIGURATION multi_schema.simple_config (COPY = pg_catalog.english);
+ALTER TEXT SEARCH CONFIGURATION multi_schema.simple_config
+  ALTER MAPPING FOR asciiword, asciihword, hword_asciipart
+  WITH multi_schema.simple_fullword;
+
+ALTER TEXT SEARCH CONFIGURATION multi_schema.simple_config
+    DROP MAPPING FOR email, file, float, host, url, url_path, sfloat;
+
+
 -- ENUM definitions
 CREATE TYPE role_type_enum AS ENUM ('user', 'admin');
 CREATE TYPE file_type_enum AS ENUM ('Photo', 'Video', 'Live', 'Unknown');
 CREATE TYPE ai_model_enum AS ENUM ('classify', 'detect', 'segment');
 CREATE TYPE aimode_enum AS ENUM ('Detect', 'Classify', 'Segment', 'Face');
 CREATE TYPE registered_device_enum AS ENUM ('singleDevice', 'multiDevice');
+
+-- =============================================================================
 
 BEGIN;
 
@@ -133,7 +149,8 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     thumb_height smallint,
     video_duration character varying(15) COLLATE pg_catalog."default",
     caption text COLLATE pg_catalog."default",
-    caption_search tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, caption)) STORED,
+    caption_eng_tvs tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, caption)) STORED,
+    caption_simple_tsv tsvector GENERATED ALWAYS AS (to_tsvector('multi_schema.simple_config'::regconfig, caption)) STORED,
     CONSTRAINT "Media_pkey" PRIMARY KEY (media_id)
 );
 
@@ -349,7 +366,3 @@ CREATE INDEX IF NOT EXISTS "Video_pkey"
     ON multi_schema."Video"(media);
 
 END;
-
-
----------------------------------------------------------------------------------
-CREATE INDEX idx_media_caption ON multi_schema."Media" USING GIN (caption_search);

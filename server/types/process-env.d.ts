@@ -22,6 +22,7 @@ declare global {
       DB_CREATE: string;
       DB_MODEL: string;
       DB_TRIGGER: string;
+      DB_VIEW: string;
 
       DB_BACKUP: string;
       // PROXY_ENABLED: 'true' | 'false';
