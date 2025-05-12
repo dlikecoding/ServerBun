@@ -6,7 +6,7 @@ import { processCaptioning } from '../service';
 import { streamText } from 'hono/streaming';
 
 import { MAX_BODY_SIZE, VALIDATED_RESULT, validateFiles, type ValidResult } from '../middleware/validateFiles';
-import { markTaskEnd, markTaskStart, taskImportStatusMiddleware } from '../middleware/isRuningTask';
+import { markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
 import { insertErrorLog } from '../db/module/system';
 import { streamingImportMedia } from './importHelper/_imports';
 import { z } from 'zod';
@@ -20,8 +20,8 @@ const isAiModeSchema = z.object({
 
 upload.post(
   '/',
-  taskImportStatusMiddleware,
-  validateSchema('json', isAiModeSchema),
+  taskStatusMiddleware('importing'),
+  validateSchema('query', isAiModeSchema),
 
   bodyLimit({
     maxSize: MAX_BODY_SIZE,
@@ -34,22 +34,25 @@ upload.post(
     return streamText(c, async (stream) => {
       const userId = getUserBySession(c).userId;
       const { totalFile, validatedFiles, safeFileDir } = c.get(VALIDATED_RESULT) as ValidResult;
+      const { aimode } = c.req.valid('query');
 
       try {
-        markTaskStart('importing');
+        markTaskStart('importing', userId);
 
-        const importing = await streamingImportMedia(stream, userId, safeFileDir);
+        const importing = await streamingImportMedia(safeFileDir, userId, stream);
         if (!importing) return;
 
-        await stream.writeln(`✅ Finished Uploading: ${validatedFiles}/${totalFile} files!`);
+        await stream.writeln(`✅ Finished Uploading: ${validatedFiles}/${totalFile} files! ${aimode ? 'Images Analysis is running in background...' : ''}`);
         await stream.close();
+
+        if (!aimode) return;
 
         // Generate captions for medias in the background
         return await processCaptioning();
       } catch (error) {
         await stream.writeln(`❌ 500 Internal Server Error`);
-        // console.log('upload.post:', error);
-        await insertErrorLog('upload.ts', 'upload.post', error);
+        console.log('upload.post:', error);
+        await insertErrorLog('routes/upload.ts', 'upload.post', error);
       } finally {
         if (!stream.closed) await stream.close();
         markTaskEnd('importing');

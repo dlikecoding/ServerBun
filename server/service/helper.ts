@@ -1,5 +1,7 @@
 import * as fs from 'fs/promises';
-import path from 'path';
+import { $ } from 'bun';
+import path, { basename, dirname } from 'path';
+import { rename } from 'fs/promises';
 import { insertErrorLog } from '../db/module/system';
 
 export const isExist = async (path: string) => {
@@ -15,16 +17,64 @@ export const createFolder = async (dePath: string, isRecursive: boolean = true) 
 
     await fs.mkdir(dePath, { recursive: isRecursive });
   } catch (error: any) {
-    console.log('createFolder: ', `Error: ${dePath}, ${error.message}`);
+    console.log('service/helper.ts', 'createFolder', error);
+    await insertErrorLog('service/helper.ts', 'createFolder', error);
   }
 };
 
-export const moveUnsupportFile = async (oldPath: string, newPath: string): Promise<void> => {
-  await createFolder(Bun.env.UNSUPPORT_PATH, false);
-  await fs.rename(oldPath, newPath).catch(async (error) => {
-    console.error('moveUnsupportFile', error);
-    await insertErrorLog('service/helper.ts', 'moveUnsupportFile', error);
-  });
+const deleteFile = async (filePath: string): Promise<boolean> => {
+  const { exitCode, stderr } = await $`rm ${filePath}`.nothrow();
+  if (exitCode === 0) return true;
+
+  console.log('service/helper.ts', 'deleteFile', stderr);
+  await insertErrorLog('service/helper.ts', 'deleteFile', stderr);
+  return false;
+};
+
+export const copyFile = async (source: string, destination: string): Promise<boolean> => {
+  const { exitCode, stderr } = await $`rsync -ahv ${source} ${destination}`.quiet().nothrow();
+  if (exitCode === 0) return true;
+
+  console.log('service/helper.ts', 'copyFile', stderr);
+  await insertErrorLog('service/helper.ts', 'copyFile', stderr);
+  return false;
+};
+
+const moveFile = async (oldPath: string, newPath: string): Promise<boolean> => {
+  const copyTatus = await copyFile(oldPath, newPath);
+  if (copyTatus) return await deleteFile(oldPath);
+  return false;
+};
+
+const sanitizeFileName = (name: string): string => {
+  return name.replace(/[^\w.-]/g, '_');
+};
+
+export const renameIfInvalid = async (sourcePath: string): Promise<string> => {
+  try {
+    const name = basename(sourcePath);
+    const dir = dirname(sourcePath);
+    const cleanName = sanitizeFileName(name);
+
+    if (cleanName === name) return sourcePath;
+
+    const oldPath = path.join(dir, name);
+    const newPath = path.join(dir, cleanName);
+
+    await rename(oldPath, newPath);
+    return path.join(dir, cleanName);
+  } catch (error) {
+    await insertErrorLog('service/helper.ts', 'renameIfInvalid', error);
+    console.log('renameIfInvalid', error);
+    return '';
+  }
+};
+
+export const moveUnsupportFile = async (source: string): Promise<boolean> => {
+  const movePath = path.join(Bun.env.UNSUPPORT_PATH, nameFolderByTime(true));
+  await createFolder(movePath);
+
+  return await moveFile(source, path.join(movePath, basename(source)));
 };
 
 export const createRandomId = (length: number) => {
@@ -37,12 +87,15 @@ const formatDate = (component: number): string => {
   return String(component).padStart(2, '0');
 };
 
-export const nameFolderByTime = (): string => {
+export const nameFolderByTime = (isShort: boolean = false): string => {
   const currentDate = new Date();
 
   const year = currentDate.getFullYear();
   const month = formatDate(currentDate.getMonth() + 1);
   const day = formatDate(currentDate.getDate());
+
+  if (isShort) return `${year}-${month}-${day}`;
+
   const hour = formatDate(currentDate.getHours());
   const minute = formatDate(currentDate.getMinutes());
   const second = formatDate(currentDate.getSeconds());

@@ -1,27 +1,22 @@
-import { $ } from 'bun';
 import path from 'path';
 import { type UUID } from 'crypto';
 import type { StreamingApi } from 'hono/utils/stream';
-import { insertMediaToDB } from '../../db/main';
-import { preprocessMedia } from '../../service';
+import { preprocessMedia, processMetadataExif } from '../../service';
 import { createFolder, isExist, nameFolderByTime } from '../../service/helper';
+import { copyFileToExternalDir } from '../../service/generators/metadata';
+import { insertErrorLog } from '../../db/module/system';
 
-export const streamingImportMedia = async (stream: StreamingApi, userId: UUID, dirPath: string): Promise<boolean> => {
+export const streamingImportMedia = async (dirPath: string, userId: UUID, stream: StreamingApi): Promise<boolean> => {
   stream.onAbort(() => console.warn('Client aborted the stream!'));
 
-  // await stream.writeln('⏳ Processing media files started. Please wait...');
-  // if (!(await countFiles(dirPath))) {
-  //   await stream.writeln('❌ No files found in the current directory. Please check if the directory contains media files.');
-  //   return false;
-  // }
-
-  // if (!(await renameAllFiles(dirPath))) {
-  //   await stream.writeln('❌ Failed to rename files. Please check file permissions and the files path are valid.');
-  //   return false;
-  // }
+  await stream.writeln('📥 Sanitizing files ...');
+  if (!(await isExist(dirPath))) {
+    await stream.writeln('❌ Directory not found. Please ensure the directory exists');
+    return false;
+  }
 
   await stream.writeln('⏳ Importing/Uploading files to system...');
-  const totalFile = await insertMediaToDB(userId, dirPath, stream);
+  const totalFile = await processMetadataExif(dirPath, userId, stream);
   if (!totalFile) {
     await stream.writeln('❌ Failed to importing medias to database.');
     return false;
@@ -35,18 +30,21 @@ export const streamingImportMedia = async (stream: StreamingApi, userId: UUID, d
   return true;
 };
 
-export const prepareExternalImporting = async (sourcePath: string, stream: StreamingApi): Promise<string | undefined> => {
-  // // /*TODO*/ If process file in provided path, should transfer to the main directory. and start process in there
-  // // For now, just return when user had imported media in main
+// If process file in provided path, should transfer to the main directory and start process in there
+export const importExternalPath = async (sourcePath: string, stream: StreamingApi): Promise<string | undefined> => {
   // Create folder to transfer all the files to
   const writeToDir = path.join(Bun.env.UPLOAD_PATH, nameFolderByTime());
   await createFolder(writeToDir);
+  try {
+    if ((await isExist(writeToDir)) && (await isExist(sourcePath))) {
+      await copyFileToExternalDir(sourcePath, writeToDir);
+      return writeToDir;
+    }
+  } catch (error) {
+    console.log('routes/importHelper/_imports.ts', 'importExternalPath', error);
+    await insertErrorLog('routes/importHelper/_imports.ts', 'importExternalPath', error);
 
-  if ((await isExist(writeToDir)) && (await isExist(sourcePath))) {
-    const cpStatus = await $`rsync -ahv --exclude='.*' ${sourcePath} ${writeToDir}`;
-    if (cpStatus.exitCode === 0) return writeToDir;
-
-    await stream.writeln(`❌ An Error occors while writing data to main directory!`);
+    await stream.writeln(`❌ An Error occors while transfering data to system!`);
     return '';
   }
 };

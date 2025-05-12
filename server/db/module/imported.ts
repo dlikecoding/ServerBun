@@ -1,9 +1,7 @@
 import type { UUID } from 'crypto';
 import { sql } from '..';
 import { insertErrorLog } from './system';
-import { createRandomId, moveUnsupportFile } from '../../service/helper';
-import path, { basename, dirname } from 'path';
-import { rename } from 'fs/promises';
+import { createRandomId } from '../../service/helper';
 
 const DURATION_OF_SHORT = 5; // Short video which has duration < 5s
 
@@ -39,28 +37,19 @@ export interface ImportMedia {
 }
 
 /**
- * @param newMedia - The media object to be inserted, containing metadata and file reference.
- * @param RegisteredUser
+ * Inserts a new media item into the system.
+ * @param newMedia - The media object to be inserted, including metadata and a file reference.
+ * @param RegisteredUser - The user performing the upload or import.
  * @returns Promise<boolean> -
- *    - true indicates that the file is either:
- *         1. Unsupported (e.g. invalid format, corrupted, etc.), or
- *         2. Successfully handled, and the process should continue with the next file.
- *    - false indicates an unrecoverable failure occurred, halting further processing.
+ * - `success`: The media was successfully processed; continue with the next item.
+ * - `failed`: A critical error occurred; stop further processing.
  */
 export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUser: UUID) => {
   try {
-    const sourceFilePath = await renameIfInvalid(newMedia.SourceFile);
-    if (!sourceFilePath) return true; // SKIP - Continue process the next file
-
+    const sourceFilePath = reducePath(newMedia.SourceFile);
     const mediaType = fileType(newMedia.MIMEType, newMedia.Duration); // Determine media type
-    if (mediaType === 'Unknown') {
-      const source = path.join(Bun.env.MAIN_PATH, newMedia.SourceFile);
-      const des = path.join(Bun.env.UNSUPPORT_PATH, newMedia.FileName);
-      await moveUnsupportFile(source, des);
-      return true; // SKIP - Continue process the next file
-    }
 
-    const insertedMedia = await sql.begin(async (tx) => {
+    await sql.begin(async (tx) => {
       let cameraTypeId: number | null = null;
       if (newMedia.Make && newMedia.Model) {
         const [isCameraExist] = await tx`
@@ -93,8 +82,13 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
       };
 
       const [mediaId] = await tx`
-        INSERT INTO multi_schema."Media" ${sql(mediaToInsert)} RETURNING media_id`;
-      const lastMediaId = mediaId.media_id;
+        INSERT INTO multi_schema."Media" ${sql(mediaToInsert)} 
+        ON CONFLICT DO NOTHING 
+        RETURNING media_id`;
+
+      if (!mediaId) return console.log('File had imported in the system');
+
+      const lastMediaId: number = mediaId.media_id;
 
       await tx`
         INSERT INTO multi_schema."UploadBy" ("RegisteredUser", media) VALUES (${RegisteredUser}, ${lastMediaId})`;
@@ -118,13 +112,13 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
       }
       return lastMediaId;
     });
-    return insertedMedia ? true : false;
   } catch (error) {
     console.log('insertImportedToMedia', error);
     await insertErrorLog('db/module/imported.ts', 'insertImportedToMedia', error);
-    return false;
   }
 };
+
+const reducePath = (absolutePath: string): string => (absolutePath.startsWith(Bun.env.MAIN_PATH) ? absolutePath.slice(Bun.env.MAIN_PATH.length) : '');
 
 const getSmallestDate = (newMedia: ImportMedia): Date => {
   const validDates = [
@@ -166,26 +160,4 @@ const convertDuration = (inputSecond: number) => {
   const formattedSeconds = seconds < 10 ? `0${seconds}` : `${seconds}`;
 
   return `${formattedHours}${formattedMinutes}:${formattedSeconds}`;
-};
-
-const sanitizeFileName = (name: string): string => {
-  return name.replace(/[^\w.-]/g, '_');
-};
-
-const renameIfInvalid = async (filePath: string): Promise<string> => {
-  try {
-    const name = basename(filePath);
-    const dir = dirname(filePath);
-    const cleanName = sanitizeFileName(name);
-
-    if (cleanName === name) return filePath;
-
-    const newPath = path.join(dir, cleanName);
-    await rename(filePath, newPath);
-    return newPath;
-  } catch (error) {
-    await insertErrorLog('db/module/imported.ts', 'renameIfInvalid', error);
-    console.log('renameIfInvalid', error);
-    return '';
-  }
 };
