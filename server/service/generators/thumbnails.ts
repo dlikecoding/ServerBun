@@ -7,7 +7,7 @@ const getDimention = (inputDim: string) => {
   return { w, h };
 };
 
-export const createThumbnail = async (input: string, output: string, isPhoto: boolean, duration = 1): Promise<any> => {
+export const createThumbnail = async (input: string, output: string, isPhoto: boolean, duration = 0.5): Promise<any> => {
   try {
     const command = isPhoto
       ? $`magick ${input.concat('\[0\]')} -auto-orient -thumbnail ${SIZE_THUMBNAIL} -quality 80 -write ${output} -format "%w %h" info:`

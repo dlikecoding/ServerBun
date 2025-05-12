@@ -5,7 +5,7 @@ import { createFolder, nameFolderByTime } from '../service/helper';
 const GB = 1024 * 1024 * 1024;
 
 const ALLOWED_FILE_SIZE = 1 * GB; // limit per file in bytes
-const ALLOWED_MIME_TYPES = ['.webp', '.jpg', '.gif', '.mov', '.mp4', '.heif', '.heic', '.jpeg', '.png'];
+export const ALLOWED_MIME_TYPES = ['.webp', '.m4v', '.jpg', '.gif', '.mov', '.mp4', '.heif', '.heic', '.jpeg', '.png'];
 export const MAX_BODY_SIZE = 2 * GB; // limit total files size in bytes
 
 export const VALIDATED_RESULT = 'validated_result';

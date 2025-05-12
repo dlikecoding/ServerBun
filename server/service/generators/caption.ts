@@ -49,7 +49,9 @@ export const createCaption = async (medias: any[]): Promise<any> => {
   const pythonFilePath = 'models/ai_model/image_captioning.py';
 
   const totalFile = medias.length;
-  let count = 1;
+  if (!totalFile) return;
+
+  let count = 0;
 
   const childProc = Bun.spawn(['python3', pythonFilePath], {
     stdout: 'pipe',
@@ -62,7 +64,7 @@ export const createCaption = async (medias: any[]): Promise<any> => {
 
     for (const media of medias) {
       const result = await sendTask({ id: media.media_id, path: path.join(Bun.env.MAIN_PATH, media.thumb_path) }, childProc, reader);
-      console.log(`Generating Caption: ${count++}/${totalFile}`); //{ media_id: 7, caption: "a black dragon flying through the sky" }
+      console.log(`Generating Caption: ${++count}/${totalFile}`); //{ media_id: 7, caption: "a black dragon flying through the sky" }
       await updateMediaCaption(result.media_id, result.caption);
     }
   } catch (error) {
