@@ -15,6 +15,7 @@ import album from './routes/album';
 import admin from './routes/admin';
 import upload from './routes/upload';
 import search from './routes/search';
+import media from './routes/media';
 import medias from './routes/medias';
 import photoView from './routes/stream';
 ///////////////////////////////////////////////////
@@ -55,7 +56,7 @@ app
   // .use(logUserInDB)
   .route('/test', test)
   .route('/auth', auth)
-  .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
+  // .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
 
   .route('/search', search)
   .route('/admin', admin)
@@ -63,13 +64,14 @@ app
   .route('/stream', photoView)
   .route('/user', user)
   .route('/medias', medias)
+  .route('/media', media)
   .route('/album', album);
 
 // Catch-all for protected API routes
 app.on(
   'GET',
   [`/${getDirName(Bun.env.THUMB_PATH)}/*`, `/${getDirName(Bun.env.PHOTO_PATH)}/*`, `/${getDirName(Bun.env.UPLOAD_PATH)}/*`],
-  isAuthenticate,
+  // isAuthenticate,
   serveStatic({ root: Bun.env.MAIN_PATH })
 );
 

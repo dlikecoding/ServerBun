@@ -8,10 +8,11 @@
     "db": "brew services start postgresql@17",
     "sdb": "brew services stop postgresql@17",
     "buildS": "bun build server/index.ts --outdir=../serverBunX --target=bun && cp -r ./models ../serverBunX",
-    "format": "bun prettier . --write"
+    "format": "bun prettier . --write",
+    "up": "bun upgrade && bun update"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.10",
+    "@types/bun": "^1.2.13",
     "prettier": "^3.5.3"
   },
   "peerDependencies": {
@@ -20,7 +21,7 @@
   "dependencies": {
     "@hono/zod-validator": "^0.4.3",
     "@simplewebauthn/server": "^13.1.1",
-    "hono": "^4.7.7",
-    "zod": "^3.24.3"
+    "hono": "^4.7.9",
+    "zod": "^3.24.4"
   }
 }
