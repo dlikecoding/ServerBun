@@ -60,7 +60,7 @@ const extractMetadata = async (sourcePaths: string[]): Promise<ImportMedia[]> =>
       -SourceFile -FileName -FileType -MIMEType \
       -Software -Title -FileSize# -Make -Model -LensModel -Orientation -CreateDate -DateCreated \
       -CreationDate -DateTimeOriginal -FileModifyDate -MediaCreateDate -MediaModifyDate -Duration# \
-      -GPSLatitude# -GPSLongitude# -ImageWidth -ImageHeight -Megapixels ${sourcePaths}`.quiet();
+      -GPSLatitude# -GPSLongitude# -ImageWidth -ImageHeight -Megapixels -VideoFrameRate ${sourcePaths}`.quiet();
 
   if (exitCode !== 0) {
     console.log('service/generator/metadata.ts', 'extractMetadata', stderr);

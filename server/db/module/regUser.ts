@@ -72,12 +72,6 @@ const countSuspendedUsers = async () => {
   return result.count_users;
 };
 
-const fetchAllUsers = async () => {
-  return await sql`
-    SELECT * FROM multi_schema."RegisteredUser" reg 
-    WHERE role_type = 'user'`;
-};
-
 const updateAccountStatus = async (userEmail: string) => {
   const [result] = await sql`
     UPDATE multi_schema."RegisteredUser" SET status = NOT status 
@@ -85,7 +79,7 @@ const updateAccountStatus = async (userEmail: string) => {
   return result;
 };
 
-export { createAdminOrUsers, findRegUser, userPassKeyByEmail, createPasskey, countSuspendedUsers, updateAccountStatus, fetchAllUsers };
+export { createAdminOrUsers, findRegUser, userPassKeyByEmail, createPasskey, countSuspendedUsers, updateAccountStatus };
 
 // const userPKsByEmail = async (user_email: string) => {
 //   const [rows] = await poolPromise.execute(Sql.PASSKEYS, [user_email]);

@@ -66,10 +66,10 @@ CREATE TABLE IF NOT EXISTS multi_schema."ErrorLog"
 CREATE TABLE IF NOT EXISTS multi_schema."Live"
 (
     media integer NOT NULL,
-    frame_count smallint,
     current_frame smallint,
-    duration smallint,
-    title character varying(45) COLLATE pg_catalog."default",
+    duration double precision,
+    frame_rate double precision,
+    title character varying(255),
     CONSTRAINT "Live_pkey" PRIMARY KEY (media)
 );
 
@@ -111,6 +111,9 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     caption text,
     caption_eng_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, caption)) STORED,
     caption_simple_tsv tsvector GENERATED ALWAYS AS (to_tsvector('multi_schema.simple_config'::regconfig, caption)) STORED,
+    image_width smallint,
+    image_height smallint,
+    megapixels double precision,
     CONSTRAINT "Media_pkey" PRIMARY KEY (media_id),
     CONSTRAINT unique_source_path UNIQUE (source_file)
 );
@@ -134,9 +137,6 @@ CREATE TABLE IF NOT EXISTS multi_schema."Photo"
 (
     media integer NOT NULL,
     orientation character varying(45) COLLATE pg_catalog."default",
-    image_width smallint,
-    image_height smallint,
-    megapixels double precision,
     CONSTRAINT "Photo_pkey" PRIMARY KEY (media)
 );
 
@@ -159,6 +159,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."ServerSystem"
     system_id uuid NOT NULL,
     process_medias boolean NOT NULL DEFAULT false,
     license_key character varying(512) COLLATE pg_catalog."default",
+    last_backup_time timestamp without time zone,
     CONSTRAINT "ServerSystem_pkey" PRIMARY KEY (system_id)
 );
 
@@ -184,8 +185,9 @@ CREATE TABLE IF NOT EXISTS multi_schema."UserLog"
 CREATE TABLE IF NOT EXISTS multi_schema."Video"
 (
     media integer NOT NULL,
-    duration double precision,
     title character varying(255) COLLATE pg_catalog."default",
+    duration double precision,
+    frame_rate double precision,
     CONSTRAINT "Video_pkey" PRIMARY KEY (media)
 );
 

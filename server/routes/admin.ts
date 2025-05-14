@@ -5,8 +5,8 @@ import { z } from 'zod';
 
 import { validateSchema } from '../modules/validateSchema';
 
-import { fetchAllUsers, updateAccountStatus } from '../db/module/regUser';
-import { insertErrorLog, processMediaStatus, updateProcessMediaStatus } from '../db/module/system';
+import { updateAccountStatus } from '../db/module/regUser';
+import { insertErrorLog, updateProcessMediaStatus } from '../db/module/system';
 import { getUserBySession, isAdmin } from '../middleware/validateAuth';
 
 import { markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
@@ -14,6 +14,7 @@ import { importExternalPath, streamingImportMedia } from './importHelper/_import
 import { processCaptioning } from '../service';
 import { backupToDB, restoreToDB } from '../db/main';
 import { isExist } from '../service/helper';
+import { sql } from '../db';
 
 const admin = new Hono();
 
@@ -41,22 +42,29 @@ const externalSchema = z.object({
 
 admin.get('/dashboard', isAdmin, async (c) => {
   try {
-    const allUsers = await fetchAllUsers();
-    const isMainImportExist = await processMediaStatus();
+    const dashboard = await sql`
+      SELECT process_medias, last_backup_time FROM multi_schema."ServerSystem" LIMIT 1;
+      SELECT * FROM multi_schema."RegisteredUser" reg WHERE role_type = 'user';
+    `.simple();
 
-    return c.json({ users: allUsers, sysStatus: isMainImportExist }, 200);
+    const [sysStatus, allUsers] = dashboard;
+    const isAlreadyBackup = await isExist(Bun.env.DB_BACKUP);
+    const lastBackupTime = sysStatus[0].last_backup_time && isAlreadyBackup ? sysStatus[0].last_backup_time : '';
+
+    return c.json({ users: allUsers, sysStatus: sysStatus[0].process_medias, lastBackup: lastBackupTime }, 200);
   } catch (error) {
+    console.log('admin.ts', 'dashboard');
     await insertErrorLog('admin.ts', 'dashboard', error);
-    return c.json({ error: 'Failed to fetch users' }, 500);
+    return c.json({ error: 'Failed to fetch dashboard admin' }, 500);
   }
 });
 
 admin.post('/internal', isAdmin, taskStatusMiddleware('importing'), validateSchema('json', internalSchema), async (c) => {
   return streamText(c, async (stream) => {
-    const userId = getUserBySession(c).userId;
-    const { aimode } = c.req.valid('json');
-
     try {
+      const userId = getUserBySession(c).userId;
+      const { aimode } = c.req.valid('json');
+
       markTaskStart('importing', userId);
       const importing = await streamingImportMedia(Bun.env.PHOTO_PATH, userId, stream);
       if (!importing) return;
@@ -84,9 +92,10 @@ admin.post('/internal', isAdmin, taskStatusMiddleware('importing'), validateSche
 
 admin.post('/external', isAdmin, taskStatusMiddleware('importing'), validateSchema('json', externalSchema), async (c) => {
   return streamText(c, async (stream) => {
-    const userId = getUserBySession(c).userId;
-    const { sourcePath, aimode } = c.req.valid('json');
     try {
+      const userId = getUserBySession(c).userId;
+      const { sourcePath, aimode } = c.req.valid('json');
+
       const processPath = await importExternalPath(sourcePath, stream);
       if (!processPath) return;
       markTaskStart('importing', userId);
@@ -118,7 +127,15 @@ admin.post('/external', isAdmin, taskStatusMiddleware('importing'), validateSche
 admin.get('/backup', isAdmin, async (c) => {
   try {
     const backupStatus = await backupToDB();
-    return c.json({ status: backupStatus }, 200);
+    if (!backupStatus) return c.json({ status: false }, 500);
+
+    await sql`
+      UPDATE multi_schema."ServerSystem" SET last_backup_time = NOW() 
+      WHERE system_id = (
+        SELECT system_id FROM multi_schema."ServerSystem" LIMIT 1)
+      RETURNING system_id`;
+
+    return c.json({ message: 'Update system successfully!' }, 200);
   } catch (err) {
     await insertErrorLog('admin.ts', 'backup', err);
     console.error(err);

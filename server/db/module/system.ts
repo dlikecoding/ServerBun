@@ -32,17 +32,6 @@ export const updateProcessMediaStatus = async (status: boolean = true) => {
   }
 };
 
-export const processMediaStatus = async () => {
-  try {
-    const [result] = await sql`
-      SELECT process_medias FROM multi_schema."ServerSystem" LIMIT 1`;
-    return result.process_medias;
-  } catch (error) {
-    console.log('processMediaStatus', error);
-    await insertErrorLog('system.ts', 'processMediaStatus', error);
-  }
-};
-
 export const insertErrorLog = async (fileName: string, funcName: string, errMegs: any) => {
   try {
     const error = { file_error: fileName, func_occur: funcName, stack_trace: errMegs };

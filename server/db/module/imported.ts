@@ -14,10 +14,13 @@ export interface ImportMedia {
 
   ImageWidth?: number;
   ImageHeight?: number;
+
+  VideoFrameRate?: number;
   Duration?: number;
+  Title: string | null;
 
   Software: string | null;
-  Title: string | null;
+
   Make: string | null;
   Model: string | null;
   LensModel: string | null;
@@ -59,7 +62,9 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
           cameraTypeId = isCameraExist.camera_id;
         } else {
           const [cameraInserted] = await tx`
-            INSERT INTO multi_schema."CameraType" (make, model) VALUES (${newMedia.Make}, ${newMedia.Model}) RETURNING camera_id`;
+            INSERT INTO multi_schema."CameraType" (make, model, lens_model) 
+            VALUES (${newMedia.Make}, ${newMedia.Model}, ${newMedia.LensModel}) 
+            RETURNING camera_id`;
           cameraTypeId = cameraInserted.camera_id;
         }
       }
@@ -78,6 +83,11 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
         source_file: sourceFilePath,
         mime_type: newMedia.MIMEType,
         thumb_path: createThumbPath(smallestDate),
+
+        image_width: newMedia.ImageWidth,
+        image_height: newMedia.ImageHeight,
+        megapixels: newMedia.Megapixels,
+
         video_duration: durationDisplay,
       };
 
@@ -95,9 +105,9 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
 
       if (mediaType === 'Photo') {
         await tx`
-          INSERT INTO multi_schema."Photo" (media, orientation, image_width, image_height, megapixels) VALUES ( ${lastMediaId}, ${newMedia.Orientation}, ${newMedia.ImageWidth}, ${newMedia.ImageHeight}, ${newMedia.Megapixels})`;
+          INSERT INTO multi_schema."Photo" (media, orientation) VALUES ( ${lastMediaId}, ${newMedia.Orientation})`;
       } else {
-        const insertVid = { media: lastMediaId, duration: newMedia.Duration, title: newMedia.Title };
+        const insertVid = { media: lastMediaId, title: newMedia.Title, frame_rate: rountInt(newMedia.VideoFrameRate), duration: newMedia.Duration };
         mediaType === 'Video'
           ? await tx`
           INSERT INTO multi_schema."Video" ${sql(insertVid)}`
@@ -160,4 +170,9 @@ const convertDuration = (inputSecond: number) => {
   const formattedSeconds = seconds < 10 ? `0${seconds}` : `${seconds}`;
 
   return `${formattedHours}${formattedMinutes}:${formattedSeconds}`;
+};
+
+const rountInt = (input: any) => {
+  if (!input) return 0;
+  return Math.round(parseInt(input));
 };

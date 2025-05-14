@@ -8,7 +8,6 @@ import { updateMediaCaption } from '../db/module/media';
 const media = new Hono();
 
 const specialChars = /[^a-zA-Z0-9.,!?;:"'$()%\- ]/;
-
 const captionSchema = z.object({
   mediaId: z.coerce.number().min(1),
   caption: z.coerce
@@ -40,7 +39,8 @@ media.get('/', validateSchema('query', infoSchema), async (c) => {
     const selectType = queryByType[filterType as keyof typeof queryByType];
     const [media] = await sql`
     SELECT filter_type.*,
-      md.file_type, md.file_name, md.create_date, md.file_size, md.upload_at, md.file_ext, md.software, md.mime_type, md.caption,
+      md.file_type, md.file_name, md.create_date, md.file_size, md.upload_at, md.file_ext, 
+      md.software, md.mime_type, md.caption, md.image_width, md.image_height, md.megapixels,
       ru.user_name, 
       cm.make, cm.model, cm.lens_model,
       lc.gps_latitude, lc.gps_longitude FROM (
@@ -55,6 +55,7 @@ media.get('/', validateSchema('query', infoSchema), async (c) => {
     return c.json(media);
   } catch (error) {
     await insertErrorLog('routes/media.ts', 'get/', error);
+    console.log('routes/media.ts', 'get/', error);
     return c.json({ error: 'Server error' }, 500);
   }
 });
