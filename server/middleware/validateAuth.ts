@@ -26,6 +26,7 @@ export const isAuthenticate = createMiddleware(async (c, next) => {
 
 export const isAdmin = createMiddleware(async (c, next) => {
   const adminInfo: UserType = getUserBySession(c);
-  if (adminInfo.roleType !== 'admin') return c.json({ error: 'Warning:  Unauthorized Access Attempt – Permission Denied' }, 403);
-  return await next();
+  if (adminInfo && adminInfo.roleType === 'admin') return await next();
+
+  return c.json({ error: 'Warning:  Unauthorized Access Attempt – Permission Denied' }, 403);
 });

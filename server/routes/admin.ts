@@ -11,7 +11,7 @@ import { getUserBySession, isAdmin } from '../middleware/validateAuth';
 
 import { markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
 import { importExternalPath, streamingImportMedia } from './importHelper/_imports';
-import { processCaptioning } from '../service';
+import { preprocessMedia, processCaptioning } from '../service';
 import { backupToDB, restoreToDB } from '../db/main';
 import { isExist } from '../service/helper';
 import { sql } from '../db';
@@ -42,18 +42,24 @@ const externalSchema = z.object({
 
 admin.get('/dashboard', isAdmin, async (c) => {
   try {
-    const dashboard = await sql`
-      SELECT process_medias, last_backup_time FROM multi_schema."ServerSystem" LIMIT 1;
-      SELECT * FROM multi_schema."RegisteredUser" reg WHERE role_type = 'user';
-    `.simple();
+    const sysStatus = sql`
+      SELECT process_medias, last_backup_time FROM multi_schema."ServerSystem" LIMIT 1`;
 
-    const [sysStatus, allUsers] = dashboard;
-    const isAlreadyBackup = await isExist(Bun.env.DB_BACKUP);
-    const lastBackupTime = sysStatus[0].last_backup_time && isAlreadyBackup ? sysStatus[0].last_backup_time : '';
+    const allUsers = sql`
+      SELECT user_name, user_email, status, reg_user_id FROM multi_schema."RegisteredUser" reg WHERE role_type = 'user'`;
 
-    return c.json({ users: allUsers, sysStatus: sysStatus[0].process_medias, lastBackup: lastBackupTime }, 200);
+    const countMissed = sql`
+      SELECT 
+        COUNT(media_id) FILTER (WHERE thumb_height IS NULL) AS thumbnail,
+        COUNT(media_id) FILTER (WHERE hash_code IS NULL OR hash_code = '') AS hashcode,
+        COUNT(media_id) FILTER (WHERE caption IS NULL OR caption = '') AS caption
+      FROM multi_schema."Media"`;
+
+    const [[sys], users, [count]] = await Promise.all([sysStatus, allUsers, countMissed]);
+
+    return c.json({ users: users, sysStatus: sys.process_medias, lastBackup: sys.last_backup_time, missedData: count }, 200);
   } catch (error) {
-    console.log('admin.ts', 'dashboard');
+    console.log('admin.ts', 'dashboard', error);
     await insertErrorLog('admin.ts', 'dashboard', error);
     return c.json({ error: 'Failed to fetch dashboard admin' }, 500);
   }
@@ -124,10 +130,36 @@ admin.post('/external', isAdmin, taskStatusMiddleware('importing'), validateSche
   });
 });
 
+admin.get('/reindex', isAdmin, taskStatusMiddleware('importing'), async (c) => {
+  return streamText(c, async (stream) => {
+    try {
+      const userId = getUserBySession(c).userId;
+      markTaskStart('importing', userId);
+
+      await preprocessMedia(stream);
+      await stream.writeln(`✅ Finished Importing Multimedia!`);
+      await stream.close();
+
+      return await processCaptioning();
+    } catch (error) {
+      console.log('admin.ts', 'admin.post/reindex', error);
+
+      await stream.writeln(`❌ 500 Internal Server Error`);
+      await insertErrorLog('admin.ts', 'admin.post/reindex', error);
+    } finally {
+      if (!stream.closed) await stream.close();
+      markTaskEnd('importing');
+    }
+  });
+});
+
 admin.get('/backup', isAdmin, async (c) => {
   try {
     const backupStatus = await backupToDB();
-    if (!backupStatus) return c.json({ status: false }, 500);
+    if (!backupStatus) return c.json({ error: 'Failed to backup data' }, 500);
+
+    const verifyBackup = await isExist(Bun.env.DB_BACKUP);
+    if (!verifyBackup) return c.json({ error: 'Backup data is not exist' }, 500);
 
     await sql`
       UPDATE multi_schema."ServerSystem" SET last_backup_time = NOW() 

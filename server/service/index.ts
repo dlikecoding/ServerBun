@@ -53,7 +53,7 @@ export const thumbAndHashGenerate = async (media: any) => {
 export const preprocessMedia = async (stream: StreamingApi) => {
   const loadedmedias = await importedMediasThumbHash();
   if (!loadedmedias.length) {
-    await stream.writeln('❌ No files found in the current directory. Please check if the directory contains media files.');
+    await stream.writeln('❌ No files found in the current directory.');
     return false;
   }
 
@@ -81,6 +81,7 @@ export const processCaptioning = async () => {
   // Create BLOCK call for not over load server while processing caption for medias
   try {
     const mediasForCaption = await importedMediasCaption();
+    if (!mediasForCaption.length) return;
 
     await createCaption(mediasForCaption);
 
