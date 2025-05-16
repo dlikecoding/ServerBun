@@ -87,22 +87,50 @@ export const deleteMedias = async (mediaIds: number[]) => {
         WHERE media_id IN ${sql(mediaIds)} 
         RETURNING media_id`;
 
-      deletePaths.forEach(async (each: any) => {
-        const thumbPath = path.join(Bun.env.MAIN_PATH, each.thumb_path);
-        const sourcePath = path.join(Bun.env.MAIN_PATH, each.source_file);
-
-        const { stderr, exitCode } = await $`rm ${thumbPath} ${sourcePath}`;
-        if (exitCode !== 0) console.warn(stderr); // Save result in error table
-      });
-
-      return result;
+      const countDelted = await deleteHelper(deletePaths);
+      return result.length === countDelted ? countDelted : 0;
     });
 
-    return mediaDeleted.length === mediaIds.length;
+    return mediaDeleted === mediaIds.length;
   } catch (error) {
     await insertErrorLog('db/module/media.ts', 'deleteMedias', error);
     console.error('deleteMedias', error);
   }
+};
+
+export const deleteAllInRecently = async () => {
+  try {
+    const mediaDeleted = await sql.begin(async (tx) => {
+      const deletePaths = await tx`
+        SELECT media_id, source_file, thumb_path FROM "multi_schema"."Media" 
+        WHERE deleted = TRUE`;
+
+      const result = await tx`
+        DELETE FROM "multi_schema"."Media" 
+        WHERE deleted = TRUE RETURNING media_id`;
+
+      const countDelted = await deleteHelper(deletePaths);
+      return result.length === countDelted;
+    });
+
+    return mediaDeleted;
+  } catch (error) {
+    await insertErrorLog('db/module/media.ts', 'deleteMedias', error);
+    console.error('deleteMedias', error);
+  }
+};
+
+const deleteHelper = async (deletePaths: { media_id: number; source_file: string; thumb_path: string }[]) => {
+  let count = 0;
+
+  for (const each of deletePaths) {
+    const thumbPath = path.join(Bun.env.MAIN_PATH, each.thumb_path);
+    const sourcePath = path.join(Bun.env.MAIN_PATH, each.source_file);
+
+    const { stderr, exitCode } = await $`rm ${thumbPath} ${sourcePath}`;
+    exitCode === 0 ? ++count : console.warn(stderr); // Save result in error table
+  }
+  return count;
 };
 
 /**--------------- ///// ALBUM SECTION ///// ---------------*/

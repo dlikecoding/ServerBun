@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 
 import { z } from 'zod'; // To create a schema to validate post req
-import { deleteMedias, fetchCameraType, groupMonthsByYear, updateMedias } from '../db/module/media';
+import { deleteAllInRecently, deleteMedias, fetchCameraType, groupMonthsByYear, updateMedias } from '../db/module/media';
 import { validateSchema } from '../modules/validateSchema';
 import { insertErrorLog } from '../db/module/system';
 
@@ -52,19 +52,34 @@ medias.put('/', validateSchema('json', updateSchema), async (c) => {
 medias.delete('/', validateSchema('json', deleteSchema), async (c) => {
   const { mediasToDel } = c.req.valid('json');
 
-  const result = await deleteMedias(mediasToDel);
-  if (result) return c.json('Success', 202);
+  try {
+    const result = await deleteMedias(mediasToDel);
+    if (result) return c.json('Success', 202);
+  } catch (error) {
+    await insertErrorLog('routes/medias.ts', 'delete/', error);
+    return c.json({ error: 'Failed to delete medias' }, 500);
+  }
+});
 
-  return c.json({ error: 'Failed to delete medias' }, 500);
+medias.get('/recently', async (c) => {
+  try {
+    const result = await deleteAllInRecently();
+    if (result) return c.json('Success', 202);
+  } catch (error) {
+    await insertErrorLog('routes/medias.ts', 'delete/recently', error);
+    return c.json({ error: 'Failed to delete all medias in Recently Delete' }, 500);
+  }
+});
+
+////////////////////////////////////////////
+medias.get('/merge-all', async (c) => {
+  try {
+    const result = '';
+    if (result) return c.json('Success', 202);
+  } catch (error) {
+    await insertErrorLog('routes/medias.ts', 'get/merge-all', error);
+    return c.json({ error: 'Failed to merge all medias' }, 500);
+  }
 });
 
 export default medias;
-
-// Make sure all of id is numbers
-// medias.get('/:id{[0-9]+}', (c) => {
-//   return c.json({ homepage: 'YOU ARE HOME' });
-// });
-
-// const yearSchema = z.object({
-//   year: z.coerce.number().min(0).max(9999).optional(),
-// });

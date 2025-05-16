@@ -56,7 +56,7 @@ app
   // .use(logUserInDB)
   .route('/test', test)
   .route('/auth', auth)
-  // .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
+  .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
 
   .route('/search', search)
   .route('/admin', admin)
@@ -71,7 +71,7 @@ app
 app.on(
   'GET',
   [`/${getDirName(Bun.env.THUMB_PATH)}/*`, `/${getDirName(Bun.env.PHOTO_PATH)}/*`, `/${getDirName(Bun.env.UPLOAD_PATH)}/*`],
-  // isAuthenticate,
+  isAuthenticate,
   serveStatic({ root: Bun.env.MAIN_PATH })
 );
 
