@@ -103,6 +103,25 @@ export const nameFolderByTime = (isShort: boolean = false): string => {
   return `${year}-${month}-${day}_${hour}-${minute}-${second}`;
 };
 
+export const diskCapacity = async (pathToCheck: string): Promise<{ total: number; used: number; free: number } | null> => {
+  try {
+    const { stdout } = await $`df ${pathToCheck}`.quiet();
+
+    const output = new TextDecoder().decode(stdout);
+    const lines = output.trim().split('\n');
+
+    const parts = lines[1].split(/\s+/);
+    const total = parseInt(parts[1]) * 512;
+    const used = parseInt(parts[2]) * 512;
+    const free = parseInt(parts[3]) * 512;
+
+    return { total, used, free };
+  } catch (error) {
+    await insertErrorLog('service/helper.ts', 'diskCapacity', error);
+    return null;
+  }
+};
+
 // const removeFilesUploadDir = async (dePath: string) => {
 //   try {
 //     if (!(await isExist(dePath))) return;
@@ -152,26 +171,3 @@ export const nameFolderByTime = (isShort: boolean = false): string => {
 //     // );
 //   }
 // };
-
-// const convertFileSize = (bytes: number): string => {
-//   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-//   if (bytes === 0) return '0 Byte';
-//   const i = Math.floor(Math.log(bytes) / Math.log(1024));
-
-//   return Math.round(100 * (bytes / Math.pow(1024, i))) / 100 + ' ' + sizes[i];
-// };
-
-// const diskCapacity = async (pathToCheck: string): Promise<any> => {
-//   try {
-//     const capacity = await fs.statfs(pathToCheck);
-//     return {
-//       total: capacity.bsize * capacity.blocks,
-//       used: (capacity!.blocks - capacity!.bfree) * capacity!.bsize,
-//       free: capacity!.bsize * capacity!.bfree,
-//     };
-//   } catch (error) {
-//     // return recordErrorInDB('diskCapacity', `Error: ${error}`);
-//   }
-// };
-
-// export { isDirEmpty, removeEmptyDirectories, convertFileSize, diskCapacity, isExist };

@@ -7,7 +7,7 @@ import { insertErrorLog } from './system';
 
 export const importedMediasThumbHash = async () => {
   return await sql`
-    SELECT media_id, source_file, thumb_path, file_type, file_name 
+    SELECT media_id, source_file, thumb_path, file_type 
     FROM multi_schema."Media" 
     WHERE thumb_height IS NULL OR hash_code IS NULL OR hash_code = ''
     ORDER BY media_id`;
@@ -171,12 +171,23 @@ export const fetchRemoveFromAlbum = async (mediaIds: number[], albumId: number) 
 };
 
 export const fetchMediaCount = async () => {
-  const mediaCount = sql`
+  const mediaCount = await sql`
     SELECT 
       SUM(CASE WHEN "favorite" = TRUE AND "hidden" = FALSE AND "deleted" = FALSE THEN 1 ELSE 0 END) AS "Favorite",
       SUM(CASE WHEN "hidden" = TRUE AND "deleted" = FALSE THEN 1 ELSE 0 END) AS "Hidden",
       ( SELECT COUNT("media") FROM "multi_schema"."Duplicate") AS "Duplicate",
       SUM(CASE WHEN "deleted" = TRUE THEN 1 ELSE 0 END) AS "Recently Deleted"
+    FROM "multi_schema"."Media"`;
+  return mediaCount;
+};
+
+export const sumSizeMediaType = async () => {
+  const [mediaCount] = await sql`
+    SELECT
+        COALESCE(SUM(file_size) FILTER (WHERE file_type = 'Photo'), 0)::BIGINT AS "photo",
+        COALESCE(SUM(file_size) FILTER (WHERE file_type = 'Live'), 0)::BIGINT AS "live",
+        COALESCE(SUM(file_size) FILTER (WHERE file_type = 'Video'), 0)::BIGINT AS "video",
+        SUM(file_size)::BIGINT AS "all"
     FROM "multi_schema"."Media"`;
   return mediaCount;
 };

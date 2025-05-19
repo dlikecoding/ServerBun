@@ -75,7 +75,7 @@ medias.get('/recently', async (c) => {
 medias.get('/merge-all', async (c) => {
   try {
     const result = '';
-    if (result) return c.json('Success', 202);
+    return c.json('Success', 202);
   } catch (error) {
     await insertErrorLog('routes/medias.ts', 'get/merge-all', error);
     return c.json({ error: 'Failed to merge all medias' }, 500);
