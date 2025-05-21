@@ -60,6 +60,12 @@ export const updateMediaCaption = async (mediaId: number, caption: string) => {
     WHERE media_id = ${mediaId}`;
 };
 
+export const updateSelectFrameLivePhoto = async (mediaId: number, framePos: string) => {
+  return await sql`
+    UPDATE multi_schema."Media" SET selected_frame = ${framePos} 
+    WHERE media_id = ${mediaId}`;
+};
+
 export const groupMonthsByYear = async () => {
   return await sql`
     WITH ranked_media AS (

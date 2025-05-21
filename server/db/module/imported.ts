@@ -55,18 +55,12 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
     await sql.begin(async (tx) => {
       let cameraTypeId: number | null = null;
       if (newMedia.Make && newMedia.Model) {
-        const [isCameraExist] = await tx`
-          SELECT camera_id FROM multi_schema."CameraType" 
-          WHERE make = ${newMedia.Make} AND model = ${newMedia.Model} LIMIT 1`;
-        if (isCameraExist) {
-          cameraTypeId = isCameraExist.camera_id;
-        } else {
-          const [cameraInserted] = await tx`
-            INSERT INTO multi_schema."CameraType" (make, model, lens_model) 
-            VALUES (${newMedia.Make}, ${newMedia.Model}, ${newMedia.LensModel}) 
+        const insertCamera = { make: newMedia.Make, model: newMedia.Model };
+        const [cameraInserted] = await tx`
+            INSERT INTO multi_schema."CameraType" ${sql(insertCamera)}
+            ON CONFLICT (model) DO UPDATE SET model = EXCLUDED.model
             RETURNING camera_id`;
-          cameraTypeId = cameraInserted.camera_id;
-        }
+        cameraTypeId = cameraInserted.camera_id;
       }
 
       const smallestDate = getSmallestDate(newMedia);
@@ -84,11 +78,18 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
         mime_type: newMedia.MIMEType,
         thumb_path: createThumbPath(smallestDate),
 
+        orientation: newMedia.Orientation,
         image_width: newMedia.ImageWidth,
         image_height: newMedia.ImageHeight,
         megapixels: newMedia.Megapixels,
 
+        lens_model: newMedia.LensModel,
+
+        duration: newMedia.Duration,
+        selected_frame: 0.1, // select current frame for live photo
         video_duration: durationDisplay,
+        title: newMedia.Title,
+        frame_rate: rountInt(newMedia.VideoFrameRate),
       };
 
       const [mediaId] = await tx`
@@ -102,18 +103,6 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
 
       await tx`
         INSERT INTO multi_schema."UploadBy" ("RegisteredUser", media) VALUES (${RegisteredUser}, ${lastMediaId})`;
-
-      if (mediaType === 'Photo') {
-        await tx`
-          INSERT INTO multi_schema."Photo" (media, orientation) VALUES ( ${lastMediaId}, ${newMedia.Orientation})`;
-      } else {
-        const insertVid = { media: lastMediaId, title: newMedia.Title, frame_rate: rountInt(newMedia.VideoFrameRate), duration: newMedia.Duration };
-        mediaType === 'Video'
-          ? await tx`
-          INSERT INTO multi_schema."Video" ${sql(insertVid)}`
-          : await tx`
-          INSERT INTO multi_schema."Live" ${sql(insertVid)}`;
-      }
 
       // Insert GPS Data
       if (newMedia.GPSLatitude && newMedia.GPSLongitude) {

@@ -52,8 +52,8 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
     const limitOffset = sql`LIMIT ${PAGE_SIZE} OFFSET ${pageNumber * PAGE_SIZE}`;
 
     const getMedias = sql`
-      SELECT media_id, thumb_path, source_file, create_month, create_year, video_duration,
-              mime_type, file_type, favorite, file_size, upload_at, create_date
+      SELECT media_id, thumb_path, source_file, create_month, create_year, video_duration, duration,
+              mime_type, file_type, favorite, file_size, upload_at, create_date, selected_frame
       FROM multi_schema."Media"
       WHERE 1=1 ${isYear} ${isDevice} ${isType}
       ${isFavorite} ${isHidden} ${isDeleted}`;

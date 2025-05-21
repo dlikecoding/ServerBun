@@ -1,7 +1,8 @@
 key.pem
 cert.pem
 
-/serverBunX
+backup_file.sql
+
 testAPI.ts
 .*
 

@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS multi_schema."CameraType"
     camera_id smallserial NOT NULL,
     make character varying(50) COLLATE pg_catalog."default",
     model character varying(100) COLLATE pg_catalog."default",
-    lens_model character varying(200) COLLATE pg_catalog."default",
-    CONSTRAINT "CameraType_pkey" PRIMARY KEY (camera_id)
+    CONSTRAINT "CameraType_pkey" PRIMARY KEY (camera_id),
+    CONSTRAINT unique_camera_model UNIQUE (model)
 );
 
 CREATE TABLE IF NOT EXISTS multi_schema."ErrorLog"
@@ -61,16 +61,6 @@ CREATE TABLE IF NOT EXISTS multi_schema."ErrorLog"
     server_system uuid,
     mark_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ErrorLog_pkey" PRIMARY KEY (error_log_id)
-);
-
-CREATE TABLE IF NOT EXISTS multi_schema."Live"
-(
-    media integer NOT NULL,
-    current_frame smallint,
-    duration double precision,
-    frame_rate double precision,
-    title character varying(255),
-    CONSTRAINT "Live_pkey" PRIMARY KEY (media)
 );
 
 CREATE TABLE IF NOT EXISTS multi_schema."Location"
@@ -114,6 +104,12 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     image_width smallint,
     image_height smallint,
     megapixels double precision,
+    lens_model character varying(200),
+    duration double precision,
+    selected_frame double precision,
+    orientation character varying(45),
+    title character varying(255),
+    frame_rate double precision,
     CONSTRAINT "Media_pkey" PRIMARY KEY (media_id),
     CONSTRAINT unique_source_path UNIQUE (source_file)
 );
@@ -131,13 +127,6 @@ CREATE TABLE IF NOT EXISTS multi_schema."Passkeys"
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     last_used timestamp without time zone,
     CONSTRAINT "Passkeys_pkey" PRIMARY KEY (cred_id, "RegisteredUser")
-);
-
-CREATE TABLE IF NOT EXISTS multi_schema."Photo"
-(
-    media integer NOT NULL,
-    orientation character varying(45) COLLATE pg_catalog."default",
-    CONSTRAINT "Photo_pkey" PRIMARY KEY (media)
 );
 
 CREATE TABLE IF NOT EXISTS multi_schema."RegisteredUser"
@@ -159,7 +148,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."ServerSystem"
     system_id uuid NOT NULL,
     process_medias boolean NOT NULL DEFAULT false,
     license_key character varying(512) COLLATE pg_catalog."default",
-    last_backup_time timestamp without time zone,
+    last_restore_time timestamp without time zone,
     CONSTRAINT "ServerSystem_pkey" PRIMARY KEY (system_id)
 );
 
@@ -180,15 +169,6 @@ CREATE TABLE IF NOT EXISTS multi_schema."UserLog"
     ip_address character varying(45) COLLATE pg_catalog."default" NOT NULL,
     logged_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "UserLog_pkey" PRIMARY KEY (user_log_id)
-);
-
-CREATE TABLE IF NOT EXISTS multi_schema."Video"
-(
-    media integer NOT NULL,
-    title character varying(255) COLLATE pg_catalog."default",
-    duration double precision,
-    frame_rate double precision,
-    CONSTRAINT "Video_pkey" PRIMARY KEY (media)
 );
 
 CREATE TABLE IF NOT EXISTS multi_schema."Duplicate"
@@ -229,15 +209,6 @@ ALTER TABLE IF EXISTS multi_schema."ErrorLog"
     ON DELETE NO ACTION;
 
 
-ALTER TABLE IF EXISTS multi_schema."Live"
-    ADD CONSTRAINT "Live_media_fkey" FOREIGN KEY (media)
-    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
-    ON UPDATE CASCADE
-    ON DELETE CASCADE;
-CREATE INDEX IF NOT EXISTS "Live_pkey"
-    ON multi_schema."Live"(media);
-
-
 ALTER TABLE IF EXISTS multi_schema."Location"
     ADD CONSTRAINT "Location_media_fkey" FOREIGN KEY (media)
     REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
@@ -259,15 +230,6 @@ ALTER TABLE IF EXISTS multi_schema."Passkeys"
     REFERENCES multi_schema."RegisteredUser" (reg_user_id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE;
-
-
-ALTER TABLE IF EXISTS multi_schema."Photo"
-    ADD CONSTRAINT "Photo_media_fkey" FOREIGN KEY (media)
-    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
-    ON UPDATE CASCADE
-    ON DELETE CASCADE;
-CREATE INDEX IF NOT EXISTS "Photo_pkey"
-    ON multi_schema."Photo"(media);
 
 
 ALTER TABLE IF EXISTS multi_schema."RegisteredUser"
@@ -297,15 +259,6 @@ ALTER TABLE IF EXISTS multi_schema."UserLog"
     REFERENCES multi_schema."RegisteredUser" (reg_user_id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
-
-
-ALTER TABLE IF EXISTS multi_schema."Video"
-    ADD CONSTRAINT "Video_media_fkey" FOREIGN KEY (media)
-    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
-    ON UPDATE CASCADE
-    ON DELETE CASCADE;
-CREATE INDEX IF NOT EXISTS "Video_pkey"
-    ON multi_schema."Video"(media);
 
 
 ALTER TABLE IF EXISTS multi_schema."Duplicate"

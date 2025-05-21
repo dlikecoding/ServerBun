@@ -15,6 +15,7 @@ import { preprocessMedia, processCaptioning } from '../service';
 import { backupToDB, restoreToDB } from '../db/main';
 import { isExist } from '../service/helper';
 import { sql } from '../db';
+import * as fs from 'fs/promises';
 
 const admin = new Hono();
 
@@ -43,7 +44,7 @@ const externalSchema = z.object({
 admin.get('/dashboard', isAdmin, async (c) => {
   try {
     const sysStatus = sql`
-      SELECT process_medias, last_backup_time FROM multi_schema."ServerSystem" LIMIT 1`;
+      SELECT process_medias, last_restore_time FROM multi_schema."ServerSystem" LIMIT 1`;
 
     const allUsers = sql`
       SELECT user_name, user_email, status, reg_user_id FROM multi_schema."RegisteredUser" reg WHERE role_type = 'user'`;
@@ -57,7 +58,9 @@ admin.get('/dashboard', isAdmin, async (c) => {
 
     const [[sys], users, [count]] = await Promise.all([sysStatus, allUsers, countMissed]);
 
-    return c.json({ users: users, sysStatus: sys.process_medias, lastBackup: sys.last_backup_time, missedData: count }, 200);
+    const stat = await fs.stat(Bun.env.DB_BACKUP);
+
+    return c.json({ users: users, sysStatus: sys.process_medias, lastBackup: stat.birthtime, lastRestore: sys.last_restore_time, missedData: count }, 200);
   } catch (error) {
     console.log('admin.ts', 'dashboard', error);
     await insertErrorLog('admin.ts', 'dashboard', error);
@@ -161,13 +164,7 @@ admin.get('/backup', isAdmin, async (c) => {
     const verifyBackup = await isExist(Bun.env.DB_BACKUP);
     if (!verifyBackup) return c.json({ error: 'Backup data is not exist' }, 500);
 
-    await sql`
-      UPDATE multi_schema."ServerSystem" SET last_backup_time = NOW() 
-      WHERE system_id = (
-        SELECT system_id FROM multi_schema."ServerSystem" LIMIT 1)
-      RETURNING system_id`;
-
-    return c.json({ message: 'Update system successfully!' }, 200);
+    return c.json({ message: 'Backup data successfully!' }, 200);
   } catch (err) {
     await insertErrorLog('admin.ts', 'backup', err);
     console.error(err);
@@ -181,7 +178,14 @@ admin.get('/restore', isAdmin, async (c) => {
     if (!(await isExist(Bun.env.DB_BACKUP))) return c.json({ error: 'Backup before restore file' }, 200);
 
     const restoreStatus = await restoreToDB();
-    return c.json({ status: restoreStatus }, 200);
+    if (!restoreStatus) return c.json({ error: 'Failed to restore data' }, 500);
+
+    await sql`
+      UPDATE multi_schema."ServerSystem" SET last_restore_time = NOW() 
+      WHERE system_id = (
+        SELECT system_id FROM multi_schema."ServerSystem" LIMIT 1)`;
+
+    return c.json({ message: 'Restore data successfully!' }, 200);
   } catch (err) {
     await insertErrorLog('admin.ts', 'restore', err);
     console.error(err);
@@ -197,6 +201,27 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
     if (!updatedUser) return c.json({ error: 'Failed to update user status' }, 500);
 
     deleteOldUserSession(userEmail);
+
+    return c.json('Success!', 200);
+  } catch (err) {
+    await insertErrorLog('admin.ts', 'changeStatus', err);
+    console.error(err);
+    return c.json({ error: 'Failed to fetch Account' }, 500);
+  }
+});
+
+admin.get('/cleanup', isAdmin, async (c) => {
+  try {
+    // Get all camera id does not relate to any photo
+    const cleanUpCameraType = sql`
+      DELETE FROM multi_schema."CameraType" AS cm 
+        WHERE cm.camera_id = (
+          SELECT cm.camera_id FROM "CameraType" AS cm 
+          LEFT JOIN "Media" AS md ON md.camera_type = cm.camera_id
+        WHERE media_id IS NULL)`;
+
+    // remove all empty StoreUpload directories
+    const [cleanCM] = await Promise.all([cleanUpCameraType]);
 
     return c.json('Success!', 200);
   } catch (err) {
