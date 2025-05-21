@@ -7,7 +7,7 @@ import { insertErrorLog } from './system';
 
 export const importedMediasThumbHash = async () => {
   return await sql`
-    SELECT media_id, source_file, thumb_path, file_type, selected_frame 
+    SELECT media_id, source_file, thumb_path, file_type, selected_frame, duration 
     FROM multi_schema."Media" 
     WHERE thumb_created = FALSE OR hash_code IS NULL
     ORDER BY media_id`;

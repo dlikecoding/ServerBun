@@ -85,6 +85,8 @@ const updateTrackingAndFileValidate = async (sourcePath: string, tracking: Impor
 };
 
 const validateFileExt = async (file: string): Promise<boolean> => {
+  if (file.startsWith('.')) return false;
+
   const fileExt = path.extname(file).toLowerCase();
   return ALLOWED_MIME_TYPES.includes(fileExt);
 };
