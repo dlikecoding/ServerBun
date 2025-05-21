@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { insertErrorLog } from '../../db/module/system';
 
 export const createHash = async (input: string): Promise<any> => {
   try {
@@ -12,5 +13,6 @@ export const createHash = async (input: string): Promise<any> => {
     return hasher.digest('hex');
   } catch (error) {
     console.error(`createHash ${input}: ${error}`);
+    await insertErrorLog('generators/hashcode.ts', 'createHash', `${error}`);
   }
 };

@@ -7,9 +7,9 @@ import { insertErrorLog } from './system';
 
 export const importedMediasThumbHash = async () => {
   return await sql`
-    SELECT media_id, source_file, thumb_path, file_type 
+    SELECT media_id, source_file, thumb_path, file_type, selected_frame 
     FROM multi_schema."Media" 
-    WHERE thumb_height IS NULL OR hash_code IS NULL OR hash_code = ''
+    WHERE thumb_created = FALSE OR hash_code IS NULL
     ORDER BY media_id`;
 };
 
@@ -19,7 +19,7 @@ export const importedMediasCaption = async () => {
     WHERE caption IS NULL OR caption = '' ORDER BY media_id`;
 };
 
-export const updateHashThumb = async (media_id: number, hashCode: string, thumbWidth: string, thumbHeight: string) => {
+export const updateHashThumb = async (media_id: number, hashCode: string) => {
   return await sql.begin(async (tx) => {
     const [dupMedia] = await tx`
       SELECT media_id, hash_code 
@@ -36,7 +36,7 @@ export const updateHashThumb = async (media_id: number, hashCode: string, thumbW
           ON CONFLICT DO NOTHING`;
     }
     return await tx`
-      UPDATE multi_schema."Media" SET hash_code = ${hashCode}, thumb_width = ${thumbWidth}, thumb_height = ${thumbHeight} 
+      UPDATE multi_schema."Media" SET hash_code = ${hashCode}, thumb_created = TRUE 
       WHERE media_id = ${media_id}`;
   });
 };

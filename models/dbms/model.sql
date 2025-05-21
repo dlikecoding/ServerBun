@@ -13,6 +13,7 @@ ALTER TEXT SEARCH CONFIGURATION multi_schema.simple_config
 ALTER TEXT SEARCH CONFIGURATION multi_schema.simple_config
     DROP MAPPING FOR email, file, float, host, url, url_path, sfloat;
 
+-- =============================================================================
 
 -- ENUM definitions
 CREATE TYPE role_type_enum AS ENUM ('user', 'admin');
@@ -47,7 +48,7 @@ CREATE TABLE IF NOT EXISTS multi_schema."CameraType"
 (
     camera_id smallserial NOT NULL,
     make character varying(50) COLLATE pg_catalog."default",
-    model character varying(100) COLLATE pg_catalog."default",
+    model character varying(200) COLLATE pg_catalog."default",
     CONSTRAINT "CameraType_pkey" PRIMARY KEY (camera_id),
     CONSTRAINT unique_camera_model UNIQUE (model)
 );
@@ -55,9 +56,9 @@ CREATE TABLE IF NOT EXISTS multi_schema."CameraType"
 CREATE TABLE IF NOT EXISTS multi_schema."ErrorLog"
 (
     error_log_id serial NOT NULL,
-    file_error character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    file_error character varying(100) COLLATE pg_catalog."default" NOT NULL,
     stack_trace text COLLATE pg_catalog."default",
-    func_occur character varying(100),
+    func_occur character varying(150),
     server_system uuid,
     mark_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ErrorLog_pkey" PRIMARY KEY (error_log_id)
@@ -90,23 +91,22 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     deletion_date timestamp without time zone,
     upload_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     camera_type smallint,
-    file_ext character varying(15),
+    file_ext character varying(20),
     software character varying(256) COLLATE pg_catalog."default",
     source_file text COLLATE pg_catalog."default" NOT NULL,
-    mime_type character varying(15) COLLATE pg_catalog."default",
+    mime_type character varying(20) COLLATE pg_catalog."default",
     thumb_path text COLLATE pg_catalog."default",
-    thumb_width smallint,
-    thumb_height smallint,
-    video_duration character varying(15),
+    thumb_created boolean DEFAULT FALSE,
+    image_width smallint,
+    image_height smallint,
     caption text,
     caption_eng_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, caption)) STORED,
     caption_simple_tsv tsvector GENERATED ALWAYS AS (to_tsvector('multi_schema.simple_config'::regconfig, caption)) STORED,
-    image_width smallint,
-    image_height smallint,
     megapixels double precision,
-    lens_model character varying(200),
+    lens_model character varying(255),
     duration double precision,
-    selected_frame double precision,
+    video_duration character varying(20),
+    selected_frame double precision DEFAULT 0.1,
     orientation character varying(45),
     title character varying(255),
     frame_rate double precision,

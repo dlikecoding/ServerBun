@@ -40,10 +40,13 @@ export const thumbAndHashGenerate = async (media: any) => {
     const output = path.join(Bun.env.MAIN_PATH, media.thumb_path);
 
     await createFolder(output);
-    const { w, h } = await createThumbnail(input, output, media.file_type === 'Photo');
-    const hash = await createHash(output);
+    const existCode = await createThumbnail(input, output, media.file_type, media.selected_frame);
+    if (!existCode) return;
 
-    if (w && h) await updateHashThumb(media.media_id, hash, w, h);
+    const hash = await createHash(output);
+    if (!hash) return;
+
+    await updateHashThumb(media.media_id, hash);
   } catch (error) {
     console.error(`thumbAndHashGenerate - Source: ${media.source_file}: ${error}`);
     await insertErrorLog('service/index.ts', 'thumbAndHashGenerate', `error - ${media.source_file}`);

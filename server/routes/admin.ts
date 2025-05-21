@@ -51,16 +51,19 @@ admin.get('/dashboard', isAdmin, async (c) => {
 
     const countMissed = sql`
       SELECT 
-        COUNT(media_id) FILTER (WHERE thumb_height IS NULL) AS thumbnail,
-        COUNT(media_id) FILTER (WHERE hash_code IS NULL OR hash_code = '') AS hashcode,
+        COUNT(media_id) FILTER (WHERE thumb_created = FALSE) AS thumbnail,
+        COUNT(media_id) FILTER (WHERE hash_code IS NULL) AS hashcode,
         COUNT(media_id) FILTER (WHERE caption IS NULL OR caption = '') AS caption
       FROM multi_schema."Media"`;
 
     const [[sys], users, [count]] = await Promise.all([sysStatus, allUsers, countMissed]);
 
-    const stat = await fs.stat(Bun.env.DB_BACKUP);
+    let lastbackupTime = 'N/A';
 
-    return c.json({ users: users, sysStatus: sys.process_medias, lastBackup: stat.birthtime, lastRestore: sys.last_restore_time, missedData: count }, 200);
+    const stat = (await isExist(Bun.env.DB_BACKUP)) ? await fs.stat(Bun.env.DB_BACKUP) : '';
+    if (stat && stat.mtime) lastbackupTime = stat.mtime.toLocaleString();
+
+    return c.json({ users: users, sysStatus: sys.process_medias, lastBackup: lastbackupTime, lastRestore: sys.last_restore_time, missedData: count }, 200);
   } catch (error) {
     console.log('admin.ts', 'dashboard', error);
     await insertErrorLog('admin.ts', 'dashboard', error);
@@ -158,6 +161,10 @@ admin.get('/reindex', isAdmin, taskStatusMiddleware('importing'), async (c) => {
 
 admin.get('/backup', isAdmin, async (c) => {
   try {
+    await cleanUpCameraType();
+    // remove all empty StoreUpload directories
+    // TODO ------------------------------------
+
     const backupStatus = await backupToDB();
     if (!backupStatus) return c.json({ error: 'Failed to backup data' }, 500);
 
@@ -210,25 +217,14 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
   }
 });
 
-admin.get('/cleanup', isAdmin, async (c) => {
-  try {
-    // Get all camera id does not relate to any photo
-    const cleanUpCameraType = sql`
-      DELETE FROM multi_schema."CameraType" AS cm 
-        WHERE cm.camera_id = (
-          SELECT cm.camera_id FROM "CameraType" AS cm 
-          LEFT JOIN "Media" AS md ON md.camera_type = cm.camera_id
-        WHERE media_id IS NULL)`;
-
-    // remove all empty StoreUpload directories
-    const [cleanCM] = await Promise.all([cleanUpCameraType]);
-
-    return c.json('Success!', 200);
-  } catch (err) {
-    await insertErrorLog('admin.ts', 'changeStatus', err);
-    console.error(err);
-    return c.json({ error: 'Failed to fetch Account' }, 500);
-  }
-});
-
 export default admin;
+
+const cleanUpCameraType = async () => {
+  return await sql`
+    DELETE FROM multi_schema."CameraType" AS cm 
+    WHERE cm.camera_id = (
+        SELECT cm.camera_id FROM multi_schema."CameraType" AS cm 
+        LEFT JOIN multi_schema."Media" AS md ON md.camera_type = cm.camera_id
+        WHERE media_id IS NULL
+    )`;
+};

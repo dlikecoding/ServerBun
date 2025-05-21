@@ -21,8 +21,8 @@ export interface ImportMedia {
 
   Software: string | null;
 
-  Make: string | null;
-  Model: string | null;
+  Make?: string;
+  Model?: string;
   LensModel: string | null;
   Orientation: string | null;
   Megapixels: number | null;
@@ -43,26 +43,15 @@ export interface ImportMedia {
  * Inserts a new media item into the system.
  * @param newMedia - The media object to be inserted, including metadata and a file reference.
  * @param RegisteredUser - The user performing the upload or import.
- * @returns Promise<boolean> -
- * - `success`: The media was successfully processed; continue with the next item.
- * - `failed`: A critical error occurred; stop further processing.
  */
 export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUser: UUID) => {
   try {
     const sourceFilePath = reducePath(newMedia.SourceFile);
     const mediaType = fileType(newMedia.MIMEType, newMedia.Duration); // Determine media type
 
-    await sql.begin(async (tx) => {
-      let cameraTypeId: number | null = null;
-      if (newMedia.Make && newMedia.Model) {
-        const insertCamera = { make: newMedia.Make, model: newMedia.Model };
-        const [cameraInserted] = await tx`
-            INSERT INTO multi_schema."CameraType" ${sql(insertCamera)}
-            ON CONFLICT (model) DO UPDATE SET model = EXCLUDED.model
-            RETURNING camera_id`;
-        cameraTypeId = cameraInserted.camera_id;
-      }
+    const cameraId = await insertCameraToDb(newMedia.Make, newMedia.Model);
 
+    await sql.begin(async (tx) => {
       const smallestDate = getSmallestDate(newMedia);
       const durationDisplay = convertDuration(newMedia.Duration!);
 
@@ -72,7 +61,7 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
         file_ext: newMedia.FileType,
         software: newMedia.Software,
         file_size: newMedia.FileSize,
-        camera_type: cameraTypeId,
+        camera_type: cameraId,
         create_date: smallestDate,
         source_file: sourceFilePath,
         mime_type: newMedia.MIMEType,
@@ -86,7 +75,6 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
         lens_model: newMedia.LensModel,
 
         duration: newMedia.Duration,
-        selected_frame: 0.1, // select current frame for live photo
         video_duration: durationDisplay,
         title: newMedia.Title,
         frame_rate: rountInt(newMedia.VideoFrameRate),
@@ -94,7 +82,7 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
 
       const [mediaId] = await tx`
         INSERT INTO multi_schema."Media" ${sql(mediaToInsert)} 
-        ON CONFLICT DO NOTHING 
+        ON CONFLICT (source_file) DO NOTHING 
         RETURNING media_id`;
 
       if (!mediaId) return console.log('File had imported in the system');
@@ -115,6 +103,36 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
     console.log('insertImportedToMedia', error);
     await insertErrorLog('db/module/imported.ts', 'insertImportedToMedia', error);
   }
+};
+
+const insertCameraToDb = async (make?: string, model?: string): Promise<number | null> => {
+  if (!make || !model) return null;
+
+  const camId = await sql.begin(async (tx) => {
+    const [getCamera] = await tx`
+          SELECT camera_id FROM multi_schema."CameraType" 
+          WHERE model = ${model}`;
+    if (getCamera) return getCamera.camera_id;
+
+    const insertCamera = { make: make, model: model };
+    const [idInserted] = await tx`
+          INSERT INTO "multi_schema"."CameraType" ${sql(insertCamera)} 
+          ON CONFLICT DO NOTHING
+          RETURNING camera_id`;
+
+    if (idInserted) return idInserted.camera_id;
+  });
+  if (camId) return camId;
+
+  // In case race condion exist, check again to get camera id.
+  const [getCameraId] = await sql`
+          SELECT camera_id FROM multi_schema."CameraType"
+          WHERE model = ${model}`;
+
+  if (getCameraId) return getCameraId.camera_id;
+
+  console.log('Race condition failed to add camera type', model, make);
+  return null;
 };
 
 const reducePath = (absolutePath: string): string => (absolutePath.startsWith(Bun.env.MAIN_PATH) ? absolutePath.slice(Bun.env.MAIN_PATH.length) : '');
