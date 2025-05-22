@@ -4,6 +4,7 @@ import { $ } from 'bun';
 
 import { sql } from '..';
 import { insertErrorLog } from './system';
+import type { UpdateCaption } from '../../service/generators/caption';
 
 export const importedMediasThumbHash = async () => {
   return await sql`
@@ -54,10 +55,10 @@ export const updateMedias = async (mediaIds: number[], updateKey: string, update
   return result.count === mediaIds.length;
 };
 
-export const updateMediaCaption = async (mediaId: number, caption: string) => {
+export const updateMediaCaption = async (media: UpdateCaption) => {
   return await sql`
-    UPDATE multi_schema."Media" SET caption = ${caption} 
-    WHERE media_id = ${mediaId}`;
+    UPDATE multi_schema."Media" SET caption = ${media.caption} 
+    WHERE media_id = ${media.media_id}`;
 };
 
 export const updateSelectFrameLivePhoto = async (mediaId: number, framePos: string) => {

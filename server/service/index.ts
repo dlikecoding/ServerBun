@@ -12,9 +12,10 @@ import { importedMediasCaption, importedMediasThumbHash, updateHashThumb } from 
 import { insertErrorLog } from '../db/module/system';
 import { insertMetadataToDB, recursiveDir, type ImportTrack } from './generators/metadata';
 
-// ======================= Exif metadata ===============================
+// ======================= Exiftool metadata ===============================
 
 export const BATCH_SIZE_INSERT = 500;
+
 export const processMetadataExif = async (sourcePath: string, RegisteredUser: UUID, stream: StreamingApi): Promise<number> => {
   try {
     const tracking: ImportTrack = { count: 0, sourcePaths: [] };

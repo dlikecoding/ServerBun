@@ -28,7 +28,7 @@ export const recursiveDir = async (dePath: string, tracking: ImportTrack, Regist
       } else {
         await updateTrackingAndFileValidate(sourcePath, tracking);
 
-        if (tracking.sourcePaths.length === BATCH_SIZE_INSERT) {
+        if (tracking.sourcePaths.length >= BATCH_SIZE_INSERT) {
           await insertMetadataToDB(tracking, RegisteredUser);
           await stream.writeln(`𒁋 Extracted Metadata of ${tracking.count} files...`);
         }
@@ -44,7 +44,7 @@ export const insertMetadataToDB = async (tracking: ImportTrack, RegisteredUser: 
   try {
     // insert To Database source files
     const metadatas = await extractMetadata(tracking.sourcePaths);
-    const tasks = metadatas.map((media: any) => () => insertImportedToMedia(media, RegisteredUser));
+    const tasks = metadatas.map((media: ImportMedia) => () => insertImportedToMedia(media, RegisteredUser));
     await workerQueue(tasks);
 
     // on success, clear tracking.sourcePaths

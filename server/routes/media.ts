@@ -51,7 +51,7 @@ media.put('/caption', validateSchema('json', captionSchema), async (c) => {
   try {
     const { mediaId, caption } = c.req.valid('json');
 
-    await updateMediaCaption(mediaId, caption);
+    await updateMediaCaption({ media_id: mediaId, caption });
 
     return c.json('Success', 202);
   } catch (error) {

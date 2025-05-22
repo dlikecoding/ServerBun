@@ -1,5 +1,13 @@
 import path from 'path';
 import { updateMediaCaption } from '../../db/module/media';
+import { workerQueue } from '../workers';
+
+const BATCH_SIZE_UPDATE_CAPTION = 200;
+
+export type UpdateCaption = {
+  media_id: number;
+  caption: string;
+};
 
 /**
  * Sends a single task obj to the child process via stdin,
@@ -58,18 +66,32 @@ export const createCaption = async (medias: any[]): Promise<any> => {
     stdin: 'pipe',
   });
 
+  const captions: UpdateCaption[] = [];
+
   try {
     console.log(childProc.pid);
     const reader = childProc.stdout.getReader();
 
     for (const media of medias) {
-      const result = await sendTask({ id: media.media_id, path: path.join(Bun.env.MAIN_PATH, media.thumb_path) }, childProc, reader);
+      const resData: UpdateCaption = await sendTask({ id: media.media_id, path: path.join(Bun.env.MAIN_PATH, media.thumb_path) }, childProc, reader);
       console.log(`Generating Caption: ${++count}/${totalFile}`); //{ media_id: 7, caption: "a black dragon flying through the sky" }
-      await updateMediaCaption(result.media_id, result.caption);
+
+      if (captions.length >= BATCH_SIZE_UPDATE_CAPTION) {
+        await workerUpdateCaption(captions);
+        captions.length = 0;
+      }
+      captions.push(resData);
     }
+
+    if (captions.length >= 0) await workerUpdateCaption(captions);
   } catch (error) {
     console.log(error);
   } finally {
     childProc.kill(); // Done — terminate the child process
   }
+};
+
+const workerUpdateCaption = async (captions: UpdateCaption[]) => {
+  const tasks = captions.map((media: UpdateCaption) => () => updateMediaCaption(media));
+  await workerQueue(tasks);
 };
