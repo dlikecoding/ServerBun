@@ -217,6 +217,30 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
   }
 });
 
+admin.get('/restore', isAdmin, async (c) => {
+  try {
+    /** 
+     * SELECT media_id, source_file FROM "Media" AS md WHERE camera_type IS NULL;
+      -- For each media id, run exiftool and do cameraty update
+     */
+
+    const getMediaWithoutCameraType = await sql`
+      SELECT media_id, source_file FROM "Media" AS md 
+      WHERE camera_type IS NULL
+    `;
+
+    for (const eachMedia of getMediaWithoutCameraType) {
+      console.log(eachMedia);
+    }
+
+    return c.json({ message: 'Restore data successfully!' }, 200);
+  } catch (err) {
+    await insertErrorLog('admin.ts', 'restore', err);
+    console.error(err);
+    return c.json({ error: 'Failed to restore data' }, 500);
+  }
+});
+
 export default admin;
 
 const cleanUpCameraType = async () => {

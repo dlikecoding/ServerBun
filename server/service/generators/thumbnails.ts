@@ -9,9 +9,10 @@ const QUALITY = 80;
 //   return { w, h };
 // };
 
-export const createThumbnail = async (input: string, output: string, fileType: 'Photo' | 'Video' | 'Live', vidDuration: number): Promise<any> => {
+export const createThumbnail = async (input: string, output: string, media: any): Promise<any> => {
   try {
-    const duration = fileType === 'Video' ? 0.5 : vidDuration;
+    const fileType = media.file_type;
+    const duration = fileType === 'Video' ? 0.5 : Math.min(media.selected_frame, media.duration);
 
     const command =
       fileType === 'Photo'

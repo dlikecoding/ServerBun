@@ -40,7 +40,7 @@ export const thumbAndHashGenerate = async (media: any) => {
     const output = path.join(Bun.env.MAIN_PATH, media.thumb_path);
 
     await createFolder(output);
-    const existCode = await createThumbnail(input, output, media.file_type, Math.min(media.selected_frame, media.duration));
+    const existCode = await createThumbnail(input, output, media);
     if (!existCode) return;
 
     const hash = await createHash(output);

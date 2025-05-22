@@ -105,8 +105,9 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
   }
 };
 
-const insertCameraToDb = async (make?: string, model?: string): Promise<number | null> => {
-  if (!make || !model) return null;
+// temporary////////////////////////////////
+export const insertCameraToDb = async (make?: string, model?: string): Promise<number | null> => {
+  if (!model) return null;
 
   const camId = await sql.begin(async (tx) => {
     const [getCamera] = await tx`
@@ -114,7 +115,7 @@ const insertCameraToDb = async (make?: string, model?: string): Promise<number |
           WHERE model = ${model}`;
     if (getCamera) return getCamera.camera_id;
 
-    const insertCamera = { make: make, model: model };
+    const insertCamera = { make: make ?? null, model: model };
     const [idInserted] = await tx`
           INSERT INTO "multi_schema"."CameraType" ${sql(insertCamera)} 
           ON CONFLICT DO NOTHING
