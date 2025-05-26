@@ -6,6 +6,10 @@ backup_file.sql
 testAPI.ts
 .*
 
+save_processed
+blip_full_model.pth.nosync
+
+
 # Logs
 logs
 *.log

@@ -57,7 +57,7 @@ export const thumbAndHashGenerate = async (media: any) => {
 export const preprocessMedia = async (stream: StreamingApi) => {
   const loadedmedias = await importedMediasThumbHash();
   if (!loadedmedias.length) {
-    await stream.writeln('❌ No files found in the current directory.');
+    // await stream.writeln('❌ No files found in the current directory.');
     return false;
   }
 

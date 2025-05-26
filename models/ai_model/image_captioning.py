@@ -1,13 +1,13 @@
-import sys, json
+import sys, json, torch, os
 from PIL import Image
-from transformers import BlipProcessor, BlipForConditionalGeneration
+from transformers import BlipProcessor
 
-processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base", use_fast=True)
-model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+model_path = os.environ.get("IMAGE_CAPTIONING_PATH")
+processor_path = os.environ.get("CONFIG_PATH")
 
-
-print("Child ready.")
-sys.stdout.flush()
+processor = BlipProcessor.from_pretrained(processor_path, use_fast=True)
+model = torch.load(model_path, map_location='cpu', weights_only=False)
+model.eval()
 
 try:
     for line in sys.stdin:
