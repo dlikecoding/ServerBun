@@ -173,7 +173,7 @@ admin.get('/backup', async (c) => {
 
     return c.json({ message: 'Backup data successfully!' }, 200);
   } catch (err) {
-    await insertErrorLog('admin.ts', 'backup', err);
+    await insertErrorLog('admin.ts', 'get/backup', err);
     console.error(err);
     return c.json({ error: 'Failed to backup data' }, 500);
   }
@@ -194,7 +194,7 @@ admin.get('/restore', async (c) => {
 
     return c.json({ message: 'Restore data successfully!' }, 200);
   } catch (err) {
-    await insertErrorLog('admin.ts', 'restore', err);
+    await insertErrorLog('admin.ts', 'get/restore', err);
     console.error(err);
     return c.json({ error: 'Failed to restore data' }, 500);
   }
@@ -211,7 +211,7 @@ admin.put('/changeStatus', validateSchema('json', userAuthSchema), async (c) => 
 
     return c.json('Success!', 200);
   } catch (err) {
-    await insertErrorLog('admin.ts', 'changeStatus', err);
+    await insertErrorLog('admin.ts', 'put/changeStatus', err);
     console.error(err);
     return c.json({ error: 'Failed to fetch Account' }, 500);
   }
@@ -219,33 +219,43 @@ admin.put('/changeStatus', validateSchema('json', userAuthSchema), async (c) => 
 
 admin.get('/all-logs', async (c) => {
   try {
-    const logs = await sql`SELECT * FROM multi_schema."ErrorLog" AS el`;
+    const sysLogs = sql`SELECT * FROM multi_schema."ErrorLog" ORDER BY mark_at DESC`;
+    const userLogs = sql`SELECT * FROM multi_schema."UserLog" ORDER BY logged_at DESC`;
 
-    return c.json(logs, 200);
+    const result = await Promise.all([sysLogs, userLogs]);
+
+    if (!result) return c.json({ error: 'Failed to get logs System or User' }, 500);
+
+    return c.json({ system: result[0], user: result[1] }, 200);
   } catch (err) {
+    await insertErrorLog('admin.ts', 'get/all-logs', err);
     console.error(err);
-    return c.json({ error: 'Failed to fetch Account' }, 500);
+    return c.json({ error: 'Failed to get logs System and User' }, 500);
   }
 });
 
 const logsSchema = z.object({
   ids: z.array(z.coerce.number().min(1)),
+  logType: z.enum(['system', 'user']),
 });
 
 admin.delete('/all-logs', validateSchema('json', logsSchema), async (c) => {
   try {
-    const { ids } = c.req.valid('json');
+    const { ids, logType } = c.req.valid('json');
 
-    const logIdsDeleted = await sql`
-      DELETE FROM multi_schema."ErrorLog"
-        WHERE error_log_id IN ${sql(ids)}
-        RETURNING error_log_id`;
+    const logIdsDeleted =
+      logType === 'system'
+        ? await sql`DELETE FROM multi_schema."ErrorLog"
+        WHERE error_log_id IN ${sql(ids)} RETURNING error_log_id`
+        : await sql`DELETE FROM multi_schema."UserLog"
+        WHERE user_log_id IN ${sql(ids)} RETURNING user_log_id`;
 
     if (ids.length === logIdsDeleted.length) return c.json(204);
     return c.json(500);
   } catch (err) {
+    await insertErrorLog('admin.ts', 'delete/all-logs', err);
     console.error(err);
-    return c.json({ error: 'Failed to fetch Account' }, 500);
+    return c.json({ error: 'Failed to delete logs System/Account' }, 500);
   }
 });
 

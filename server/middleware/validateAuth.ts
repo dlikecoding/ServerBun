@@ -3,17 +3,31 @@ import { getConnInfo } from 'hono/bun';
 import { getSignedCookie } from 'hono/cookie';
 import { createMiddleware } from 'hono/factory';
 import { SESSION_KEY, sessionStore, SET_USER_SESSION, type UserType } from '../routes/authHelper/_cookies';
+import { sql } from '../db';
 
 export const getUserBySession = (c: Context): UserType => {
   const sessionId = c.get(SET_USER_SESSION);
   return sessionStore.get(sessionId);
 };
 
-export const logUserInDB = createMiddleware(async (c, next) => {
-  const info = getConnInfo(c);
-  console.log(info);
-  return await next();
-});
+export const logUserInDB = (isLoggedIn: boolean = false) =>
+  createMiddleware(async (c, next) => {
+    try {
+      const info = getConnInfo(c);
+      const uAgent = c.req.header('user-agent');
+
+      let userLog = { user_agent: uAgent, ip_address: info.remote.address };
+
+      if (isLoggedIn) {
+        userLog = { ...userLog, ...{ last_logged_in: 'NOW()' } };
+      }
+
+      await sql`INSERT INTO "multi_schema"."UserLog" ${sql(userLog)}`;
+      return await next();
+    } catch (error) {
+      return c.json({ error: 'Middleware logUserInDB error' }, 500);
+    }
+  });
 
 export const isAuthenticate = createMiddleware(async (c, next) => {
   const sessionId = await getSignedCookie(c, Bun.env.SECRET_KEY, SESSION_KEY);

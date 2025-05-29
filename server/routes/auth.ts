@@ -11,7 +11,7 @@ const auth = new Hono();
 const WEBSITE_TITLE = 'Photos Gallery X';
 const LIMIT_NUMBER_REGISTER = 2; // Limit number of user can register for an account
 
-auth.get('/init-register', logUserInDB, validateSchema('query', userAuthSchema), async (c) => {
+auth.get('/init-register', logUserInDB(false), validateSchema('query', userAuthSchema), async (c) => {
   try {
     const result = await countSuspendedUsers();
     // if registered user waiting status is >= N, STOP allow new user register.
@@ -87,7 +87,7 @@ auth.post('/verify-register', async (c) => {
   }
 });
 
-auth.get('/init-auth', logUserInDB, validateSchema('query', userAuthSchema), async (c) => {
+auth.get('/init-auth', logUserInDB(true), validateSchema('query', userAuthSchema), async (c) => {
   try {
     const { email } = c.req.valid('query');
     if (!email) return c.json({ error: 'Email is required' }, 400);
