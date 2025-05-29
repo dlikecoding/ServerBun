@@ -7,7 +7,7 @@ import { validateSchema } from '../modules/validateSchema';
 
 import { updateAccountStatus } from '../db/module/regUser';
 import { insertErrorLog, updateProcessMediaStatus } from '../db/module/system';
-import { getUserBySession, isAdmin } from '../middleware/validateAuth';
+import { getUserBySession } from '../middleware/validateAuth';
 
 import { markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
 import { importExternalPath, streamingImportMedia } from './importHelper/_imports';
@@ -41,7 +41,7 @@ const externalSchema = z.object({
   sourcePath: sourcePathSchema,
 });
 
-admin.get('/dashboard', isAdmin, async (c) => {
+admin.get('/dashboard', async (c) => {
   try {
     const sysStatus = sql`
       SELECT process_medias, last_restore_time FROM multi_schema."ServerSystem" LIMIT 1`;
@@ -71,7 +71,7 @@ admin.get('/dashboard', isAdmin, async (c) => {
   }
 });
 
-admin.post('/internal', isAdmin, taskStatusMiddleware('importing'), validateSchema('json', internalSchema), async (c) => {
+admin.post('/internal', taskStatusMiddleware('importing'), validateSchema('json', internalSchema), async (c) => {
   return streamText(c, async (stream) => {
     try {
       const userId = getUserBySession(c).userId;
@@ -102,7 +102,7 @@ admin.post('/internal', isAdmin, taskStatusMiddleware('importing'), validateSche
   });
 });
 
-admin.post('/external', isAdmin, taskStatusMiddleware('importing'), validateSchema('json', externalSchema), async (c) => {
+admin.post('/external', taskStatusMiddleware('importing'), validateSchema('json', externalSchema), async (c) => {
   return streamText(c, async (stream) => {
     try {
       const userId = getUserBySession(c).userId;
@@ -136,7 +136,7 @@ admin.post('/external', isAdmin, taskStatusMiddleware('importing'), validateSche
   });
 });
 
-admin.get('/reindex', isAdmin, taskStatusMiddleware('importing'), async (c) => {
+admin.get('/reindex', taskStatusMiddleware('importing'), async (c) => {
   return streamText(c, async (stream) => {
     try {
       const userId = getUserBySession(c).userId;
@@ -159,7 +159,7 @@ admin.get('/reindex', isAdmin, taskStatusMiddleware('importing'), async (c) => {
   });
 });
 
-admin.get('/backup', isAdmin, async (c) => {
+admin.get('/backup', async (c) => {
   try {
     await cleanUpCameraType();
     // remove all empty StoreUpload directories
@@ -179,7 +179,7 @@ admin.get('/backup', isAdmin, async (c) => {
   }
 });
 
-admin.get('/restore', isAdmin, async (c) => {
+admin.get('/restore', async (c) => {
   try {
     // Restore to database if backup database exists
     if (!(await isExist(Bun.env.DB_BACKUP))) return c.json({ error: 'Backup before restore file' }, 200);
@@ -200,7 +200,7 @@ admin.get('/restore', isAdmin, async (c) => {
   }
 });
 
-admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), async (c) => {
+admin.put('/changeStatus', validateSchema('json', userAuthSchema), async (c) => {
   try {
     const { userEmail } = c.req.valid('json');
 
@@ -217,27 +217,35 @@ admin.put('/changeStatus', isAdmin, validateSchema('json', userAuthSchema), asyn
   }
 });
 
-admin.get('/restore', isAdmin, async (c) => {
+admin.get('/all-logs', async (c) => {
   try {
-    /** 
-     * SELECT media_id, source_file FROM "Media" AS md WHERE camera_type IS NULL;
-      -- For each media id, run exiftool and do cameraty update
-     */
+    const logs = await sql`SELECT * FROM multi_schema."ErrorLog" AS el`;
 
-    const getMediaWithoutCameraType = await sql`
-      SELECT media_id, source_file FROM "Media" AS md 
-      WHERE camera_type IS NULL
-    `;
-
-    for (const eachMedia of getMediaWithoutCameraType) {
-      console.log(eachMedia);
-    }
-
-    return c.json({ message: 'Restore data successfully!' }, 200);
+    return c.json(logs, 200);
   } catch (err) {
-    await insertErrorLog('admin.ts', 'restore', err);
     console.error(err);
-    return c.json({ error: 'Failed to restore data' }, 500);
+    return c.json({ error: 'Failed to fetch Account' }, 500);
+  }
+});
+
+const logsSchema = z.object({
+  ids: z.array(z.coerce.number().min(1)),
+});
+
+admin.delete('/all-logs', validateSchema('json', logsSchema), async (c) => {
+  try {
+    const { ids } = c.req.valid('json');
+
+    const logIdsDeleted = await sql`
+      DELETE FROM multi_schema."ErrorLog"
+        WHERE error_log_id IN ${sql(ids)}
+        RETURNING error_log_id`;
+
+    if (ids.length === logIdsDeleted.length) return c.json(204);
+    return c.json(500);
+  } catch (err) {
+    console.error(err);
+    return c.json({ error: 'Failed to fetch Account' }, 500);
   }
 });
 

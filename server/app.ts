@@ -6,7 +6,9 @@ import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 
 // ===============================
-import { isAuthenticate, logUserInDB } from './middleware/validateAuth';
+import { getDirName } from './service/helper';
+import { isNotDevMode } from './init_sys';
+import { isAdmin, isAuthenticate } from './middleware/validateAuth';
 
 import auth from './routes/auth';
 
@@ -18,9 +20,9 @@ import search from './routes/search';
 import media from './routes/media';
 import medias from './routes/medias';
 import photoView from './routes/stream';
+
 ///////////////////////////////////////////////////
-import test from './routes/testAPI';
-import { getDirName, isNotDevMode } from './init_sys';
+// import test from './routes/testAPI';
 /////////////////////////////////////////////
 
 const app = new Hono();
@@ -53,19 +55,21 @@ app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-hea
 
 app
   .basePath('api/v1')
-  // .use(logUserInDB)
-  .route('/test', test)
+
+  // .route('/test', test)
   .route('/auth', auth)
   .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
 
   .route('/search', search)
-  .route('/admin', admin)
   .route('/upload', upload)
   .route('/stream', photoView)
   .route('/user', user)
   .route('/medias', medias)
   .route('/media', media)
-  .route('/album', album);
+  .route('/album', album)
+
+  .use(isAdmin)
+  .route('/admin', admin);
 
 // Catch-all for protected API routes
 app.on(

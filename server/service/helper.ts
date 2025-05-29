@@ -122,6 +122,8 @@ export const diskCapacity = async (pathToCheck: string): Promise<{ total: number
   }
 };
 
+export const getDirName = (dirName: string) => dirName.split('/').at(-1);
+
 // const removeFilesUploadDir = async (dePath: string) => {
 //   try {
 //     if (!(await isExist(dePath))) return;

@@ -71,15 +71,15 @@ medias.get('/recently', async (c) => {
   }
 });
 
-////////////////////////////////////////////
-medias.get('/merge-all', async (c) => {
-  try {
-    const result = '';
-    return c.json('Success', 202);
-  } catch (error) {
-    await insertErrorLog('routes/medias.ts', 'get/merge-all', error);
-    return c.json({ error: 'Failed to merge all medias' }, 500);
-  }
-});
+// ////////////////////////////////////////////
+// medias.get('/merge-all', async (c) => {
+//   try {
+//     const result = '';
+//     return c.json('Success', 202);
+//   } catch (error) {
+//     await insertErrorLog('routes/medias.ts', 'get/merge-all', error);
+//     return c.json({ error: 'Failed to merge all medias' }, 500);
+//   }
+// });
 
 export default medias;

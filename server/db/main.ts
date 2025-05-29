@@ -5,9 +5,9 @@ import { insertErrorLog } from './module/system';
 export const createDBMS = async () => {
   try {
     // Create new databse
-    const { exitCode: tbExitCode } = await $`PGPASSWORD=$DB_PASS psql -U $DB_USER -d postgres -v name_db=$DB_NAME -v user_db=$DB_USER -f $DB_CREATE`;
+    const { exitCode } = await $`PGPASSWORD=$DB_PASS psql -U $DB_USER -d postgres -h $DB_HOST -v name_db=$DB_NAME -v user_db=$DB_USER -f $DB_CREATE`;
 
-    if (tbExitCode) return false;
+    if (exitCode !== 0) return false;
 
     await sql.file(Bun.env.DB_MODEL); // Create new schema & tables
     await sql.file(Bun.env.DB_VIEW);
@@ -16,7 +16,6 @@ export const createDBMS = async () => {
     return true;
   } catch (error) {
     console.log('createDBMS', error);
-    await insertErrorLog('db/main.ts', 'createDBMS', error);
     return false;
   }
 };

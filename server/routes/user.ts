@@ -12,8 +12,8 @@ user.get('/verified', async (c) => {
   const userInfo = getUserBySession(c);
 
   if (userInfo) return c.json(userInfo, 200);
-  await insertErrorLog('routes/user.ts', 'get/verify', '');
-  return c.json({ error: 'Failed to veriry account' }, 500);
+  // await insertErrorLog('routes/user.ts', 'get/verified', 'User infor not found');
+  return c.json({ error: 'Failed to verified account' }, 500);
 });
 
 user.get('/logout', async (c) => {
@@ -44,15 +44,5 @@ user.get('/serverCapacity', async (c) => {
 
   return c.json({ error: 'Failed to fetch Account' }, 500);
 });
-
-// user.get('/', async (c) => {
-// try {
-//   const user = await findAccountByEmail('i9@mail.com');
-//   return c.json(user);
-// } catch (err) {
-//   console.error(err);
-//   return c.json({ error: 'Failed to fetch Account' }, 500);
-// }
-// });
 
 export default user;

@@ -31,6 +31,7 @@ export const setSecureCookie = async (c: Context, name: string, value: object) =
     maxAge: 15, // Only 15s
     sameSite: isNotDevMode ? 'Strict' : 'Lax',
     secure: isProduction,
+    ...(isProduction ? { domain: Bun.env.DOMAIN_NAME } : {}),
   });
 };
 
@@ -55,6 +56,7 @@ export const createAuthSession = async (c: Context, user: UserType) => {
     maxAge: 24 * 60 * 60, // 1 day expiration
     sameSite: isNotDevMode ? 'Strict' : 'Lax',
     secure: isProduction,
+    ...(isProduction ? { domain: Bun.env.DOMAIN_NAME } : {}),
   });
 };
 

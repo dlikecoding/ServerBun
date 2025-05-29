@@ -5,12 +5,13 @@ import { createPasskey, userPassKeyByEmail, findRegUser, countSuspendedUsers, cr
 import { clearCookie, createAuthSession, getSecureCookie, setSecureCookie, userAuthSchema, type UserType } from './authHelper/_cookies';
 import { validateSchema } from '../modules/validateSchema';
 import { insertErrorLog } from '../db/module/system';
+import { logUserInDB } from '../middleware/validateAuth';
 
 const auth = new Hono();
 const WEBSITE_TITLE = 'Photos Gallery X';
 const LIMIT_NUMBER_REGISTER = 2; // Limit number of user can register for an account
 
-auth.get('/init-register', validateSchema('query', userAuthSchema), async (c) => {
+auth.get('/init-register', logUserInDB, validateSchema('query', userAuthSchema), async (c) => {
   try {
     const result = await countSuspendedUsers();
     // if registered user waiting status is >= N, STOP allow new user register.
@@ -86,7 +87,7 @@ auth.post('/verify-register', async (c) => {
   }
 });
 
-auth.get('/init-auth', validateSchema('query', userAuthSchema), async (c) => {
+auth.get('/init-auth', logUserInDB, validateSchema('query', userAuthSchema), async (c) => {
   try {
     const { email } = c.req.valid('query');
     if (!email) return c.json({ error: 'Email is required' }, 400);
@@ -171,23 +172,3 @@ auth.post('/verify-auth', async (c) => {
 });
 
 export default auth;
-
-// const querySchema = z.object({
-//   year: z.coerce.number().min(1800, { message: 'Year must not be earlier than 1900' }).max(9999, { message: 'Year must not exceed 9999' }).optional(),
-//   month: z.coerce.number().min(1, { message: 'Month must be between 1 and 12' }).max(12, { message: 'Month must be between 1 and 12' }).optional(),
-
-//   pageNumber: z.coerce.number().min(0, { message: 'Page number must be 0 or greater' }).max(1000, { message: 'Page number must not exceed 1000' }).default(0).optional(),
-
-//   filterDevice: z.coerce.number().min(1, { message: 'Device ID must be at least 1' }).max(1000, { message: 'Device ID must not exceed 1000' }).optional(),
-//   filterType: z.enum(['Video', 'Photo', 'Live'], { message: 'Content type filter must be a Video, Photo, or Live' }).optional(),
-
-//   sortKey: z.enum(['file_size', 'create_date', 'upload_at'], { message: "Sort key for ordering results must in 'file_size', 'create_date', 'upload_at' " }).optional(),
-//   sortOrder: z.coerce.number().min(0, { message: 'Sort order must be 0 (asc) or 1 (desc)' }).max(1, { message: 'Sort order must be 0 (asc) or 1 (desc)' }).default(0).optional(),
-
-//   favorite: z.coerce.number().min(0, { message: 'Favorite must be 0 (false) or 1 (true)' }).max(1, { message: 'Favorite must be 0 (false) or 1 (true)' }).optional(),
-//   hidden: z.coerce.number().min(0, { message: 'Hidden must be 0 (false) or 1 (true)' }).max(1, { message: 'Hidden must be 0 (false) or 1 (true)' }).optional(),
-//   deleted: z.coerce.number().min(0, { message: 'Deleted must be 0 (false) or 1 (true)' }).max(1, { message: 'Deleted must be 0 (false) or 1 (true)' }).optional(),
-//   duplicate: z.coerce.number().min(0, { message: 'Duplicate must be 0 (false) or 1 (true)' }).max(1, { message: 'Duplicate must be 0 (false) or 1 (true)' }).optional(),
-
-//   albumId: z.coerce.number().min(1, { message: 'Album ID must be at least 1' }).max(2000, { message: 'Album ID must not exceed 2000' }).optional(),
-// });
