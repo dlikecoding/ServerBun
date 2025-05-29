@@ -40,8 +40,10 @@ album.put('/add', validateSchema('json', albumSchema), async (c) => {
     const { mediaIds, albumId, albumTitle } = c.req.valid('json');
     if (!albumId && !albumTitle) return c.json({ error: 'Missing Album ID or Album Title' }, 400);
 
-    const userId = getUserBySession(c).userId;
-    const targetAlbumId = !albumId && albumTitle ? await createAlbum(userId, albumTitle) : albumId;
+    const user = getUserBySession(c);
+    if (!user || !user.userId) return c.json({ error: 'User not found' }, 500);
+
+    const targetAlbumId = !albumId && albumTitle ? await createAlbum(user.userId, albumTitle) : albumId;
 
     if (!targetAlbumId) return c.json({ error: 'Album creation failed' }, 500);
 

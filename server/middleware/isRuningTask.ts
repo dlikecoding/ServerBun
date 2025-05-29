@@ -18,10 +18,12 @@ const isTaskRunning = (key: TaskKey): UUID | null => activeTasks[key];
 export const taskStatusMiddleware = (taskName: TaskKey) =>
   createMiddleware(async (c, next) => {
     const taskRunningId = isTaskRunning(taskName);
-    const userId: UUID = getUserBySession(c).userId;
+
+    const user = getUserBySession(c);
+    if (!user || !user.userId) return c.json({ error: '❌ User not found. Please login and try again' }, 503);
 
     // if current task is not running OR current user running current task, return true
-    if (!taskRunningId || userId === taskRunningId) return await next();
+    if (!taskRunningId || user.userId === taskRunningId) return await next();
 
     return c.json({ error: '❌ Background processing. Try again shortly.' }, 503);
   });

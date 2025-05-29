@@ -31,15 +31,16 @@ upload.post(
   }),
   validateFiles,
   async (c) => {
+    const user = getUserBySession(c);
+    if (!user || !user.userId) return c.json({ error: '❌ User not found. Please login' }, 413);
+
     return streamText(c, async (stream) => {
-      const userId = getUserBySession(c).userId;
-      const { totalFile, validatedFiles, safeFileDir } = c.get(VALIDATED_RESULT) as ValidResult;
-      const { aimode } = c.req.valid('query');
-
       try {
-        markTaskStart('importing', userId);
+        const { totalFile, validatedFiles, safeFileDir } = c.get(VALIDATED_RESULT) as ValidResult;
+        const { aimode } = c.req.valid('query');
+        markTaskStart('importing', user.userId);
 
-        const importing = await streamingImportMedia(safeFileDir, userId, stream);
+        const importing = await streamingImportMedia(safeFileDir, user.userId, stream);
         if (!importing) return;
 
         await stream.writeln(`✅ Finished Uploading: ${validatedFiles}/${totalFile} files! ${aimode ? 'Images Analysis is running in background...' : ''}`);

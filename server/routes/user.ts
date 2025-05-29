@@ -10,9 +10,9 @@ const user = new Hono();
 
 user.get('/verified', async (c) => {
   const userInfo = getUserBySession(c);
-
   if (userInfo) return c.json(userInfo, 200);
-  // await insertErrorLog('routes/user.ts', 'get/verified', 'User infor not found');
+
+  await insertErrorLog('routes/user.ts', 'get/verified', 'User infor not found');
   return c.json({ error: 'Failed to verified account' }, 500);
 });
 

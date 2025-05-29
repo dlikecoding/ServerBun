@@ -7,6 +7,7 @@ import { sql } from '../db';
 
 export const getUserBySession = (c: Context): UserType => {
   const sessionId = c.get(SET_USER_SESSION);
+  if (!sessionId) return {} as UserType;
   return sessionStore.get(sessionId);
 };
 
@@ -40,6 +41,7 @@ export const isAuthenticate = createMiddleware(async (c, next) => {
 
 export const isAdmin = createMiddleware(async (c, next) => {
   const adminInfo: UserType = getUserBySession(c);
+
   if (adminInfo && adminInfo.roleType === 'admin') return await next();
 
   return c.json({ error: 'Warning:  Unauthorized Access Attempt – Permission Denied' }, 403);
