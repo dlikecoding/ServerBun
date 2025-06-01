@@ -22,8 +22,8 @@ media.get('/', validateSchema('query', infoSchema), async (c) => {
           ru.user_name, 
           cm.make, cm.model,
           lc.gps_latitude, lc.gps_longitude FROM "multi_schema"."Media" as md 
-    JOIN multi_schema."UploadBy" as upl ON upl.media = md.media_id
-    JOIN multi_schema."RegisteredUser" as ru ON ru.reg_user_id = upl."RegisteredUser"
+    LEFT JOIN multi_schema."UploadBy" as upl ON upl.media = md.media_id
+    LEFT JOIN multi_schema."RegisteredUser" as ru ON ru.reg_user_id = upl."RegisteredUser"
     LEFT JOIN multi_schema."CameraType" as cm ON cm.camera_id = md.camera_type
     LEFT JOIN multi_schema."Location" as lc ON lc.media = md.media_id
     WHERE md.media_id = ${id}`;

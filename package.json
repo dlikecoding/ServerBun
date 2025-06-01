@@ -7,7 +7,7 @@
     "dev": "bun run --watch server/index.ts",
     "db": "brew services start postgresql@17",
     "sdb": "brew services stop postgresql@17",
-    "buildS": "bun build server/index.ts --outdir=../serverBunX --target=bun && cp -r ./models ../serverBunX",
+    "buildS": "rm -rf ../serverBunX/index.js && bun build server/index.ts --outdir=../serverBunX --target=bun && cp -r ./models ../serverBunX",
     "format": "bun prettier . --write",
     "up": "bun upgrade && bun update"
   },

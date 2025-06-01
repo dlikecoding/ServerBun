@@ -21,10 +21,6 @@ import media from './routes/media';
 import medias from './routes/medias';
 import photoView from './routes/stream';
 
-///////////////////////////////////////////////////
-// import test from './routes/testAPI';
-/////////////////////////////////////////////
-
 const app = new Hono();
 
 /////////// IMPORTANT Security allow connection //////////////////////////////
@@ -53,13 +49,17 @@ app.use(
 
 app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-headers#secure-headers-middleware
 
+///////////////////////////////////////////////////
+// import test from './routes/testAPI';
+// if (!isNotDevMode) {
+//   app.route('/test', test);
+// }
+/////////////////////////////////////////////
 app
   .basePath('api/v1')
 
-  // .route('/test', test)
   .route('/auth', auth)
   .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
-
   .route('/search', search)
   .route('/upload', upload)
   .route('/stream', photoView)
@@ -71,6 +71,11 @@ app
   .use(isAdmin)
   .route('/admin', admin);
 
+// // ['.3gp', '.webp', '.m4v', '.jpg', '.gif', '.mov', '.mp4', '.heif', '.heic', '.jpeg', '.png'];
+// app.get('/importPhotos/newImport_05-07-2024/IMG_3324.MOV', async (c) => {
+//   console.log('==========Video mov=========');
+//   return c.json(200);
+// });
 // Catch-all for protected API routes
 app.on(
   'GET',

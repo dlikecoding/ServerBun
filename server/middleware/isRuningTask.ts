@@ -2,15 +2,13 @@ import type { UUID } from 'crypto';
 import { createMiddleware } from 'hono/factory';
 import { getUserBySession } from './validateAuth';
 
-type TaskKey = 'captioning' | 'editing' | 'detecting' | 'importing';
+type TaskKey = 'captioning' | 'editing' | 'importing';
 
 type TaskState = {
   [key in TaskKey]: UUID | null;
 };
 
-// const activeTasks: TaskState = { captioning: false, editing: false, detecting: false, importing: false };
-
-const activeTasks: TaskState = { captioning: null, editing: null, detecting: null, importing: null };
+const activeTasks: TaskState = { captioning: null, editing: null, importing: null };
 
 const isTaskRunning = (key: TaskKey): UUID | null => activeTasks[key];
 
