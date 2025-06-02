@@ -84,6 +84,16 @@ app.on(
   serveStatic({ root: Bun.env.MAIN_PATH })
 );
 
+// app.get(`/${getDirName(Bun.env.THUMB_PATH)}/*`, isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+// app.get(`/${getDirName(Bun.env.PHOTO_PATH)}/*`, isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+// app.get(`/${getDirName(Bun.env.UPLOAD_PATH)}/*`, isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
+
+// app.get(
+//   [`/${getDirName(Bun.env.THUMB_PATH)}/*`, `/${getDirName(Bun.env.PHOTO_PATH)}/*`, `/${getDirName(Bun.env.UPLOAD_PATH)}/*`],
+//   isAuthenticate,
+//   serveStatic({ root: Bun.env.MAIN_PATH })
+// );
+
 // Serve static files first (without authentication)
 app.get('*', serveStatic({ root: './dist' }));
 app.get('*', serveStatic({ path: './dist/index.html' }));

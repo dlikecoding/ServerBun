@@ -22,9 +22,9 @@ const querySchema = z.object({
 
   searchKey: z
     .string()
-    .min(1)
-    .max(100)
-    .regex(/^[a-zA-Z0-9 -]+$/, 'Only letters, numbers, spaces, underscores, and hyphens are allowed')
+    .trim()
+    .max(25)
+    .regex(/^[a-zA-Z0-9 -]*$/, 'Only letters, numbers, spaces, and hyphens are allowed')
     .optional(),
 
   favorite: z.coerce.number().min(0).max(1).optional(),
@@ -77,11 +77,11 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
       result = await sql`
         SELECT md.* FROM (
             SELECT media_id FROM multi_schema."Media"
-            WHERE caption_eng_tsv @@ (
-              websearch_to_tsquery ('english', ${searchKey}::text) || websearch_to_tsquery ('simple', ${searchKey}::text))
+            WHERE caption_eng_tsv @@ (websearch_to_tsquery ('english', ${searchKey}::text) 
+        || websearch_to_tsquery ('simple', ${searchKey}::text))
         ) as search_medias
         JOIN (${getMedias}) as md ON md."media_id" = search_medias.media_id
-        ${orderBy}
+        ORDER BY media_id ASC
         ${limitOffset}`;
     } else {
       result = await sql`${getMedias}

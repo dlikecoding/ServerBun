@@ -6,15 +6,13 @@ import { refreshView } from '../db/module/search';
 
 const search = new Hono();
 
-const specialChars = /[^a-zA-Z0-9 ]/;
+// const specialChars = /[^a-zA-Z0-9 ]/;
 const querySchema = z.object({
   keywords: z
     .string()
     .trim()
     .max(25)
-    .refine((input) => !specialChars.test(input), {
-      message: 'Keywords contain invalid characters',
-    })
+    .regex(/^[a-zA-Z0-9 -]*$/, 'Only letters, numbers, spaces, and hyphens are allowed')
     .optional(),
 });
 
@@ -28,8 +26,10 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
 
   if (!keywords) {
     const searchResults = sql`
-      SELECT media_id, thumb_path, source_file, video_duration, file_type, favorite, COUNT(*) OVER() AS total_count
-      FROM multi_schema."Media" LIMIT 9`;
+      SELECT media_id, caption, favorite, thumb_path, COUNT(*) OVER() AS total_count
+      FROM multi_schema."Media"
+      ORDER BY media_id
+      LIMIT 9`;
 
     const result = { suggestCount: [], data: await searchResults };
     return c.json(result, 200);
@@ -43,11 +43,12 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
       LIMIT 5`;
 
   const searchResults = sql`
-    SELECT media_id, caption, thumb_path, source_file, video_duration, file_type, favorite, COUNT(*) OVER() AS total_count
+    SELECT media_id, caption, favorite, thumb_path, COUNT(*) OVER() AS total_count
       FROM multi_schema."Media"
-      WHERE caption_eng_tsv @@ (websearch_to_tsquery (${keywords}::text) 
+      WHERE caption_eng_tsv @@ (websearch_to_tsquery ('english', ${keywords}::text) 
         || websearch_to_tsquery ('simple', ${keywords}::text))
-        AND hidden = FALSE AND deleted = FALSE 
+        AND hidden = FALSE AND deleted = FALSE
+      ORDER BY media_id
       LIMIT 9`;
 
   const [wordCount, searchResult] = await Promise.all([suggestCount, searchResults]);
