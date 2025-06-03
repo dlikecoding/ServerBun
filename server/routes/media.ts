@@ -18,7 +18,7 @@ media.get('/', validateSchema('query', infoSchema), async (c) => {
     const [media] = await sql`
     SELECT md.file_type, md.file_name, md.create_date, md.file_size, md.upload_at, md.file_ext, 
           md.software, md.mime_type, md.caption, md.image_width, md.image_height, md.megapixels, 
-          md.lens_model, md.frame_rate, md.title, md.video_duration,
+          md.lens_model, md.frame_rate, md.title, md.video_duration, md.media_id,
           ru.user_name, 
           cm.make, cm.model,
           lc.gps_latitude, lc.gps_longitude FROM "multi_schema"."Media" as md 

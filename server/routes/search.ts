@@ -28,7 +28,6 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
     const searchResults = sql`
       SELECT media_id, caption, favorite, thumb_path, COUNT(*) OVER() AS total_count
       FROM multi_schema."Media"
-      ORDER BY media_id
       LIMIT 9`;
 
     const result = { suggestCount: [], data: await searchResults };
@@ -48,7 +47,6 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
       WHERE caption_eng_tsv @@ (websearch_to_tsquery ('english', ${keywords}::text) 
         || websearch_to_tsquery ('simple', ${keywords}::text))
         AND hidden = FALSE AND deleted = FALSE
-      ORDER BY media_id
       LIMIT 9`;
 
   const [wordCount, searchResult] = await Promise.all([suggestCount, searchResults]);
