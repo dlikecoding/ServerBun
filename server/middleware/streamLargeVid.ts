@@ -29,7 +29,7 @@ export const streamLargeVid = createMiddleware(async (c, next) => {
   const stats = await file.stat();
   const fileSize = stats.size;
 
-  if (file.size < 15 * MB) return await next();
+  if (file.size < RESPONSE_IN_MB) return await next();
 
   const range = c.req.header('range') || '';
 
@@ -41,15 +41,15 @@ export const streamLargeVid = createMiddleware(async (c, next) => {
 
   if (!match) return c.text('Invalid Range Header', 416);
 
-  const [_, startStr, _endStr] = match;
-  console.log('startStr: ', startStr, ' - _endStr: ', _endStr, ' *** ', fileSize); //blocks 4096
+  const [_, startStr, endStr] = match;
+  // console.log('startStr: ', startStr, ' - endStr: ', endStr, ' *** ', fileSize); //blocks 4096
 
   const start = parseInt(startStr, 10);
-  const end = _endStr ? parseInt(_endStr, 10) : fileSize - 1;
+  const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
 
   const resEnd = Math.min(end, start + RESPONSE_IN_MB);
 
-  // console.log('start: ', start, ' - resEnd: ', resEnd, ' *** ', _endStr); //blocks 4096
+  // console.log('start: ', start, ' - resEnd: ', resEnd, ' *** ', endStr); //blocks 4096
 
   if (start >= fileSize || resEnd >= fileSize || start > resEnd) {
     return c.text('Requested Range Not Satisfiable', 416);

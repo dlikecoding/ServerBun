@@ -105,15 +105,15 @@ export const nameFolderByTime = (isShort: boolean = false): string => {
 
 export const diskCapacity = async (pathToCheck: string): Promise<{ total: number; used: number; free: number } | null> => {
   try {
-    const { stdout } = await $`df ${pathToCheck}`.quiet();
+    const { stdout } = await $`df -k ${pathToCheck}`.quiet();
 
     const output = new TextDecoder().decode(stdout);
     const lines = output.trim().split('\n');
 
     const parts = lines[1].split(/\s+/);
-    const total = parseInt(parts[1]) * 512;
-    const used = parseInt(parts[2]) * 512;
-    const free = parseInt(parts[3]) * 512;
+    const total = parseInt(parts[1]) * 1024;
+    const used = parseInt(parts[2]) * 1024;
+    const free = parseInt(parts[3]) * 1024;
 
     return { total, used, free };
   } catch (error) {
