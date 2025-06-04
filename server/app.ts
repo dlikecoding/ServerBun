@@ -20,6 +20,7 @@ import search from './routes/search';
 import media from './routes/media';
 import medias from './routes/medias';
 import photoView from './routes/stream';
+import { streamLargeVid } from './middleware/streamLargeVid';
 
 const app = new Hono();
 
@@ -71,22 +72,15 @@ app
   .use(isAdmin)
   .route('/admin', admin);
 
-// // ['.3gp', '.webp', '.m4v', '.jpg', '.gif', '.mov', '.mp4', '.heif', '.heic', '.jpeg', '.png'];
-// app.get('/importPhotos/newImport_05-07-2024/IMG_3324.MOV', async (c) => {
-//   console.log('==========Video mov=========');
-//   return c.json(200);
-// });
 // Catch-all for protected API routes
 app.on(
   'GET',
   [`/${getDirName(Bun.env.THUMB_PATH)}/*`, `/${getDirName(Bun.env.PHOTO_PATH)}/*`, `/${getDirName(Bun.env.UPLOAD_PATH)}/*`],
   isAuthenticate,
+  streamLargeVid, // If file request is images or small video serveStatic
+
   serveStatic({ root: Bun.env.MAIN_PATH })
 );
-
-// app.get(`/${getDirName(Bun.env.THUMB_PATH)}/*`, isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-// app.get(`/${getDirName(Bun.env.PHOTO_PATH)}/*`, isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
-// app.get(`/${getDirName(Bun.env.UPLOAD_PATH)}/*`, isAuthenticate, serveStatic({ root: Bun.env.MAIN_PATH }));
 
 // Serve static files first (without authentication)
 app.get('*', serveStatic({ root: './dist' }));
