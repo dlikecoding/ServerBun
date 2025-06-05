@@ -32,9 +32,6 @@ export const streamLargeVid = createMiddleware(async (c, next) => {
   if (file.size < RESPONSE_IN_MB) return await next();
 
   const range = c.req.header('range') || '';
-
-  // console.log('---------RANGE:-----------', range);
-
   const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
 
   const match = range.match(/bytes=(\d+)-(\d*)/);
@@ -47,7 +44,7 @@ export const streamLargeVid = createMiddleware(async (c, next) => {
   const start = parseInt(startStr, 10);
   const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
 
-  const resEnd = Math.min(end, start + RESPONSE_IN_MB);
+  const resEnd = Math.min(end, start + RESPONSE_IN_MB - 1);
 
   // console.log('start: ', start, ' - resEnd: ', resEnd, ' *** ', endStr); //blocks 4096
 
