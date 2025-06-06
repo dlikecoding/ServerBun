@@ -9,7 +9,7 @@ import { updateAccountStatus } from '../db/module/regUser';
 import { insertErrorLog, updateProcessMediaStatus } from '../db/module/system';
 import { getUserBySession } from '../middleware/validateAuth';
 
-import { markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
+import { isCaptioningRunning, markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
 import { importExternalPath, streamingImportMedia } from './importHelper/_imports';
 import { preprocessMedia, processCaptioning } from '../service';
 import { backupToDB, restoreToDB } from '../db/main';
@@ -71,7 +71,7 @@ admin.get('/dashboard', async (c) => {
   }
 });
 
-admin.post('/internal', taskStatusMiddleware('importing'), validateSchema('json', internalSchema), async (c) => {
+admin.post('/internal', taskStatusMiddleware('importing'), isCaptioningRunning(), validateSchema('json', internalSchema), async (c) => {
   return streamText(c, async (stream) => {
     try {
       const userId = getUserBySession(c).userId;
@@ -102,7 +102,7 @@ admin.post('/internal', taskStatusMiddleware('importing'), validateSchema('json'
   });
 });
 
-admin.post('/external', taskStatusMiddleware('importing'), validateSchema('json', externalSchema), async (c) => {
+admin.post('/external', taskStatusMiddleware('importing'), isCaptioningRunning(), validateSchema('json', externalSchema), async (c) => {
   return streamText(c, async (stream) => {
     try {
       const userId = getUserBySession(c).userId;
@@ -136,7 +136,7 @@ admin.post('/external', taskStatusMiddleware('importing'), validateSchema('json'
   });
 });
 
-admin.get('/reindex', taskStatusMiddleware('importing'), async (c) => {
+admin.get('/reindex', taskStatusMiddleware('importing'), isCaptioningRunning(), async (c) => {
   return streamText(c, async (stream) => {
     try {
       const userId = getUserBySession(c).userId;

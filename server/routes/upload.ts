@@ -6,7 +6,7 @@ import { processCaptioning } from '../service';
 import { streamText } from 'hono/streaming';
 
 import { MAX_BODY_SIZE, VALIDATED_RESULT, validateFiles, type ValidResult } from '../middleware/validateFiles';
-import { markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
+import { isCaptioningRunning, markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
 import { insertErrorLog } from '../db/module/system';
 import { streamingImportMedia } from './importHelper/_imports';
 import { z } from 'zod';
@@ -21,6 +21,7 @@ const isAiModeSchema = z.object({
 upload.post(
   '/',
   taskStatusMiddleware('importing'),
+  isCaptioningRunning(),
   validateSchema('query', isAiModeSchema),
 
   bodyLimit({

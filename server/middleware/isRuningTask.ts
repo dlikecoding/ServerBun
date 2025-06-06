@@ -5,12 +5,12 @@ import { getUserBySession } from './validateAuth';
 type TaskKey = 'captioning' | 'editing' | 'importing';
 
 type TaskState = {
-  [key in TaskKey]: UUID | null;
+  [key in TaskKey]: UUID | boolean;
 };
 
-const activeTasks: TaskState = { captioning: null, editing: null, importing: null };
+const activeTasks: TaskState = { captioning: false, editing: false, importing: false };
 
-const isTaskRunning = (key: TaskKey): UUID | null => activeTasks[key];
+const isTaskRunning = (key: TaskKey): UUID | boolean => activeTasks[key];
 
 // Process Upload/Admin Reindex from one client at a time to avoid server overhead
 export const taskStatusMiddleware = (taskName: TaskKey) =>
@@ -20,10 +20,19 @@ export const taskStatusMiddleware = (taskName: TaskKey) =>
     const user = getUserBySession(c);
     if (!user || !user.userId) return c.json({ error: '❌ User not found. Please login and try again' }, 503);
 
-    // if current task is not running OR current user running current task, return true
+    // if current task is not running OR current user is running current task, allow user to entered
     if (!taskRunningId || user.userId === taskRunningId) return await next();
 
     return c.json({ error: '❌ Background processing. Try again shortly.' }, 503);
+  });
+
+export const isCaptioningRunning = () =>
+  createMiddleware(async (c, next) => {
+    const taskRunningId = isTaskRunning('captioning');
+
+    // if anyone is running captioning task, disallow user to entered
+    if (!taskRunningId) return await next();
+    return c.json({ error: '❌ Captioning images is processing. Try again shortly.' }, 503);
   });
 
 // const isAnyTaskRunning = (): UUID => Object.values(activeTasks).some(UUID);
@@ -32,10 +41,10 @@ export const taskStatusMiddleware = (taskName: TaskKey) =>
 //   return c.json({ error: '❌ Background processing data. Try again shortly.' }, 503);
 // });
 
-export const markTaskStart = (key: TaskKey, userId: UUID): void => {
-  activeTasks[key] = userId;
+export const markTaskStart = (key: TaskKey, userId?: UUID): void => {
+  activeTasks[key] = userId || true;
 };
 
 export const markTaskEnd = (key: TaskKey): void => {
-  activeTasks[key] = null;
+  activeTasks[key] = false;
 };

@@ -42,25 +42,25 @@ export const streamLargeVid = createMiddleware(async (c, next) => {
   // console.log('startStr: ', startStr, ' - endStr: ', endStr, ' *** ', fileSize); //blocks 4096
 
   const start = parseInt(startStr, 10);
-  const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
+  const getEnd = endStr ? parseInt(endStr, 10) : fileSize - 1;
 
-  const resEnd = Math.min(end, start + RESPONSE_IN_MB - 1);
+  const end = Math.min(getEnd, start + RESPONSE_IN_MB - 1);
 
-  // console.log('start: ', start, ' - resEnd: ', resEnd, ' *** ', endStr); //blocks 4096
+  // console.log('start: ', start, ' - end: ', end, ' *** ', endStr); //blocks 4096
 
-  if (start >= fileSize || resEnd >= fileSize || start > resEnd) {
+  if (start >= fileSize || end >= fileSize || start > end) {
     return c.text('Requested Range Not Satisfiable', 416);
   }
 
-  const chunkSize = resEnd - start + 1;
+  const chunkSize = end - start + 1;
   // console.log('-------- chunkSize: ', chunkSize, ' *** '); //blocks 4096
-  const fileStream = fs.createReadStream(filePath, { start, end: resEnd });
+  const fileStream = fs.createReadStream(filePath, { start, end: end });
 
   // console.log('*********************$$$$$$$$$$$$$$****************************');
   return new Response(fileStream as unknown as BodyInit, {
     status: 206,
     headers: {
-      'Content-Range': `bytes ${start}-${resEnd}/${fileSize}`,
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
       'Content-Length': chunkSize.toString(),
       'Content-Type': mimeType,
       'Accept-Ranges': 'bytes',

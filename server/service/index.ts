@@ -11,6 +11,7 @@ import { createCaption } from './generators/caption';
 import { importedMediasCaption, importedMediasThumbHash, updateHashThumb } from '../db/module/media';
 import { insertErrorLog } from '../db/module/system';
 import { insertMetadataToDB, recursiveDir, type ImportTrack } from './generators/metadata';
+import { markTaskEnd, markTaskStart } from '../middleware/isRuningTask';
 
 // ======================= Exiftool metadata ===============================
 
@@ -84,6 +85,8 @@ export const preprocessMedia = async (stream: StreamingApi) => {
 export const processCaptioning = async () => {
   // Create BLOCK call for not over load server while processing caption for medias
   try {
+    markTaskStart('captioning');
+
     const mediasForCaption = await importedMediasCaption();
     if (!mediasForCaption.length) return;
 
@@ -93,5 +96,7 @@ export const processCaptioning = async () => {
   } catch (error) {
     console.error('processCaptioning', error);
     await insertErrorLog('service/index.ts', 'processCaptioning', error);
+  } finally {
+    markTaskEnd('captioning');
   }
 };
