@@ -12,7 +12,7 @@
     "up": "bun upgrade && bun update"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.13",
+    "@types/bun": "^1.2.15",
     "prettier": "^3.5.3"
   },
   "peerDependencies": {
@@ -21,7 +21,7 @@
   "dependencies": {
     "@hono/zod-validator": "^0.4.3",
     "@simplewebauthn/server": "^13.1.1",
-    "hono": "^4.7.9",
-    "zod": "^3.24.4"
+    "hono": "^4.7.11",
+    "zod": "^3.25.62"
   }
 }

@@ -3,66 +3,57 @@ import * as fs from 'fs';
 import { createMiddleware } from 'hono/factory';
 
 const VIDEO_EXT = ['.mov', '.mp4']; //, '.3gp', '.m4v',
-const MIME_TYPES: Record<string, string> = {
-  '.mp4': 'video/mp4',
-  '.webm': 'video/webm',
-  '.ogg': 'video/ogg',
-  '.mov': 'video/mov',
-};
 
 const MB = 1024 * 1024;
 const RESPONSE_IN_MB = 20 * MB;
 
 export const streamLargeVid = createMiddleware(async (c, next) => {
   const reqUrl = new URL(c.req.url);
-  const ext = path.extname(reqUrl.pathname).toLowerCase();
+  const isVideo = VIDEO_EXT.some((ext) => c.req.url.toLowerCase().endsWith(ext));
 
   // if not a large video, serveStatic file.
   // Ignore all of images and video are not mov, just serve as static file.
-  if (!VIDEO_EXT.includes(ext)) return await next();
+  if (!isVideo) return await next();
 
   const filePath = path.join(Bun.env.MAIN_PATH, reqUrl.pathname);
-  const file = Bun.file(filePath);
+  const videoFile = Bun.file(filePath);
 
-  if (!(await file.exists())) return c.json({ error: 'File not found' }, 404);
+  if (!(await videoFile.exists())) return c.json({ error: 'File not found' }, 404);
 
-  const stats = await file.stat();
-  const fileSize = stats.size;
+  const fileSize = videoFile.size;
 
-  if (file.size < RESPONSE_IN_MB) return await next();
+  if (videoFile.size < RESPONSE_IN_MB) return await next();
 
   const range = c.req.header('range') || '';
-  const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
-
   const match = range.match(/bytes=(\d+)-(\d*)/);
 
+  // const isEOF = videoFile.size - 1
   if (!match) return c.text('Invalid Range Header', 416);
 
   const [_, startStr, endStr] = match;
-  // console.log('startStr: ', startStr, ' - endStr: ', endStr, ' *** ', fileSize); //blocks 4096
 
   const start = parseInt(startStr, 10);
   const getEnd = endStr ? parseInt(endStr, 10) : fileSize - 1;
 
   const end = Math.min(getEnd, start + RESPONSE_IN_MB - 1);
 
-  // console.log('start: ', start, ' - end: ', end, ' *** ', endStr); //blocks 4096
+  // console.log('start: ', start, ' - end: ', end);
+  // if (start === 0 && end === 1) return new Response(videoFile.slice(start, end));
 
   if (start >= fileSize || end >= fileSize || start > end) {
     return c.text('Requested Range Not Satisfiable', 416);
   }
 
   const chunkSize = end - start + 1;
-  // console.log('-------- chunkSize: ', chunkSize, ' *** '); //blocks 4096
-  const fileStream = fs.createReadStream(filePath, { start, end: end });
-
-  // console.log('*********************$$$$$$$$$$$$$$****************************');
+  const fileStream = fs.createReadStream(filePath, { start, end });
+  // TODO for Bun.file.slice: Need to prevent it download from 0 to start for example: if start is 1000000, end > start, it will load the video from 0 - start
+  // return new Response(videoFile.slice(start, end), {
   return new Response(fileStream as unknown as BodyInit, {
     status: 206,
     headers: {
       'Content-Range': `bytes ${start}-${end}/${fileSize}`,
       'Content-Length': chunkSize.toString(),
-      'Content-Type': mimeType,
+      'Content-Type': videoFile.type,
       'Accept-Ranges': 'bytes',
       'Cache-Control': 'public, max-age=3600, immutable',
     },
@@ -115,3 +106,12 @@ export const streamLargeVid = createMiddleware(async (c, next) => {
 //   'Accept-Ranges': 'bytes',
 //   'Cache-Control': 'public, max-age=3600, immutable',
 // });
+
+// import { ALLOWED_MIME_TYPES } from './validateFiles';
+
+// const MIME_TYPES: Record<string, string> = {
+//   '.mp4': 'video/mp4',
+//   '.webm': 'video/webm',
+//   '.ogg': 'video/ogg',
+//   '.mov': 'video/mov',
+// };
