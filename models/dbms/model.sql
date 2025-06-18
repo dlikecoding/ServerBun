@@ -182,6 +182,14 @@ CREATE TABLE IF NOT EXISTS multi_schema."Duplicate"
 COMMENT ON TABLE multi_schema."Duplicate"
     IS 'Check for all of media had the same hash code';
 
+CREATE TABLE IF NOT EXISTS multi_schema."VideoRanges"
+(
+    media integer NOT NULL,
+    start_offset bigint NOT NULL,
+    end_offset bigint NOT NULL,
+    CONSTRAINT "Unique_media_start_end" UNIQUE (media, start_offset, end_offset)
+);
+
 ALTER TABLE IF EXISTS multi_schema."Album"
     ADD CONSTRAINT "Album_RegisteredUser_fkey" FOREIGN KEY ("RegisteredUser")
     REFERENCES multi_schema."RegisteredUser" (reg_user_id) MATCH SIMPLE
@@ -270,5 +278,12 @@ ALTER TABLE IF EXISTS multi_schema."Duplicate"
     NOT VALID;
 CREATE INDEX IF NOT EXISTS "Duplicate_pkey"
     ON multi_schema."Duplicate"(media);
+
+ALTER TABLE IF EXISTS multi_schema."VideoRanges"
+    ADD CONSTRAINT "VideoRange_fkey" FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE
+    NOT VALID;
 
 END;

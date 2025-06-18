@@ -124,6 +124,80 @@ export const diskCapacity = async (pathToCheck: string): Promise<{ total: number
 
 export const getDirName = (dirName: string) => dirName.split('/').at(-1);
 
+/* Reduce the number of FPS in video and overwrite the original. This can not be undone*/
+export const reduceFPS = async (filePath: string, fps: number = 30): Promise<boolean> => {
+  const fileExt = path.extname(filePath);
+  const { exitCode } = await $`ffmpeg -y -i ${filePath} -r ${fps} -crf 21 -preset fast ./temp${fileExt} && mv ./temp${fileExt} ${filePath}`.quiet();
+  return exitCode === 0;
+};
+
+/** --------------- FOR VIDEO SMOOTHER STREAMMING ----------------------- */
+type VideoMetadata = { bitrate: number; startOffset: number; endOffset: number; fileSize: number };
+
+export const generateVideoBitrate = async (filePath: string): Promise<VideoMetadata | undefined> => {
+  const bitrate = await $`ffprobe -v error -show_entries format=bit_rate -of default=noprint_wrappers=1:nokey=1 ${filePath}`.text();
+
+  // type:'XXXX' parent:'YYYY' sz: [box_size] [start_offset] [file_size]
+  const offsets = await $`ffprobe -v trace -i ${filePath} 2>&1 | grep "type:'mdat'" | head -n 3 | awk -F 'sz: ' '{print $2}'`.text();
+
+  if (!bitrate || !offsets) return;
+  const [box_size, start, file_size] = offsets.split(' ');
+
+  const result = { bitrate: parseInt(bitrate), startOffset: parseInt(start), endOffset: parseInt(box_size) + parseInt(start), fileSize: parseInt(file_size) };
+  // console.log('->>>>', result);
+  return result;
+};
+
+type ByteRange = { media: number; start_offset: number; end_offset: number };
+
+export const getByteRanges = (
+  vidMeta: VideoMetadata,
+  durationSec: number, // video duration in seconds
+  mediaId: number,
+  segmentDurationSec: number = 4 // desired segment length in seconds
+): ByteRange[] => {
+  const byteRanges: ByteRange[] = [];
+
+  const bytesPerSecond = vidMeta.bitrate / 8; // Convert bitrate (bps) to bytes per second
+
+  let currentStart = vidMeta.startOffset;
+  let currentTime = 0;
+
+  // Add the initial segment from 0 to startOffset
+  if (vidMeta.startOffset > 0) {
+    byteRanges.push({
+      media: mediaId,
+      start_offset: 0,
+      end_offset: vidMeta.startOffset - 1,
+    });
+  }
+
+  // Add the intermediate segments
+  while (currentTime < durationSec && currentStart < vidMeta.endOffset) {
+    const segmentEndTime = Math.min(currentTime + segmentDurationSec, durationSec);
+    const segmentLengthSec = segmentEndTime - currentTime;
+
+    const segmentBytes = segmentLengthSec * bytesPerSecond;
+    const currentEnd = Math.min(currentStart + Math.floor(segmentBytes) - 1, vidMeta.endOffset);
+
+    byteRanges.push({ media: mediaId, start_offset: currentStart, end_offset: currentEnd });
+
+    currentStart = currentEnd + 1;
+    currentTime += segmentDurationSec;
+  }
+
+  // Add the final segment from endOffset to fileSize
+  if (vidMeta.endOffset < vidMeta.fileSize) {
+    byteRanges.push({
+      media: mediaId,
+      start_offset: vidMeta.endOffset,
+      end_offset: vidMeta.fileSize - 1,
+    });
+  }
+
+  return byteRanges;
+};
+
 // const removeFilesUploadDir = async (dePath: string) => {
 //   try {
 //     if (!(await isExist(dePath))) return;

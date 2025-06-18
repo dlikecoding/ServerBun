@@ -198,3 +198,16 @@ export const sumSizeMediaType = async () => {
     FROM "multi_schema"."Media"`;
   return mediaCount;
 };
+
+/** Given a path and start offset, it will return the range for that specific video
+ * { start_offset: "11761368", end_offset: "13231532"} */
+export const videoRange = async (sourceFile: string, inputByte: number) => {
+  const [startEndOffset] = await sql`
+    SELECT start_offset, end_offset 
+    FROM multi_schema."Media" as md
+    LEFT JOIN multi_schema."VideoRanges" as vr ON md.media_id = vr.media
+    WHERE source_file = ${sourceFile} 
+      AND start_offset <= ${inputByte} AND end_offset >= ${inputByte}
+    LIMIT 1`;
+  return startEndOffset;
+};

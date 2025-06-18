@@ -25,7 +25,7 @@ import { streamLargeVid } from './middleware/streamLargeVid';
 const app = new Hono();
 
 /////////// IMPORTANT Security allow connection //////////////////////////////
-app.use('*', logger());
+// app.use('*', logger());
 
 // CORS should be called before the route // DEV MODE - NEED TO REMOVE CORS In DEPLOY
 if (!isNotDevMode) {
@@ -51,16 +51,16 @@ app.use(
 app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-headers#secure-headers-middleware
 
 ///////////////////////////////////////////////////
-// import test from './routes/testAPI';
-// if (!isNotDevMode) {
-//   app.route('/test', test);
-// }
+import test from './routes/testAPI';
+if (!isNotDevMode) {
+  app.route('api/v1/test', test);
+}
 /////////////////////////////////////////////
 app
   .basePath('api/v1')
 
   .route('/auth', auth)
-  .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
+  // .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
   .route('/search', search)
   .route('/upload', upload)
   .route('/stream', photoView)
@@ -76,7 +76,7 @@ app
 app.on(
   'GET',
   [`/${getDirName(Bun.env.THUMB_PATH)}/*`, `/${getDirName(Bun.env.PHOTO_PATH)}/*`, `/${getDirName(Bun.env.UPLOAD_PATH)}/*`],
-  isAuthenticate,
+  // isAuthenticate,
   streamLargeVid, // If file request is images or small video serveStatic
 
   serveStatic({ root: Bun.env.MAIN_PATH })
