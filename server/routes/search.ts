@@ -28,6 +28,7 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
     const searchResults = sql`
       SELECT media_id, caption, favorite, thumb_path, COUNT(*) OVER() AS total_count
       FROM multi_schema."Media"
+      WHERE hidden = FALSE AND deleted = FALSE
       LIMIT 9`;
 
     const result = { suggestCount: [], data: await searchResults };
