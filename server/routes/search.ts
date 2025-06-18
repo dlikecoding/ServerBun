@@ -11,7 +11,7 @@ const querySchema = z.object({
   keywords: z
     .string()
     .trim()
-    .max(25)
+    .max(50)
     .regex(/^[a-zA-Z0-9 -]*$/, 'Only letters, numbers, spaces, and hyphens are allowed')
     .optional(),
 });
@@ -59,24 +59,3 @@ search.get('/', validateSchema('query', querySchema), async (c) => {
 });
 
 export default search;
-
-// search.post('/', async (c) => {
-//   return c.json('YOU ARE SEARCHING', 200);
-// });
-
-// // This function will continuously read from the stream
-// async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>) {
-//   let result;
-//   while (!(result = await reader.read()).done) {
-//     const text = new TextDecoder().decode(result.value);
-//     console.log(JSON.parse(text)); // Process the output as it comes in
-//   }
-// }
-
-// async function runCommand(python3: string, ai_generate: string, arrayAsString: string, yolo: string) {
-//   const command = [python3, ai_generate, arrayAsString, yolo, '0.5', 'Classify'];
-
-//   const process = Bun.spawn(command); // Spawn the process asynchronously
-
-//   return process.stdout.getReader(); // Get the reader for the stream
-// }
