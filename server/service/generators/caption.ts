@@ -41,7 +41,7 @@ const sendTask = async (task: object, childProc: Bun.Subprocess<'pipe', 'pipe', 
     const { value, done } = await reader.read();
     if (done) break;
 
-    const text = decoder.decode(value).trim();
+    const text = decoder.decode(value, { stream: true }).trim();
     for (const line of text.split('\n')) {
       try {
         const result = JSON.parse(line);

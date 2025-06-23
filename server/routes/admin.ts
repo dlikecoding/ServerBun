@@ -1,3 +1,7 @@
+import { sql } from '../db';
+import * as fs from 'fs/promises';
+import path from 'path';
+
 import { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
 import { deleteOldUserSession } from './authHelper/_cookies';
@@ -13,9 +17,9 @@ import { isCaptioningRunning, markTaskEnd, markTaskStart, taskStatusMiddleware }
 import { importExternalPath, streamingImportMedia } from './importHelper/_imports';
 import { preprocessMedia, processCaptioning } from '../service';
 import { backupToDB, restoreToDB } from '../db/main';
-import { isExist } from '../service/helper';
-import { sql } from '../db';
-import * as fs from 'fs/promises';
+import { deleteFile, isExist, removeEmptyDirs } from '../service/helper';
+
+import { mediaUpdate, reduceFPS } from '../service/generators/reduceFps';
 
 const admin = new Hono();
 
@@ -162,8 +166,8 @@ admin.get('/reindex', taskStatusMiddleware('importing'), isCaptioningRunning(), 
 admin.get('/backup', async (c) => {
   try {
     await cleanUpCameraType();
-    // remove all empty StoreUpload directories
-    // TODO ------------------------------------
+
+    await removeEmptyDirs(Bun.env.UPLOAD_PATH);
 
     const backupStatus = await backupToDB();
     if (!backupStatus) return c.json({ error: 'Failed to backup data' }, 500);
@@ -257,6 +261,50 @@ admin.delete('/all-logs', validateSchema('json', logsSchema), async (c) => {
     console.error(err);
     return c.json({ error: 'Failed to delete logs System/Account' }, 500);
   }
+});
+
+admin.get('/storageOptimize', taskStatusMiddleware('importing'), async (c) => {
+  return streamText(c, async (stream) => {
+    try {
+      const userId = getUserBySession(c).userId;
+      markTaskStart('importing', userId);
+
+      const largeVideos = await sql`SELECT media_id, source_file, duration FROM multi_schema."Media" WHERE frame_rate > 60`;
+
+      if (!largeVideos.length) {
+        await stream.writeln(`✅ Finished Importing Multimedia!`);
+        return;
+      }
+
+      for (const each of largeVideos) {
+        // Reduce fps of each video, remove old file with a new one
+        const originalSource = path.join(Bun.env.MAIN_PATH, each.source_file);
+
+        const convertedPath = await reduceFPS(originalSource, stream);
+        if (!convertedPath) {
+          await stream.writeln(`❌ ${each.media_id}`);
+          continue;
+        }
+
+        const mediaObj = mediaUpdate(convertedPath);
+        await sql`UPDATE multi_schema."Media" SET ${sql(mediaObj)} WHERE media_id = ${each.media_id}`;
+
+        // Delete old file
+        await deleteFile(originalSource);
+      }
+
+      await stream.writeln(`✅ Finished Optimizing Multimedia's Storage!`);
+      return;
+    } catch (error) {
+      console.log('admin.ts', 'admin.get/storageOptimize', error);
+
+      await stream.writeln(`❌ 500 Internal Server Error`);
+      await insertErrorLog('admin.ts', 'admin.get/storageOptimize', error);
+    } finally {
+      if (!stream.closed) await stream.close();
+      markTaskEnd('importing');
+    }
+  });
 });
 
 export default admin;

@@ -22,7 +22,7 @@ export const createFolder = async (dePath: string, isRecursive: boolean = true) 
   }
 };
 
-const deleteFile = async (filePath: string): Promise<boolean> => {
+export const deleteFile = async (filePath: string): Promise<boolean> => {
   const { exitCode, stderr } = await $`rm ${filePath}`.nothrow();
   if (exitCode === 0) return true;
 
@@ -87,6 +87,8 @@ const formatDate = (component: number): string => {
   return String(component).padStart(2, '0');
 };
 
+export const reducePath = (absolutePath: string): string => (absolutePath.startsWith(Bun.env.MAIN_PATH) ? absolutePath.slice(Bun.env.MAIN_PATH.length) : absolutePath);
+
 export const nameFolderByTime = (isShort: boolean = false): string => {
   const currentDate = new Date();
 
@@ -124,52 +126,32 @@ export const diskCapacity = async (pathToCheck: string): Promise<{ total: number
 
 export const getDirName = (dirName: string) => dirName.split('/').at(-1);
 
-// const removeFilesUploadDir = async (dePath: string) => {
-//   try {
-//     if (!(await isExist(dePath))) return;
-//     await fs.rm(dePath, { recursive: true, force: true });
-//   } catch (error: any) {
-//     // recordErrorInDB(
-//     //     'removeFilesUploadDir: ',
-//     //     `Error: ${dePath}, ${error.message}`
-//     // );
-//   }
-// };
+// Remove directory recursively and forcefully
+const removeDirRecursive = async (targetPath: string): Promise<void> => {
+  await fs.rm(targetPath, { recursive: true, force: true });
+};
 
-// const isDirEmpty = async (dePath: string) => {
-//   try {
-//     const files = await fs.readdir(dePath);
-//     if (files.length === 0) {
-//       console.log(`Source directory "${dePath}" is EMPTY.`);
-//       return true;
-//     }
-//     return false;
-//   } catch (error: any) {
-//     console.log(error);
-//     // recordErrorInDB('isDirEmpty: ', `Error: ${dePath}, ${error.message}`);
-//   }
-// };
+// Check if directory is empty
+const isDirEmpty = async (targetPath: string): Promise<boolean> => {
+  const files = await fs.readdir(targetPath);
+  return files.length === 0;
+};
 
-// const removeEmptyDirectories = async (dir: string): Promise<void> => {
-//   try {
-//     const entries = await fs.readdir(dir, { withFileTypes: true });
+export const removeEmptyDirs = async (dir: string): Promise<void> => {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
 
-//     for (const entry of entries) {
-//       const fullPath = path.join(dir, entry.name);
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
 
-//       if (entry.isDirectory()) {
-//         await removeEmptyDirectories(fullPath);
+    if (!(await isExist(fullPath))) continue;
 
-//         if (await isDirEmpty(fullPath)) {
-//           await fs.rmdir(fullPath);
-//           console.log(`Removed empty directory: ${fullPath}`);
-//         }
-//       }
-//     }
-//   } catch (error: any) {
-//     // recordErrorInDB(
-//     //     'removeEmptyDirectories: ',
-//     //     `Error: ${dir}, ${error.message}`
-//     // );
-//   }
-// };
+    if (entry.isDirectory()) {
+      await removeEmptyDirs(fullPath);
+
+      if (await isDirEmpty(fullPath)) {
+        await removeDirRecursive(fullPath);
+        console.log(`[Cleanup] Removed empty directory: ${fullPath}`);
+      }
+    }
+  }
+};

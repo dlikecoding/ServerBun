@@ -1,7 +1,7 @@
 import type { UUID } from 'crypto';
 import { sql } from '..';
 import { insertErrorLog } from './system';
-import { createRandomId } from '../../service/helper';
+import { createRandomId, reducePath } from '../../service/helper';
 
 const DURATION_OF_SHORT = 5; // Short video which has duration < 5s
 
@@ -135,8 +135,6 @@ export const insertCameraToDb = async (make?: string, model?: string): Promise<n
   console.log('Race condition failed to add camera type', model, make);
   return null;
 };
-
-const reducePath = (absolutePath: string): string => (absolutePath.startsWith(Bun.env.MAIN_PATH) ? absolutePath.slice(Bun.env.MAIN_PATH.length) : '');
 
 const getSmallestDate = (newMedia: ImportMedia): Date => {
   const validDates = [
