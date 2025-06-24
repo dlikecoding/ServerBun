@@ -5,7 +5,7 @@ import { createMiddleware } from 'hono/factory';
 const VIDEO_EXT = ['.mov', '.mp4']; //, '.3gp', '.m4v',
 
 const MB = 1024 * 1024;
-const RESPONSE_IN_MB = 20 * MB;
+const RESPONSE_IN_MB = 50 * MB;
 
 export const streamLargeVid = createMiddleware(async (c, next) => {
   const reqUrl = new URL(c.req.url);
@@ -22,7 +22,7 @@ export const streamLargeVid = createMiddleware(async (c, next) => {
 
   const fileSize = videoFile.size;
 
-  if (videoFile.size < RESPONSE_IN_MB) return await next();
+  if (videoFile.size <= RESPONSE_IN_MB) return await next();
 
   const range = c.req.header('range') || '';
   const match = range.match(/bytes=(\d+)-(\d*)/);

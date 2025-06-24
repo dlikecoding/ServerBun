@@ -198,3 +198,9 @@ export const sumSizeMediaType = async () => {
     FROM "multi_schema"."Media"`;
   return mediaCount;
 };
+
+export const getSourceFiles = async (mediaIds: number[]) => {
+  return await sql`
+    SELECT source_file FROM "multi_schema"."Media" 
+    WHERE media_id IN ${sql(mediaIds)}`;
+};

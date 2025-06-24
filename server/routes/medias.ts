@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
+import path from 'path';
 
 import { z } from 'zod'; // To create a schema to validate post req
-import { deleteAllInRecently, deleteMedias, fetchCameraType, groupMonthsByYear, updateMedias } from '../db/module/media';
+
+import { deleteAllInRecently, deleteMedias, fetchCameraType, getSourceFiles, groupMonthsByYear, updateMedias } from '../db/module/media';
 import { validateSchema } from '../modules/validateSchema';
 import { insertErrorLog } from '../db/module/system';
 
@@ -14,7 +16,7 @@ const updateSchema = z.object({
 });
 
 const deleteSchema = z.object({
-  mediasToDel: z.array(z.coerce.number()),
+  mediaIds: z.array(z.coerce.number()),
 });
 
 medias.get('/', async (c) => {
@@ -50,10 +52,10 @@ medias.put('/', validateSchema('json', updateSchema), async (c) => {
 });
 
 medias.delete('/', validateSchema('json', deleteSchema), async (c) => {
-  const { mediasToDel } = c.req.valid('json');
+  const { mediaIds } = c.req.valid('json');
 
   try {
-    const result = await deleteMedias(mediasToDel);
+    const result = await deleteMedias(mediaIds);
     if (result) return c.json('Success', 202);
   } catch (error) {
     await insertErrorLog('routes/medias.ts', 'delete/', error);
@@ -81,5 +83,35 @@ medias.get('/recently', async (c) => {
 //     return c.json({ error: 'Failed to merge all medias' }, 500);
 //   }
 // });
+
+medias.post('/download', validateSchema('json', deleteSchema), async (c) => {
+  // Assume POST JSON body: { files: ["/path/one.txt", "/other/path/image.png", ...] }
+  const { mediaIds } = c.req.valid('json');
+
+  const sourceFiles = await getSourceFiles(mediaIds);
+
+  const absPaths = sourceFiles.map((each: any) => path.join(Bun.env.MAIN_PATH, each.source_file));
+
+  // Generate a zip stream of all given files, flattening their paths
+  const zipProc = Bun.spawn({
+    cmd: [
+      'zip',
+      '-j', // junk the path (flatten)
+      '-q', // quiet output (faster with less logging)
+      '-0', // store only (no compression) OR try `-1` for fast compression
+      '-', // write to stdout
+      ...absPaths,
+    ],
+    stdout: 'pipe',
+    stderr: 'inherit',
+  });
+
+  return new Response(zipProc.stdout, {
+    headers: {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': 'attachment; filename="archive.zip"',
+    },
+  });
+});
 
 export default medias;
