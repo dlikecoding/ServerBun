@@ -85,33 +85,52 @@ medias.get('/recently', async (c) => {
 // });
 
 medias.post('/download', validateSchema('json', deleteSchema), async (c) => {
-  // Assume POST JSON body: { files: ["/path/one.txt", "/other/path/image.png", ...] }
-  const { mediaIds } = c.req.valid('json');
+  try {
+    const { mediaIds } = c.req.valid('json');
+    if (!mediaIds || !mediaIds.length) {
+      return new Response(JSON.stringify({ error: 'No mediaIds provided' }), { status: 400 });
+    }
 
-  const sourceFiles = await getSourceFiles(mediaIds);
+    const sourceFiles = await getSourceFiles([]);
 
-  const absPaths = sourceFiles.map((each: any) => path.join(Bun.env.MAIN_PATH, each.source_file));
+    if (!sourceFiles || !sourceFiles.length) {
+      return new Response(JSON.stringify({ error: 'No source files found for provided photos/video' }), { status: 404 });
+    }
 
-  // Generate a zip stream of all given files, flattening their paths
-  const zipProc = Bun.spawn({
-    cmd: [
-      'zip',
-      '-j', // junk the path (flatten)
-      '-q', // quiet output (faster with less logging)
-      '-0', // store only (no compression) OR try `-1` for fast compression
-      '-', // write to stdout
-      ...absPaths,
-    ],
-    stdout: 'pipe',
-    stderr: 'inherit',
-  });
+    const absPaths = sourceFiles.map((each: any) => path.join(Bun.env.MAIN_PATH, each.source_file));
 
-  return new Response(zipProc.stdout, {
-    headers: {
-      'Content-Type': 'application/zip',
-      'Content-Disposition': 'attachment; filename="archive.zip"',
-    },
-  });
+    const zipProc = Bun.spawn({
+      cmd: [
+        'zip',
+        '-j', // junk the path (flatten)
+        '-q', // quiet output (faster with less logging)
+        '-0', // store only (no compression) OR try `-1` for fast compression
+        '-', // write to stdout
+        ...absPaths,
+      ],
+      stdout: 'pipe',
+      stderr: 'inherit',
+    });
+
+    // Check process exit code
+    const exitCode = await zipProc.exited;
+    if (exitCode !== 0) {
+      return new Response(JSON.stringify({ error: 'Failed to create zip archive' }), {
+        status: 500,
+      });
+    }
+
+    return new Response(zipProc.stdout, {
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': 'attachment; filename="archive.zip"',
+      },
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: 'Internal server error', details: err.message }), {
+      status: 500,
+    });
+  }
 });
 
 export default medias;
