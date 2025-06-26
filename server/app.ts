@@ -20,6 +20,9 @@ import search from './routes/search';
 import media from './routes/media';
 import medias from './routes/medias';
 import photoView from './routes/stream';
+
+import thumbs from './routes/serveStatic/thumbs';
+
 import { streamLargeVid } from './middleware/streamLargeVid';
 
 const app = new Hono();
@@ -57,25 +60,26 @@ app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-hea
 // }
 /////////////////////////////////////////////
 app
-  .basePath('api/v1')
-
-  .route('/auth', auth)
+  // .basePath('api/v1')
+  .route('api/v1/auth', auth)
   .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
-  .route('/search', search)
-  .route('/upload', upload)
-  .route('/stream', photoView)
-  .route('/user', user)
-  .route('/medias', medias)
-  .route('/media', media)
-  .route('/album', album)
+  .route('api/v1/search', search)
+  .route('api/v1/upload', upload)
+  .route('api/v1/stream', photoView)
+  .route('api/v1/user', user)
+  .route('api/v1/medias', medias)
+  .route('api/v1/media', media)
+  .route('api/v1/album', album)
+
+  .route(getDirName(Bun.env.THUMB_PATH), thumbs)
 
   .use(isAdmin)
-  .route('/admin', admin);
+  .route('api/v1/admin', admin);
 
 // Catch-all for protected API routes
 app.on(
   'GET',
-  [`/${getDirName(Bun.env.THUMB_PATH)}/*`, `/${getDirName(Bun.env.PHOTO_PATH)}/*`, `/${getDirName(Bun.env.UPLOAD_PATH)}/*`],
+  [`${getDirName(Bun.env.PHOTO_PATH)}/*`, `${getDirName(Bun.env.UPLOAD_PATH)}/*`],
   isAuthenticate,
   streamLargeVid, // If file request is images or small video serveStatic
 

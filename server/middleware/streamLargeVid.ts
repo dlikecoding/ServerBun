@@ -47,7 +47,7 @@ export const streamLargeVid = createMiddleware(async (c, next) => {
   const chunkSize = end - start + 1;
   const fileStream = fs.createReadStream(filePath, { start, end });
   // TODO for Bun.file.slice: Need to prevent it download from 0 to start for example: if start is 1000000, end > start, it will load the video from 0 - start
-  // return new Response(videoFile.slice(start, end), {
+  // return new Response(videoFile.slice(start, end).stream(), {
   return new Response(fileStream as unknown as BodyInit, {
     status: 206,
     headers: {

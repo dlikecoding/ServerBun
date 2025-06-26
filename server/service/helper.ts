@@ -124,7 +124,7 @@ export const diskCapacity = async (pathToCheck: string): Promise<{ total: number
   }
 };
 
-export const getDirName = (dirName: string) => dirName.split('/').at(-1);
+export const getDirName = (dirName: string) => `/${dirName.split('/').at(-1)}`;
 
 // Remove directory recursively and forcefully
 const removeDirRecursive = async (targetPath: string): Promise<void> => {
