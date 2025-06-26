@@ -91,7 +91,7 @@ medias.post('/download', validateSchema('json', deleteSchema), async (c) => {
       return new Response(JSON.stringify({ error: 'No mediaIds provided' }), { status: 400 });
     }
 
-    const sourceFiles = await getSourceFiles([]);
+    const sourceFiles = await getSourceFiles(mediaIds);
 
     if (!sourceFiles || !sourceFiles.length) {
       return new Response(JSON.stringify({ error: 'No source files found for provided photos/video' }), { status: 404 });
@@ -115,6 +115,7 @@ medias.post('/download', validateSchema('json', deleteSchema), async (c) => {
     // Check process exit code
     const exitCode = await zipProc.exited;
     if (exitCode !== 0) {
+      await insertErrorLog('routes/medias.ts', 'post/download', 'Failed to create zip archive');
       return new Response(JSON.stringify({ error: 'Failed to create zip archive' }), {
         status: 500,
       });
@@ -127,6 +128,7 @@ medias.post('/download', validateSchema('json', deleteSchema), async (c) => {
       },
     });
   } catch (err: any) {
+    await insertErrorLog('routes/medias.ts', 'post/download', err);
     return new Response(JSON.stringify({ error: 'Internal server error', details: err.message }), {
       status: 500,
     });

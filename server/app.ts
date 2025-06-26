@@ -22,8 +22,7 @@ import medias from './routes/medias';
 import photoView from './routes/stream';
 
 import thumbs from './routes/serveStatic/thumbs';
-
-import { streamLargeVid } from './middleware/streamLargeVid';
+import photos from './routes/serveStatic/photos';
 
 const app = new Hono();
 
@@ -55,40 +54,40 @@ app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-hea
 
 ///////////////////////////////////////////////////
 // import test from './routes/testAPI';
+
 // if (!isNotDevMode) {
 //   app.route('/test', test);
 // }
 /////////////////////////////////////////////
 app
-  // .basePath('api/v1')
-  .route('api/v1/auth', auth)
-  .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
-  .route('api/v1/search', search)
-  .route('api/v1/upload', upload)
-  .route('api/v1/stream', photoView)
-  .route('api/v1/user', user)
-  .route('api/v1/medias', medias)
-  .route('api/v1/media', media)
-  .route('api/v1/album', album)
+  .basePath('api/v1')
 
-  .route(getDirName(Bun.env.THUMB_PATH), thumbs)
+  .route('/auth', auth)
+  .use(isAuthenticate) // Apply authentication only to API routes after '/auth'
+  .route('/search', search)
+  .route('/upload', upload)
+  .route('/stream', photoView)
+  .route('/user', user)
+  .route('/medias', medias)
+  .route('/media', media)
+  .route('/album', album)
 
   .use(isAdmin)
-  .route('api/v1/admin', admin);
+  .route('/admin', admin);
 
-// Catch-all for protected API routes
-app.on(
-  'GET',
-  [`${getDirName(Bun.env.PHOTO_PATH)}/*`, `${getDirName(Bun.env.UPLOAD_PATH)}/*`],
-  isAuthenticate,
-  streamLargeVid, // If file request is images or small video serveStatic
+// Thumbs and media streams for protected API routes
+app
+  .basePath('/')
+  .use(isAuthenticate)
 
-  serveStatic({ root: Bun.env.MAIN_PATH })
-);
+  .route(getDirName(Bun.env.THUMB_PATH), thumbs)
+  .route(getDirName(Bun.env.PHOTO_PATH), photos)
+  .route(getDirName(Bun.env.UPLOAD_PATH), photos)
 
-// Serve static files first (without authentication)
-app.get('*', serveStatic({ root: './dist' }));
-app.get('*', serveStatic({ path: './dist/index.html' }));
+  // If file request is images or small video serveStatic
+  .get(serveStatic({ root: Bun.env.MAIN_PATH }));
+
+app.get('/*', serveStatic({ root: './dist', path: 'index.html' }));
 
 export default app;
 
