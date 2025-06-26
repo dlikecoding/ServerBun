@@ -169,6 +169,11 @@ admin.get('/backup', async (c) => {
 
     await removeEmptyDirs(Bun.env.UPLOAD_PATH);
 
+    // TO-DO backup the files to another drive
+    //   sudo rsync -aAXv --delete \
+    // --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"} \
+    // /source/ /mnt/backup/
+
     const backupStatus = await backupToDB();
     if (!backupStatus) return c.json({ error: 'Failed to backup data' }, 500);
 

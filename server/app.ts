@@ -54,10 +54,7 @@ app.use(secureHeaders()); // https://hono.dev/docs/middleware/builtin/secure-hea
 
 ///////////////////////////////////////////////////
 // import test from './routes/testAPI';
-
-// if (!isNotDevMode) {
-//   app.route('/test', test);
-// }
+// if (!isNotDevMode) app.route('/test', test);
 /////////////////////////////////////////////
 app
   .basePath('api/v1')
@@ -82,10 +79,9 @@ app
 
   .route(getDirName(Bun.env.THUMB_PATH), thumbs)
   .route(getDirName(Bun.env.PHOTO_PATH), photos)
-  .route(getDirName(Bun.env.UPLOAD_PATH), photos)
+  .route(getDirName(Bun.env.UPLOAD_PATH), photos);
 
-  // If file request is images or small video serveStatic
-  .get(serveStatic({ root: Bun.env.MAIN_PATH }));
+// If file request is images or small video serveStatic
 
 app.get('/*', serveStatic({ root: './dist', path: 'index.html' }));
 
