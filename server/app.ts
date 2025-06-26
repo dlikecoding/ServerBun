@@ -21,8 +21,8 @@ import media from './routes/media';
 import medias from './routes/medias';
 import photoView from './routes/stream';
 
-import thumbs from './routes/serveStatic/thumbs';
-import photos from './routes/serveStatic/photos';
+import thumbnails from './routes/serveStatic/thumbnails';
+import { streamLargeVid } from './middleware/streamLargeVid';
 
 const app = new Hono();
 
@@ -72,17 +72,11 @@ app
   .use(isAdmin)
   .route('/admin', admin);
 
-// Thumbs and media streams for protected API routes
-app
-  .basePath('/')
-  .use(isAuthenticate)
+// Thumbnails and media streams for protected API routes
+app.get(`/${getDirName(Bun.env.THUMB_PATH)}/*`, isAuthenticate, thumbnails);
+app.on('GET', [`/${getDirName(Bun.env.PHOTO_PATH)}/*`, `/${getDirName(Bun.env.UPLOAD_PATH)}/*`], isAuthenticate, streamLargeVid, serveStatic({ root: Bun.env.MAIN_PATH }));
 
-  .route(getDirName(Bun.env.THUMB_PATH), thumbs)
-  .route(getDirName(Bun.env.PHOTO_PATH), photos)
-  .route(getDirName(Bun.env.UPLOAD_PATH), photos);
-
-// If file request is images or small video serveStatic
-
+app.get('/assets/*', serveStatic({ root: './dist' }));
 app.get('/*', serveStatic({ root: './dist', path: 'index.html' }));
 
 export default app;

@@ -1,11 +1,9 @@
 import path from 'path';
 
-import { Hono } from 'hono';
 import { isNotDevMode } from '../../init_sys';
+import type { Context } from 'hono';
 
-const thumbnails = new Hono();
-
-thumbnails.get(`/*`, async (c) => {
+const thumbnails = async (c: Context) => {
   const reqUrl = new URL(c.req.url);
   const filePath = path.join(Bun.env.MAIN_PATH, reqUrl.pathname);
 
@@ -35,6 +33,6 @@ thumbnails.get(`/*`, async (c) => {
     'Content-Type': file.type,
     'Content-Length': file.size.toString(),
   });
-});
+};
 
 export default thumbnails;
