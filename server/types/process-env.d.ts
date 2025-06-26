@@ -7,6 +7,8 @@ declare global {
       NODE_ENV: 'dev' | 'production';
 
       MAIN_PATH: string;
+      BACKUP_DATA: string;
+
       THUMB_PATH: string;
       UPLOAD_PATH: string;
       PHOTO_PATH: string;

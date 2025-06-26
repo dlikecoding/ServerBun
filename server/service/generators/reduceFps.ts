@@ -1,6 +1,8 @@
-import type { StreamingApi } from 'hono/utils/stream';
-import { reducePath } from '../helper';
 import path from 'path';
+import type { StreamingApi } from 'hono/utils/stream';
+
+import { reducePath } from '../helper';
+import { insertErrorLog } from '../../db/module/system';
 
 export const reduceFPS = async (sourcePath: string, stream: StreamingApi) => {
   const newSourcePath = sourcePath.split('.')[0] + '.mp4';
@@ -28,7 +30,8 @@ export const reduceFPS = async (sourcePath: string, stream: StreamingApi) => {
       await stream.writeln(`Process @ ${timeStr} - ${basename}`);
     }
   } catch (error) {
-    console.warn(error);
+    console.warn('Unexpected error reducing fps:', error);
+    await insertErrorLog('service/generator/fps', 'reduceFPS', error);
   } finally {
     process.kill();
   }

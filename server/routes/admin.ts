@@ -16,7 +16,7 @@ import { getUserBySession } from '../middleware/validateAuth';
 import { isCaptioningRunning, markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
 import { importExternalPath, streamingImportMedia } from './importHelper/_imports';
 import { preprocessMedia, processCaptioning } from '../service';
-import { backupToDB, restoreToDB } from '../db/main';
+import { backupFiles, backupToDB, restoreToDB } from '../db/main';
 import { deleteFile, isExist, removeEmptyDirs } from '../service/helper';
 
 import { mediaUpdate, reduceFPS } from '../service/generators/reduceFps';
@@ -164,28 +164,42 @@ admin.get('/reindex', taskStatusMiddleware('importing'), isCaptioningRunning(), 
 });
 
 admin.get('/backup', async (c) => {
-  try {
-    await cleanUpCameraType();
+  return streamText(c, async (stream) => {
+    try {
+      // Clean unuse camera type
+      await cleanUpCameraType();
 
-    await removeEmptyDirs(Bun.env.UPLOAD_PATH);
+      // Remove empty Dirs which does not have any file in upload de
+      await removeEmptyDirs(Bun.env.UPLOAD_PATH);
 
-    // TO-DO backup the files to another drive
-    //   sudo rsync -aAXv --delete \
-    // --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"} \
-    // /source/ /mnt/backup/
+      // Backup database to a sql file
+      const backupStatus = await backupToDB();
+      const verifyBackup = await isExist(Bun.env.DB_BACKUP);
 
-    const backupStatus = await backupToDB();
-    if (!backupStatus) return c.json({ error: 'Failed to backup data' }, 500);
+      if (!backupStatus || !verifyBackup) {
+        await stream.writeln(`❌ Failed to backup data`);
+        return;
+      }
 
-    const verifyBackup = await isExist(Bun.env.DB_BACKUP);
-    if (!verifyBackup) return c.json({ error: 'Backup data is not exist' }, 500);
+      const bkFilesStatus = await backupFiles(stream);
+      if (!bkFilesStatus) {
+        await stream.writeln(`❌ Failed to write your data to backup drive/directory!`);
+        return;
+      }
 
-    return c.json({ message: 'Backup data successfully!' }, 200);
-  } catch (err) {
-    await insertErrorLog('admin.ts', 'get/backup', err);
-    console.error(err);
-    return c.json({ error: 'Failed to backup data' }, 500);
-  }
+      await stream.writeln(`✅ Backup processing had been completed successfully`);
+      await stream.close();
+
+      return;
+    } catch (error) {
+      console.log('admin.ts', 'admin.post/reindex', error);
+
+      await stream.writeln(`❌ 500 Internal Server Error`);
+      await insertErrorLog('admin.ts', 'admin.post/reindex', error);
+    } finally {
+      if (!stream.closed) await stream.close();
+    }
+  });
 });
 
 admin.get('/restore', async (c) => {
