@@ -3,6 +3,7 @@ import { sql } from '.';
 import type { StreamingApi } from 'hono/utils/stream';
 
 import { insertErrorLog } from './module/system';
+import { isExist } from '../service/helper';
 
 export const createDBMS = async () => {
   try {
@@ -29,6 +30,14 @@ export const backupToDB = async () => {
 };
 
 export const backupFiles = async (stream: StreamingApi) => {
+  const isMainExist = await isExist(Bun.env.MAIN_PATH);
+  const isBackupExist = await isExist(Bun.env.BACKUP_DATA);
+
+  if (!isMainExist || !isBackupExist) {
+    await stream.writeln(`❌ Failed! ${!isMainExist ? 'Source' : 'Backup'} directory path is not exist`);
+    return false;
+  }
+
   const process = Bun.spawn(
     [
       'rsync',
@@ -55,8 +64,6 @@ export const backupFiles = async (stream: StreamingApi) => {
       const eachLine = decoder.decode(value, { stream: true }).trim();
       await stream.writeln(eachLine);
     }
-
-    console.log(`Backup files successfully to your backup drive!`);
   } catch (error) {
     await insertErrorLog('db/main.ts', `backupFiles`, error);
   } finally {

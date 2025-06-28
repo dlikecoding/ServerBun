@@ -4,8 +4,13 @@ import path, { basename, dirname } from 'path';
 import { rename } from 'fs/promises';
 import { insertErrorLog } from '../db/module/system';
 
-export const isExist = async (path: string) => {
-  return await fs.exists(path);
+export const isExist = async (path: string): Promise<boolean> => {
+  try {
+    await fs.access(path);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 export const createFolder = async (dePath: string, isRecursive: boolean = true) => {
