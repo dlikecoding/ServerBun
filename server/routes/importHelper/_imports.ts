@@ -1,7 +1,7 @@
 import path from 'path';
 import { type UUID } from 'crypto';
 import type { StreamingApi } from 'hono/utils/stream';
-import { preprocessMedia, processMetadataExif } from '../../service';
+import { preprocessMedia, processLocations, processMetadataExif } from '../../service';
 import { createFolder, isExist, nameFolderByTime } from '../../service/helper';
 import { copyFileToExternalDir } from '../../service/generators/metadata';
 import { insertErrorLog } from '../../db/module/system';
@@ -27,6 +27,13 @@ export const streamingImportMedia = async (dirPath: string, userId: UUID, stream
     await stream.writeln('❌ Failed to compressing medias and create hashcode');
     return false;
   }
+
+  if (!(await processLocations())) {
+    // find location for each images
+    await stream.writeln('❌ Failed to get location for medias');
+    return false;
+  }
+
   return true;
 };
 

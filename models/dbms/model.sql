@@ -65,17 +65,6 @@ CREATE TABLE IF NOT EXISTS multi_schema."ErrorLog"
     CONSTRAINT "ErrorLog_pkey" PRIMARY KEY (error_log_id)
 );
 
-CREATE TABLE IF NOT EXISTS multi_schema."Location"
-(
-    media integer NOT NULL,
-    city character varying(50) COLLATE pg_catalog."default",
-    state character varying(50) COLLATE pg_catalog."default",
-    country character varying(50) COLLATE pg_catalog."default",
-    gps_latitude double precision,
-    gps_longitude double precision,
-    CONSTRAINT "Location_pkey" PRIMARY KEY (media)
-);
-
 CREATE TABLE IF NOT EXISTS multi_schema."Media"
 (
     media_id serial NOT NULL,
@@ -111,6 +100,8 @@ CREATE TABLE IF NOT EXISTS multi_schema."Media"
     orientation character varying(45),
     title character varying(255),
     frame_rate double precision,
+    gps_latitude double precision,
+    gps_longitude double precision,
     CONSTRAINT "Media_pkey" PRIMARY KEY (media_id),
     CONSTRAINT unique_source_path UNIQUE (source_file)
 );
@@ -182,6 +173,24 @@ CREATE TABLE IF NOT EXISTS multi_schema."Duplicate"
 COMMENT ON TABLE multi_schema."Duplicate"
     IS 'Check for all of media had the same hash code';
 
+CREATE TABLE IF NOT EXISTS multi_schema."LocationMedia"
+(
+    media integer NOT NULL,
+    location integer NOT NULL,
+    CONSTRAINT "LocationMedia_pkey" PRIMARY KEY (media, location)
+);
+
+CREATE TABLE IF NOT EXISTS multi_schema."Location"
+(
+    location_id serial NOT NULL,
+    city character varying COLLATE pg_catalog."default",
+    state character varying COLLATE pg_catalog."default",
+    county character varying,
+    country character varying COLLATE pg_catalog."default",
+    CONSTRAINT "Location_pkey" PRIMARY KEY (location_id),
+    CONSTRAINT unique_city_state UNIQUE (city, state)
+);
+
 ALTER TABLE IF EXISTS multi_schema."Album"
     ADD CONSTRAINT "Album_RegisteredUser_fkey" FOREIGN KEY ("RegisteredUser")
     REFERENCES multi_schema."RegisteredUser" (reg_user_id) MATCH SIMPLE
@@ -208,15 +217,6 @@ ALTER TABLE IF EXISTS multi_schema."ErrorLog"
     REFERENCES multi_schema."ServerSystem" (system_id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
-
-
-ALTER TABLE IF EXISTS multi_schema."Location"
-    ADD CONSTRAINT "Location_media_fkey" FOREIGN KEY (media)
-    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE;
-CREATE INDEX IF NOT EXISTS "Location_pkey"
-    ON multi_schema."Location"(media);
 
 
 ALTER TABLE IF EXISTS multi_schema."Media"
@@ -270,5 +270,21 @@ ALTER TABLE IF EXISTS multi_schema."Duplicate"
     NOT VALID;
 CREATE INDEX IF NOT EXISTS "Duplicate_pkey"
     ON multi_schema."Duplicate"(media);
+
+
+ALTER TABLE IF EXISTS multi_schema."LocationMedia"
+    ADD CONSTRAINT "LocationMedia_location_fkey" FOREIGN KEY (location)
+    REFERENCES multi_schema."Location" (location_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS multi_schema."LocationMedia"
+    ADD CONSTRAINT "LocationMedia_media_fkey" FOREIGN KEY (media)
+    REFERENCES multi_schema."Media" (media_id) MATCH SIMPLE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+    NOT VALID;
 
 END;

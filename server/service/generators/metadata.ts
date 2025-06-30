@@ -1,14 +1,15 @@
-import * as fs from 'fs/promises';
 import { $ } from 'bun';
-import { insertImportedToMedia, type ImportMedia } from '../../db/module/imported';
-import type { UUID } from 'crypto';
-import { insertErrorLog } from '../../db/module/system';
 import path from 'path';
-import { ALLOWED_MIME_TYPES } from '../../middleware/validateFiles';
-import { workerQueue } from '../workers';
+import * as fs from 'fs/promises';
 import { BATCH_SIZE_INSERT } from '..';
+import type { UUID } from 'crypto';
 import type { StreamingApi } from 'hono/utils/stream';
+
+import { workerQueue } from '../workers';
+import { insertErrorLog } from '../../db/module/system';
+import { ALLOWED_MIME_TYPES } from '../../middleware/validateFiles';
 import { copyFile, moveUnsupportFile, renameIfInvalid } from '../helper';
+import { insertImportedToMedia, type ImportMedia } from '../../db/module/imported';
 
 export interface ImportTrack {
   count: number;

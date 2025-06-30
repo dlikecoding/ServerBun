@@ -8,10 +8,11 @@ import { createHash } from './generators/hashcode';
 import { createThumbnail } from './generators/thumbnails';
 import { createCaption } from './generators/caption';
 
-import { importedMediasCaption, importedMediasThumbHash, updateHashThumb } from '../db/module/media';
+import { importedMediasCaption, importedMediasLocation, importedMediasThumbHash, updateHashThumb } from '../db/module/media';
 import { insertErrorLog } from '../db/module/system';
 import { insertMetadataToDB, recursiveDir, type ImportTrack } from './generators/metadata';
 import { markTaskEnd, markTaskStart } from '../middleware/isRuningTask';
+import { findLocation } from './generators/location';
 
 // ======================= Exiftool metadata ===============================
 
@@ -77,6 +78,24 @@ export const preprocessMedia = async (stream: StreamingApi) => {
   } catch (error) {
     console.error('preprocessMedia worker', error);
     await insertErrorLog('service/index.ts', 'preprocessMedia', error);
+    return false;
+  }
+};
+
+// ======================= Location ===============================
+export const processLocations = async () => {
+  // Create BLOCK call for not over load server while processing caption for medias
+  try {
+    const mediasForCaption = await importedMediasLocation();
+    if (!mediasForCaption.length) return;
+
+    await findLocation(mediasForCaption);
+
+    console.log('!!!!!!! IMPORT LOCATION HAS BEEN COMPLETED !!!!!!!');
+    return true;
+  } catch (error) {
+    console.error('processLocations', error);
+    await insertErrorLog('service/index.ts', 'processLocations', error);
     return false;
   }
 };

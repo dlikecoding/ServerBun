@@ -20,6 +20,15 @@ export const importedMediasCaption = async () => {
     WHERE caption IS NULL OR caption = '' ORDER BY media_id`;
 };
 
+export const importedMediasLocation = async () => {
+  return await sql`
+    SELECT media_id, gps_latitude, gps_longitude 
+    FROM multi_schema."Media" md
+    LEFT JOIN multi_schema."LocationMedia" lm ON md.media_id = lm.media
+    WHERE lm.media IS NULL AND md.gps_latitude IS NOT NULL
+    ORDER BY media_id`;
+};
+
 export const updateHashThumb = async (media_id: number, hashCode: string) => {
   return await sql.begin(async (tx) => {
     const [dupMedia] = await tx`

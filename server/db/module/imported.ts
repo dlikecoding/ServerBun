@@ -78,6 +78,10 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
         video_duration: durationDisplay,
         title: newMedia.Title,
         frame_rate: rountInt(newMedia.VideoFrameRate),
+
+        // Insert GPS Data
+        gps_latitude: newMedia.GPSLatitude,
+        gps_longitude: newMedia.GPSLongitude,
       };
 
       const [mediaId] = await tx`
@@ -92,11 +96,6 @@ export const insertImportedToMedia = async (newMedia: ImportMedia, RegisteredUse
       await tx`
         INSERT INTO multi_schema."UploadBy" ("RegisteredUser", media) VALUES (${RegisteredUser}, ${lastMediaId})`;
 
-      // Insert GPS Data
-      if (newMedia.GPSLatitude && newMedia.GPSLongitude) {
-        await tx`
-          INSERT INTO multi_schema."Location" (media, gps_latitude, gps_longitude) VALUES (${lastMediaId}, ${newMedia.GPSLatitude}, ${newMedia.GPSLongitude})`;
-      }
       return lastMediaId;
     });
   } catch (error) {
