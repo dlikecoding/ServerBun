@@ -91,7 +91,7 @@ export const processLocations = async () => {
 
     await findLocation(mediasForCaption);
 
-    console.log('!!!!!!! IMPORT LOCATION HAS BEEN COMPLETED !!!!!!!');
+    console.log('++++++++ IMPORT LOCATION HAS BEEN COMPLETED ++++++++');
     return true;
   } catch (error) {
     console.error('processLocations', error);

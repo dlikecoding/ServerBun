@@ -8,7 +8,7 @@ import type { StreamingApi } from 'hono/utils/stream';
 import { workerQueue } from '../workers';
 import { insertErrorLog } from '../../db/module/system';
 import { ALLOWED_MIME_TYPES } from '../../middleware/validateFiles';
-import { copyFile, moveUnsupportFile, renameIfInvalid } from '../helper';
+import { copyFile, moveUnsupportFile, renameIfInvalid, startWithDot } from '../helper';
 import { insertImportedToMedia, type ImportMedia } from '../../db/module/imported';
 
 export interface ImportTrack {
@@ -22,6 +22,10 @@ export const recursiveDir = async (dePath: string, tracking: ImportTrack, Regist
     const files = await fs.readdir(dePath);
     for (const file of files) {
       const sourcePath = path.join(dePath, file);
+
+      // Ignore all file start with . (ussally from mac os)
+      if (startWithDot(sourcePath)) continue;
+
       const stat = await fs.stat(sourcePath);
 
       if (stat.isDirectory()) {
@@ -86,8 +90,6 @@ const updateTrackingAndFileValidate = async (sourcePath: string, tracking: Impor
 };
 
 const validateFileExt = async (file: string): Promise<boolean> => {
-  if (file.startsWith('.')) return false;
-
   const fileExt = path.extname(file).toLowerCase();
   return ALLOWED_MIME_TYPES.includes(fileExt);
 };
@@ -96,6 +98,10 @@ export const copyFileToExternalDir = async (copyToPath: string, dest: string): P
   const files = await fs.readdir(copyToPath);
   for (const file of files) {
     const sourcePath = path.join(copyToPath, file);
+
+    // Ignore all file start with . (ussally mac os automaticly created)
+    if (startWithDot(sourcePath)) continue;
+
     const stat = await fs.stat(sourcePath);
 
     if (stat.isDirectory()) {

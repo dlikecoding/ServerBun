@@ -181,11 +181,7 @@ admin.get('/backup', async (c) => {
         return;
       }
 
-      const bkFilesStatus = await backupFiles(stream);
-      if (!bkFilesStatus) {
-        await stream.writeln(`❌ Failed to write your data to backup drive/directory!`);
-        return;
-      }
+      if (!(await backupFiles(stream))) return;
 
       await stream.writeln(`✅ Backup processing had been completed successfully`);
       await stream.close();

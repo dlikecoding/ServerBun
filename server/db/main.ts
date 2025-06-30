@@ -3,7 +3,7 @@ import { sql } from '.';
 import type { StreamingApi } from 'hono/utils/stream';
 
 import { insertErrorLog } from './module/system';
-import { isExist } from '../service/helper';
+import { diskCapacity, isExist } from '../service/helper';
 
 export const createDBMS = async () => {
   try {
@@ -30,11 +30,15 @@ export const backupToDB = async () => {
 };
 
 export const backupFiles = async (stream: StreamingApi) => {
-  const isMainExist = await isExist(Bun.env.MAIN_PATH);
-  const isBackupExist = await isExist(Bun.env.BACKUP_DATA);
-
+  const [isMainExist, isBackupExist] = await Promise.all([isExist(Bun.env.MAIN_PATH), isExist(Bun.env.BACKUP_DATA)]);
   if (!isMainExist || !isBackupExist) {
     await stream.writeln(`❌ Failed! ${!isMainExist ? 'Source' : 'Backup'} directory path is not exist`);
+    return false;
+  }
+
+  const [mainDisk, backupDisk] = await Promise.all([diskCapacity(Bun.env.MAIN_PATH), diskCapacity(Bun.env.BACKUP_DATA)]);
+  if (mainDisk?.used! > backupDisk?.total!) {
+    await stream.writeln(`❌ Failed! Backup storage does not have enough spaces.`);
     return false;
   }
 

@@ -160,3 +160,9 @@ export const removeEmptyDirs = async (dir: string): Promise<void> => {
     }
   }
 };
+
+export const startWithDot = (filePath: string) => {
+  // Ignore all file start with . (ussally from mac os)
+  const basename = path.basename(filePath);
+  return basename.startsWith('.');
+};

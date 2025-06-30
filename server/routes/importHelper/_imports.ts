@@ -28,11 +28,9 @@ export const streamingImportMedia = async (dirPath: string, userId: UUID, stream
     return false;
   }
 
-  if (!(await processLocations())) {
-    // find location for each images
-    await stream.writeln('❌ Failed to get location for medias');
-    return false;
-  }
+  // find location for each images
+  // await stream.writeln('❌ Failed to get location for medias');
+  await processLocations();
 
   return true;
 };
