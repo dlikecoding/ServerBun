@@ -159,7 +159,7 @@ export const createAlbum = async (regUserId: UUID, albumTitle: string) => {
 
 /** Fetch all Albums incluing album without any Media with one image created */
 export const fetchAlbums = async () => {
-  const rows = await sql`
+  return await sql`
     SELECT al.album_id, al.title as title, COUNT(am.media) AS media_count, MIN(md.thumb_path) as thumb_path
     FROM multi_schema."Album" al
     LEFT JOIN multi_schema."AlbumMedia" am ON am.album = al.album_id
@@ -167,7 +167,17 @@ export const fetchAlbums = async () => {
     WHERE md.deleted = FALSE AND md.hidden = FALSE
     GROUP BY al.album_id
     ORDER BY al.title ASC`;
-  return rows;
+};
+
+export const fetchLocations = async () => {
+  return await sql`
+    SELECT loc.location_id, loc.city, loc.country, COUNT(lm.media) AS media_count, MIN(md.thumb_path) as thumb_path
+    FROM multi_schema."Location" loc
+    LEFT JOIN multi_schema."LocationMedia" lm ON loc.location_id = lm.location
+    LEFT JOIN multi_schema."Media" md ON lm.media = md.media_id
+    WHERE md.deleted = FALSE AND md.hidden = FALSE
+    GROUP BY loc.location_id
+    ORDER BY loc.location_id ASC`;
 };
 
 export const fetchAddToAlbum = async (mediaIds: number[], albumId: number) => {

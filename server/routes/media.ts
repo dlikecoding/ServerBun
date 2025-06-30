@@ -21,11 +21,12 @@ media.get('/', validateSchema('query', infoSchema), async (c) => {
           md.lens_model, md.frame_rate, md.title, md.video_duration, md.media_id,
           ru.user_name, 
           cm.make, cm.model,
-          lc.gps_latitude, lc.gps_longitude FROM "multi_schema"."Media" as md 
+          lc.city, lc.state FROM "multi_schema"."Media" as md 
     LEFT JOIN multi_schema."UploadBy" as upl ON upl.media = md.media_id
     LEFT JOIN multi_schema."RegisteredUser" as ru ON ru.reg_user_id = upl."RegisteredUser"
     LEFT JOIN multi_schema."CameraType" as cm ON cm.camera_id = md.camera_type
-    LEFT JOIN multi_schema."Location" as lc ON lc.media = md.media_id
+    LEFT JOIN multi_schema."LocationMedia" as lm ON lm.media = md.media_id
+    LEFT JOIN multi_schema."Location" as lc ON lc.location_id = lm.location
     WHERE md.media_id = ${id}`;
 
     return c.json(media);

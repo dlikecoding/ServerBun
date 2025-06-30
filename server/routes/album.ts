@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 
-import { createAlbum, fetchAlbums, fetchAddToAlbum, fetchRemoveFromAlbum, fetchMediaCount } from '../db/module/media';
+import { createAlbum, fetchAlbums, fetchAddToAlbum, fetchRemoveFromAlbum, fetchMediaCount, fetchLocations } from '../db/module/media';
 
 import { validateSchema } from '../modules/validateSchema';
 import { getUserBySession } from '../middleware/validateAuth';
@@ -19,8 +19,20 @@ album.get('/', async (c) => {
   try {
     return c.json(await fetchAlbums());
   } catch (error) {
-    console.log('fetchAlbums', error);
-    await insertErrorLog('album.ts', 'fetchAlbums', error);
+    console.log('fetchAlbums/', error);
+    await insertErrorLog('album.ts', 'get/fetchAlbums', error);
+    return c.json({ error: 'Error fetch albums' }, 500);
+  }
+});
+
+album.get('/collection', async (c) => {
+  try {
+    const [albums, locations] = await Promise.all([fetchAlbums(), fetchLocations()]);
+
+    return c.json({ albums: albums, locations: locations });
+  } catch (error) {
+    console.log('fetchAlbums/collection', error);
+    await insertErrorLog('routes/album.ts', 'get/collection', error);
     return c.json({ error: 'Error fetch albums' }, 500);
   }
 });

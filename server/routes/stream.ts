@@ -23,7 +23,7 @@ const querySchema = z.object({
   searchKey: z
     .string()
     .trim()
-    .max(25)
+    .max(50)
     .regex(/^[a-zA-Z0-9 -]*$/, 'Only letters, numbers, spaces, and hyphens are allowed')
     .optional(),
 
@@ -32,12 +32,13 @@ const querySchema = z.object({
   deleted: z.coerce.number().min(0).max(1).optional(),
   duplicate: z.coerce.number().min(0).max(1).optional(),
 
-  albumId: z.coerce.number().min(1).max(2000).optional(),
+  albumId: z.coerce.number().min(1).max(999999).optional(),
+  locationId: z.coerce.number().min(1).max(999999).optional(),
 });
 
 streamApi.get('/', validateSchema('query', querySchema), async (c) => {
   try {
-    const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder, searchKey, favorite, hidden, deleted, duplicate, albumId } = c.req.valid('query');
+    const { year, month, pageNumber, filterDevice, filterType, sortKey, sortOrder, searchKey, favorite, hidden, deleted, duplicate, albumId, locationId } = c.req.valid('query');
 
     const isYear = year && month ? sql`AND create_year = ${year} AND create_month = ${month} ` : sql``;
     const isDevice = filterDevice ? sql`AND camera_type = ${filterDevice} ` : sql``;
@@ -63,6 +64,14 @@ streamApi.get('/', validateSchema('query', querySchema), async (c) => {
       result = await sql`
         SELECT md.* FROM (
             SELECT am.media FROM "multi_schema"."AlbumMedia" AS am WHERE am.album = ${albumId}
+        ) as media_in_album
+        JOIN (${getMedias}) as md ON md."media_id" = media_in_album.media
+        ${orderBy}
+        ${limitOffset}`;
+    } else if (locationId) {
+      result = await sql`
+        SELECT md.* FROM (
+            SELECT lm.media FROM "multi_schema"."LocationMedia" AS lm WHERE lm.location = ${locationId}
         ) as media_in_album
         JOIN (${getMedias}) as md ON md."media_id" = media_in_album.media
         ${orderBy}
