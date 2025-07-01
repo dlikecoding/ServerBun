@@ -1,18 +1,16 @@
 import { $ } from 'bun';
 import { insertErrorLog } from '../../db/module/system';
+import { isExist } from '../helper';
 
 const SIZE_THUMBNAIL: string = '512x512\\>';
 const QUALITY = 80;
 
-// const getDimention = (inputDim: string) => {
-//   const [w, h] = inputDim.split(' ');
-//   return { w, h };
-// };
-
-export const createThumbnail = async (input: string, output: string, media: any): Promise<any> => {
+export const createThumbnail = async (input: string, output: string, media: any): Promise<boolean> => {
   try {
+    if (!(await isExist(input))) return false;
+
     const fileType = media.file_type;
-    const duration = fileType === 'Video' ? 0.5 : Math.min(media.selected_frame, media.duration);
+    const duration = fileType === 'Video' ? 1 : Math.min(media.selected_frame, media.duration);
 
     const command =
       fileType === 'Photo'
@@ -21,15 +19,12 @@ export const createThumbnail = async (input: string, output: string, media: any)
         -ss 00:00:0${duration} -vframes 1 -f image2pipe -vcodec png - | magick - -auto-orient \
         -thumbnail ${SIZE_THUMBNAIL} -quality ${QUALITY} ${output}`;
 
-    const { stderr, exitCode } = await command.quiet();
-    if (exitCode !== 0) {
-      console.error(`createThumbnail Throw ${input}: ${stderr}`);
-      await insertErrorLog('service/generators/thumbnails.ts', 'createThumbnail', stderr);
-    }
+    await command.quiet();
 
-    return exitCode === 0;
+    return await isExist(output);
   } catch (error) {
     console.error(`createThumbnail Throw ${input}: ${error}`);
     await insertErrorLog('service/generators/thumbnails.ts', 'createThumbnail', error);
+    return false;
   }
 };

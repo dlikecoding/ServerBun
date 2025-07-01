@@ -6,7 +6,7 @@ model_path = os.environ.get("IMAGE_CAPTIONING_PATH")
 processor_path = os.environ.get("CONFIG_PATH")
 
 processor = BlipProcessor.from_pretrained(processor_path, use_fast=True)
-model = torch.load(model_path, map_location='cpu', weights_only=False)
+model = torch.load(model_path, map_location='cpu')
 model.eval()
 
 try:

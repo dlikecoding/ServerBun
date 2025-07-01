@@ -15,7 +15,7 @@ import { getUserBySession } from '../middleware/validateAuth';
 
 import { isCaptioningRunning, markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
 import { importExternalPath, streamingImportMedia } from './importHelper/_imports';
-import { preprocessMedia, processCaptioning } from '../service';
+import { preprocessMedia, processCaptioning, thumbAndHashGenerate } from '../service';
 import { backupFiles, backupToDB, restoreToDB } from '../db/main';
 import { deleteFile, isExist, removeEmptyDirs } from '../service/helper';
 
@@ -320,6 +320,29 @@ admin.get('/storageOptimize', taskStatusMiddleware('importing'), async (c) => {
       markTaskEnd('importing');
     }
   });
+});
+
+admin.get('/rescan-thumb', async (c) => {
+  try {
+    const medias = await sql`SELECT media_id, source_file, thumb_path, file_type, selected_frame, duration FROM multi_schema."Media"`;
+    console.log(medias.count);
+    let count = 0;
+
+    for (const media of medias) {
+      const output = path.join(Bun.env.MAIN_PATH, media.thumb_path);
+
+      if (await isExist(output)) continue;
+      await thumbAndHashGenerate(media);
+
+      console.log(++count);
+    }
+
+    return c.json(200);
+  } catch (err) {
+    await insertErrorLog('admin.ts', 'delete/all-logs', err);
+    console.error(err);
+    return c.json({ error: 'Failed to delete logs System/Account' }, 500);
+  }
 });
 
 export default admin;

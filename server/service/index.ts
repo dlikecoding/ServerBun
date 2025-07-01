@@ -86,10 +86,10 @@ export const preprocessMedia = async (stream: StreamingApi) => {
 export const processLocations = async () => {
   // Create BLOCK call for not over load server while processing caption for medias
   try {
-    const mediasForCaption = await importedMediasLocation();
-    if (!mediasForCaption.length) return;
+    const medias = await importedMediasLocation();
+    if (!medias.length) return;
 
-    await findLocation(mediasForCaption);
+    await findLocation(medias);
 
     console.log('++++++++ IMPORT LOCATION HAS BEEN COMPLETED ++++++++');
     return true;
@@ -106,10 +106,10 @@ export const processCaptioning = async () => {
   try {
     markTaskStart('captioning');
 
-    const mediasForCaption = await importedMediasCaption();
-    if (!mediasForCaption.length) return;
+    const medias = await importedMediasCaption();
+    if (!medias.length) return;
 
-    await createCaption(mediasForCaption);
+    await createCaption(medias);
 
     console.log('******* PROCESS CAPTION HAS BEEN COMPLETED *******');
   } catch (error) {

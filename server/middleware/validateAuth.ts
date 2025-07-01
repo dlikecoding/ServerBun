@@ -22,11 +22,12 @@ export const logUserInDB = (isLoggedIn: boolean = false) =>
       if (isLoggedIn) {
         userLog = { ...userLog, ...{ last_logged_in: 'NOW()' } };
       }
+      await sql`INSERT INTO "multi_schema"."UserLog" ${sql(userLog)}`.catch((e) => console.log('Failed to Log User on Login', e));
 
-      await sql`INSERT INTO "multi_schema"."UserLog" ${sql(userLog)}`;
       return await next();
     } catch (error) {
-      return c.json({ error: 'Middleware logUserInDB error' }, 500);
+      console.log('middleware/validate - logUserInDB error');
+      return c.json({ error: 'An error occurs while user is trying to sign in' }, 500);
     }
   });
 

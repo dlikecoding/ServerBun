@@ -59,7 +59,7 @@ export const findLocation = async (medias: any[]): Promise<any> => {
 };
 
 const insertLocation = async (location: ResponseLoc) => {
-  const locId = await sql.begin(async (tx) => {
+  let locId = await sql.begin(async (tx) => {
     const [getExistLoc] = await tx`
           SELECT location_id FROM multi_schema."Location" 
           WHERE city = ${location.name} AND state = ${location.admin1} AND country = ${location.cc}`;
@@ -72,7 +72,13 @@ const insertLocation = async (location: ResponseLoc) => {
     if (idInserted) return idInserted.location_id;
   });
 
-  if (!locId) return console.log(`Can not insert this ${location.media_id}.`);
+  // In race condition, it may not get the id. So have to select again
+  if (!locId) {
+    const [getExistLoc] = await sql`
+          SELECT location_id FROM multi_schema."Location" 
+          WHERE city = ${location.name} AND state = ${location.admin1} AND country = ${location.cc}`;
+    if (getExistLoc) locId = getExistLoc.location_id;
+  }
 
   const insertData = { location: locId, media: location.media_id };
   await sql`INSERT INTO "multi_schema"."LocationMedia" ${sql(insertData)} ON CONFLICT DO NOTHING`;
