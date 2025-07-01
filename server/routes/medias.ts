@@ -3,7 +3,7 @@ import path from 'path';
 
 import { z } from 'zod'; // To create a schema to validate post req
 
-import { deleteAllInRecently, deleteMedias, fetchCameraType, getSourceFiles, groupMonthsByYear, updateMedias } from '../db/module/media';
+import { deleteAllInRecently, deleteMedias, fetchCameraType, getSourceFiles, groupMonthsByYear, mergeMedias, updateMedias } from '../db/module/media';
 import { validateSchema } from '../modules/validateSchema';
 import { insertErrorLog } from '../db/module/system';
 
@@ -73,16 +73,17 @@ medias.get('/recently', async (c) => {
   }
 });
 
-// ////////////////////////////////////////////
-// medias.get('/merge-all', async (c) => {
-//   try {
-//     const result = '';
-//     return c.json('Success', 202);
-//   } catch (error) {
-//     await insertErrorLog('routes/medias.ts', 'get/merge-all', error);
-//     return c.json({ error: 'Failed to merge all medias' }, 500);
-//   }
-// });
+medias.get('/merge-all', async (c) => {
+  try {
+    const dupIdsToDel = (await mergeMedias()).flat(1);
+
+    const result = await deleteMedias(dupIdsToDel);
+    if (result) return c.json('Success', 202);
+  } catch (error) {
+    await insertErrorLog('routes/medias.ts', 'get/merge-all', error);
+    return c.json({ error: 'Failed to merge all medias' }, 500);
+  }
+});
 
 medias.post('/download', validateSchema('json', deleteSchema), async (c) => {
   try {

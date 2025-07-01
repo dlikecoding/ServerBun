@@ -230,3 +230,14 @@ export const getSourceFiles = async (mediaIds: number[]) => {
     SELECT source_file FROM "multi_schema"."Media" 
     WHERE media_id IN ${sql(mediaIds)}`;
 };
+
+export const mergeMedias = async () => {
+  return await sql`
+    SELECT media FROM (
+      SELECT dp.media, dp.hash_code, md.file_size, 
+      ROW_NUMBER() OVER (PARTITION BY dp.hash_code ORDER BY md.file_size DESC, dp.media ASC) rn
+      FROM multi_schema."Duplicate" dp
+      LEFT JOIN multi_schema."Media" md ON md.media_id = dp.media
+    ) ranked
+    WHERE rn > 1`.values();
+};
