@@ -3,12 +3,12 @@ import path from 'path';
 import type { StreamingApi } from 'hono/utils/stream';
 
 import { workerQueue } from './workers';
-import { createFolder } from './helper';
+import { createFolder, isExist } from './helper';
 import { createHash } from './generators/hashcode';
 import { createThumbnail } from './generators/thumbnails';
 import { createCaption } from './generators/caption';
 
-import { importedMediasCaption, importedMediasLocation, importedMediasThumbHash, updateHashThumb } from '../db/module/media';
+import { importedMediasCaption, importedMediasLocation, importedMediasThumbHash, rescanThumbnail, updateHashThumb } from '../db/module/media';
 import { insertErrorLog } from '../db/module/system';
 import { insertMetadataToDB, recursiveDir, type ImportTrack } from './generators/metadata';
 import { markTaskEnd, markTaskStart } from '../middleware/isRuningTask';
@@ -37,14 +37,16 @@ export const processMetadataExif = async (sourcePath: string, RegisteredUser: UU
 };
 
 // ======================= Thumbnail & Hashcode ===============================
-export const thumbAndHashGenerate = async (media: any) => {
+export const thumbAndHashGenerate = async (media: any, overwrite: boolean = false) => {
   try {
     const input = path.join(Bun.env.MAIN_PATH, media.source_file);
     const output = path.join(Bun.env.MAIN_PATH, media.thumb_path);
 
-    await createFolder(output);
-    const existCode = await createThumbnail(input, output, media);
-    if (!existCode) return;
+    if (!(await isExist(output)) || overwrite) {
+      await createFolder(output);
+      const existCode = await createThumbnail(input, output, media);
+      if (!existCode) return;
+    }
 
     const hash = await createHash(output);
     if (!hash) return;
@@ -56,21 +58,15 @@ export const thumbAndHashGenerate = async (media: any) => {
   }
 };
 
-export const preprocessMedia = async (stream: StreamingApi) => {
-  const loadedmedias = await importedMediasThumbHash();
-  if (!loadedmedias.length) {
-    // await stream.writeln('❌ No files found in the current directory.');
-    return false;
-  }
+const processThumbAndHash = async (loadedmedias: any[], stream: StreamingApi) => {
+  if (!loadedmedias.length) return false;
 
   let completedCount = 0;
   try {
-    const tasks = loadedmedias.map(
-      (media: any) => () =>
-        thumbAndHashGenerate(media).finally(() => {
-          stream.writeln(`Digesting: ${++completedCount}/${loadedmedias.length}`);
-        })
-    );
+    const tasks = loadedmedias.map((media: any) => async () => {
+      await thumbAndHashGenerate(media);
+      await stream.writeln(`Scanning: ${++completedCount}/${loadedmedias.length}`);
+    });
     await workerQueue(tasks);
     console.log('======= PROCESS THUMBNAIL AND HASH COMPLETED =======');
 
@@ -80,6 +76,16 @@ export const preprocessMedia = async (stream: StreamingApi) => {
     await insertErrorLog('service/index.ts', 'preprocessMedia', error);
     return false;
   }
+};
+
+export const preprocessMedia = async (stream: StreamingApi) => {
+  const loadedmedias = await importedMediasThumbHash();
+  return await processThumbAndHash(loadedmedias, stream);
+};
+
+export const rescanningThumbs = async (stream: StreamingApi) => {
+  const loadedmedias = await rescanThumbnail();
+  return await processThumbAndHash(loadedmedias, stream);
 };
 
 // ======================= Location ===============================

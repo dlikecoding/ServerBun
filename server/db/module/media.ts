@@ -14,6 +14,13 @@ export const importedMediasThumbHash = async () => {
     ORDER BY media_id`;
 };
 
+export const rescanThumbnail = async () => {
+  return await sql`
+    SELECT media_id, source_file, thumb_path, file_type, selected_frame, duration 
+    FROM multi_schema."Media"
+    ORDER BY media_id`;
+};
+
 export const importedMediasCaption = async () => {
   return await sql`
     SELECT media_id, thumb_path FROM multi_schema."Media"

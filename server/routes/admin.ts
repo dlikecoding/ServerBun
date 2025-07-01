@@ -15,7 +15,7 @@ import { getUserBySession } from '../middleware/validateAuth';
 
 import { isCaptioningRunning, markTaskEnd, markTaskStart, taskStatusMiddleware } from '../middleware/isRuningTask';
 import { importExternalPath, streamingImportMedia } from './importHelper/_imports';
-import { preprocessMedia, processCaptioning, thumbAndHashGenerate } from '../service';
+import { preprocessMedia, processCaptioning, rescanningThumbs } from '../service';
 import { backupFiles, backupToDB, restoreToDB } from '../db/main';
 import { deleteFile, isExist, removeEmptyDirs } from '../service/helper';
 
@@ -323,26 +323,27 @@ admin.get('/storageOptimize', taskStatusMiddleware('importing'), async (c) => {
 });
 
 admin.get('/rescan-thumb', async (c) => {
-  try {
-    const medias = await sql`SELECT media_id, source_file, thumb_path, file_type, selected_frame, duration FROM multi_schema."Media"`;
-    console.log(medias.count);
-    let count = 0;
+  return streamText(c, async (stream) => {
+    try {
+      const userId = getUserBySession(c).userId;
+      markTaskStart('importing', userId);
 
-    for (const media of medias) {
-      const output = path.join(Bun.env.MAIN_PATH, media.thumb_path);
+      await rescanningThumbs(stream);
 
-      if (await isExist(output)) continue;
-      await thumbAndHashGenerate(media);
+      await stream.writeln(`✅ Finished Recreating Thumbnails!`);
+      await stream.close();
 
-      console.log(++count);
+      return;
+    } catch (error) {
+      console.log('admin.ts', 'admin.get/rescan-thumb', error);
+
+      await stream.writeln(`❌ 500 Internal Server Error`);
+      await insertErrorLog('admin.ts', 'admin.get/rescan-thumb', error);
+    } finally {
+      if (!stream.closed) await stream.close();
+      markTaskEnd('importing');
     }
-
-    return c.json(200);
-  } catch (err) {
-    await insertErrorLog('admin.ts', 'delete/all-logs', err);
-    console.error(err);
-    return c.json({ error: 'Failed to delete logs System/Account' }, 500);
-  }
+  });
 });
 
 export default admin;
